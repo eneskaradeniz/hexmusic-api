@@ -14,15 +14,11 @@ const middlewares = { user: userMiddleware };
 module.exports = (upload) => {
 
     // TEST
-
     router.get('/push_like', MatchController.push_like);
     router.get('/push_mega_like', MatchController.push_mega_like);
     router.get('/push_match', MatchController.push_match);
 
     // AUTH
-    //router.get('/', UserController.auth);
-    //router.get('/test', UserController.test);
-
     router.post('/', upload.array('photos', 3), UserController.register);
     router.get('/callback', UserController.callback);
    
