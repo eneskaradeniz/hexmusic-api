@@ -22,6 +22,7 @@ module.exports = (upload) => {
     router.get('/profile/:userId', [middlewares.user], UserController.profile);
     router.post('/delete_account', [middlewares.user], UserController.delete_account);
 
+    // ACTION
     router.get('/action', [middlewares.user], UserController.action);
     
     // REPORT
