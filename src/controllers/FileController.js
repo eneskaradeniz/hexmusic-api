@@ -141,14 +141,12 @@ class FileController {
 
             gfs.find({ _id: ObjectId(imageId) }).toArray((err, files) => {
                 if(err) {
-                    console.log(err);
                     return res.status(400).json({
                         success: false,
                     })
                 }
 
                 if (!files[0] || files.length === 0) {
-                    console.log('resim bulunamadı');
                     return res.status(200).json({
                         success: false
                     });
@@ -163,8 +161,14 @@ class FileController {
                     });
                 }
             });
-        } catch(e) {
-            console.log(e);
+        } catch(err) {
+            Log({
+                file: 'FileController.js',
+                method: 'getImageById',
+                info: err,
+                type: 'critical',
+            });
+
             return res.status(400).json({
                 success: false,
             });
