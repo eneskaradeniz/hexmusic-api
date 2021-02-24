@@ -18,54 +18,6 @@ const Log = require('./LogController');
 
 class MatchController {
 
-    async push_like(req, res) {
-        try {
-            await pushLikeNotification({from: '6032f9f15fe5160017092378', to: '602ac18bc35ded00179998fa'});
-
-            return res.status(200).json({
-                success: true,
-            });
-        } catch(err) {
-            console.log(err);
-
-            return res.status(400).json({
-                success: false,
-            });
-        }
-    }
-
-    async push_mega_like(req, res) {
-        try {
-            await pushMegaLikeNotification({from: '6032f9f15fe5160017092378', to: '602ac18bc35ded00179998fa'});
-
-            return res.status(200).json({
-                success: true,
-            });
-        } catch(err) {
-            console.log(err);
-
-            return res.status(400).json({
-                success: false,
-            });
-        }
-    }
-
-    async push_match(req, res) {
-        try {
-            await pushMatchNotification({lowerId: '6032f9f15fe5160017092378', higherId: '602ac18bc35ded00179998fa'});
-
-            return res.status(200).json({
-                success: true,
-            });
-        } catch(err) {
-            console.log(err);
-
-            return res.status(400).json({
-                success: false,
-            });
-        }
-    }
-    
     // MATCH
 
     async start_music(req, res) {
