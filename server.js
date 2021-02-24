@@ -189,7 +189,7 @@ const Language = require('./src/utils/Language');
 const _ = require("lodash");
 const firebaseAdmin = require("./src/firebase/firebaseAdmin");
 
-schedule.scheduleJob('0 20 0 * * *', async () => {
+schedule.scheduleJob('0 15 0 * * *', async () => {
   console.log('günlük beğeni hakkı yenileme methodu çalışıyor...');
   try {
     // FREE KULLANICILARIN LIKE: 20, MEGALIKE: 1, PREMIUM ISE LIKE: 20, MEGALIKE: 5 YAPILACAK.
