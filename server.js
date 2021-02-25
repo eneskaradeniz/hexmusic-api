@@ -49,6 +49,7 @@ function initUser(socket, data) {
       findUsers.forEach(findUser => {
         console.log('LOGOUT:', findUser.socket.id);
         findUser.socket.emit('logout');
+        findUser.socket.disconnect();
       });  
     }
 
