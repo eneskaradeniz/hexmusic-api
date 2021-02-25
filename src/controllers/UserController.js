@@ -449,7 +449,7 @@ class UserController {
                     chatIds.push(match.chatId);
                     
                     const isLower = match.lowerId.toString() === loggedId;
-                    users.push({ id: isLower ? match.higherId : match.lowerId, chatId: match.chatId });
+                    users.push({ userId: isLower ? match.higherId : match.lowerId, chatId: match.chatId });
                 });
 
                 // EŞLEŞMELERİNİ SİL
@@ -479,7 +479,7 @@ class UserController {
                     const findUser = shared.users.find(x => x.userId === model.id.toString());
                     if(findUser) {
                         findUser.socket.emit('end_user', {
-                            id: model.id,
+                            userId: model.userId,
                             chatId: model.chatId,
                         });
                     }   
@@ -586,7 +586,7 @@ class UserController {
                 const findTargetUser = shared.users.find(x => x.userId === targetId);
                 if(findTargetUser) {
                     findTargetUser.socket.emit('end_user', {
-                        id: loggedId,
+                        userId: loggedId,
                         chatId: findMatch.chatId,
                     });
                 }    
@@ -656,7 +656,7 @@ class UserController {
                 const findTargetUser = shared.users.find(x => x.userId === targetId);
                 if(findTargetUser) {
                     findTargetUser.socket.emit('end_user', {
-                        id: loggedId,
+                        userId: loggedId,
                         chatId: findMatch.chatId,
                     });
                 }    
