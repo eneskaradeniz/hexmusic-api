@@ -10,24 +10,6 @@ const spotifyApi = new SpotifyWebApi({
 const User = require('../models/UserModel');
 
 class Spotify {
-    
-    // AUTH
-
-    /*static scopes = [
-        'app-remote-control',
-    
-        'user-modify-playback-state',
-    
-        'user-read-private',
-        'user-top-read',
-    
-        'user-read-currently-playing',
-        'user-read-recently-played',
-    ];
-
-    static async authorize(res) {
-        res.redirect(spotifyApi.createAuthorizeURL(this.scopes));
-    }*/
 
     static async getAccessToken(refresh_token) {
         try {

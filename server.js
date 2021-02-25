@@ -45,7 +45,9 @@ function initUser(socket, data) {
     // BAŞKA SOCKET VARMI KONTROL ET
     const findUsers = shared.users.filter(x => x.userId === userId);
     if(findUsers.length > 0) {
+      console.log('BU IDLI BAŞKA SOKET VAR LOGOUT YAPTIRACAK');
       findUsers.forEach(findUser => {
+        console.log('LOGOUT:', findUser.socket.id);
         findUser.socket.emit('logout');
       });  
     }
