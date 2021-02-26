@@ -25,7 +25,9 @@ class Spotify {
 
     static async getRefreshToken(code) {
         try {
+            console.log('code:', code);
             const data = await spotifyApi.authorizationCodeGrant(code);
+            console.log(data);
             if(!data) throw 'INVALID_CODE';
 
             const access_token = data.body['access_token'];

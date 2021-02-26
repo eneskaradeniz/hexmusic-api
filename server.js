@@ -70,7 +70,7 @@ function initUser(socket, data) {
 
 async function leftUser(socket) {
   try {
-    // BU SOKETİ BUL
+    // SOKETİ BUL
     const findUser = shared.users.find(x => x.socket.id === socket.id);
     if(!findUser) return;
 
