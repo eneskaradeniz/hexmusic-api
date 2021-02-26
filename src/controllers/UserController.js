@@ -89,6 +89,9 @@ class UserController {
 
             const user = await User.findOne({ spotifyId }).select('_id');
             if(user) {
+                // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
+                await updateSpotifyRefreshToken(loggedId, refresh_token);
+
                 // BÖYLE BİR KULLANICI VAR TOKEN OLUŞTUR VE PROFILI GETİR
                 const token = generateJwtToken(user._id);
                 console.log('token:', token);
@@ -1293,6 +1296,17 @@ class UserController {
 module.exports = new UserController();
 
 // UTILS
+
+async function updateSpotifyRefreshToken(loggedId, refresh_token) {
+    try {
+        await User.findByIdAndUpdate(loggedId, {
+            spotifyRefreshToken: refresh_token
+        });
+    } catch(err) {
+        console.log(err);
+        throw err;
+    }
+}
 
 async function getMyProfile(loggedId) {
     try {
