@@ -27,7 +27,7 @@ class UserController {
 
     // AUTH
 
-    /*async auth(req, res) {
+    async auth(req, res) {
         try {
             Spotify.authorize(res);
         } catch(err) {
@@ -68,7 +68,7 @@ class UserController {
                 success: false
             });
         }
-    }*/
+    }
 
     async callback(req, res) {  
         try {
@@ -81,11 +81,8 @@ class UserController {
             }
 
             const { access_token, refresh_token } = await Spotify.getRefreshToken(code);
-            console.log('access_token:', access_token);
-            console.log('refresh_token:', refresh_token);
 
             const spotifyId = await Spotify.getSpotifyId(access_token);
-            console.log('spotifyId:', spotifyId);
 
             const user = await User.findOne({ spotifyId }).select('_id');
             if(user) {
@@ -94,9 +91,7 @@ class UserController {
 
                 // BÖYLE BİR KULLANICI VAR TOKEN OLUŞTUR VE PROFILI GETİR
                 const token = generateJwtToken(user._id);
-                console.log('token:', token);
                 const myProfile = await getMyProfile(user._id);
-                console.log('myProfile:', myProfile);
 
                 return res.status(200).json({ 
                     success: true,
@@ -123,7 +118,6 @@ class UserController {
                 });            
             }
         } catch(err) {
-            console.log('CALLBACK ERROR:', err);
             Log({
                 file: 'UserController.js',
                 method: 'callback',
