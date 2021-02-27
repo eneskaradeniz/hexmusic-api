@@ -1338,6 +1338,7 @@ function isAdult(timestamp) {
         var ageDifMs = Date.now() - birthday.getTime();
         var ageDate = new Date(ageDifMs);
         var age = Math.abs(ageDate.getUTCFullYear() - 1970);
+        console.log('AGE:', age);
         if(!age) if(age < 18) return false;
        
         return true;
