@@ -1243,7 +1243,7 @@ class UserController {
         try {
             const loggedId = req._id;
 
-            const user = await user.findById(loggedId).select('spotifyRefreshToken lastTracks');
+            const user = await User.findById(loggedId).select('spotifyRefreshToken lastTracks');
 
             const access_token = await Spotify.getAccessToken(user.spotifyRefreshToken);
             const lastTracks = await Spotify.getTracks(access_token, user.lastTracks);
