@@ -64,7 +64,6 @@ class Spotify {
 
             return data.body.id;
         } catch (e) {
-            console.log(e);
             throw e;
         }
     }

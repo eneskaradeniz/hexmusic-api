@@ -27,49 +27,6 @@ class UserController {
 
     // AUTH
 
-    async auth(req, res) {
-        try {
-            Spotify.authorize(res);
-        } catch(err) {
-            Log({
-                file: 'UserController.js',
-                method: 'auth',
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
-    async callback(req, res) {
-        try {
-            const code = req.query.code;
-            if (!code) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NO_AUTH_CODE',
-                });
-            }
-            
-            const url = "mmix://?code=" + code;
-            return res.redirect(url);
-        } catch(err) {
-            Log({
-                file: 'UserController.js',
-                method: 'callback',
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
     async callback(req, res) {  
         try {
             const code = req.query.code;
@@ -142,7 +99,6 @@ class UserController {
             const { spotifyId, spotifyRefreshToken, spotifyFavArtists, spotifyFavTracks, email, name, birthday, gender, bio, city, favTracks, favArtists, language } = JSON.parse(req.body._body);
             if(!spotifyId || !spotifyRefreshToken || !spotifyFavArtists || !spotifyFavTracks || !email || !name || !birthday || !gender || !language) {
                 FileController.deleteImages(photos);
-                console.log('INVALID_FIELDS');
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -153,7 +109,6 @@ class UserController {
             const _isAdult = isAdult(birthday);
             if(!_isAdult) {
                 FileController.deleteImages(photos);
-                console.log('INVALID_FIELDS 2');
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -163,7 +118,6 @@ class UserController {
             const userExists = await User.countDocuments({ spotifyId: spotifyId });
             if (userExists > 0) {
                 FileController.deleteImages(photos);
-                console.log('ALREADY_REGISTER');
 
                 return res.status(200).json({
                     success: false,
@@ -448,7 +402,6 @@ class UserController {
 
                 var chatIds = [];
                 
-    
                 matches.forEach(match => {
                     chatIds.push(match.chatId);
                     
@@ -1297,7 +1250,6 @@ async function updateSpotifyRefreshToken(loggedId, refresh_token) {
             spotifyRefreshToken: refresh_token
         });
     } catch(err) {
-        console.log(err);
         throw err;
     }
 }
