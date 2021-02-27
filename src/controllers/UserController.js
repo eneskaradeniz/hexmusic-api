@@ -1176,7 +1176,7 @@ class UserController {
         }
     }
 
-    // ACTION
+    // OTHER
 
     async action(req, res) {
         try {
@@ -1229,6 +1229,34 @@ class UserController {
             Log({
                 file: 'UserController.js',
                 method: 'action',
+                info: err,
+                type: 'critical',
+            });
+
+            return res.status(400).json({
+                success: false
+            });
+        }
+    }
+
+    async get_last_tracks(req, res) {
+        try {
+            const loggedId = req._id;
+
+            const user = await user.findById(loggedId).select('spotifyRefreshToken lastTracks');
+
+            const access_token = await Spotify.getAccessToken(user.spotifyRefreshToken);
+            const lastTracks = await Spotify.getTracks(access_token, user.lastTracks);
+
+            return res.status(200).json({
+                success: true,
+                tracks: lastTracks,
+            }); 
+
+        } catch(err) {
+            Log({
+                file: 'UserController.js',
+                method: 'get_last_tracks',
                 info: err,
                 type: 'critical',
             });
