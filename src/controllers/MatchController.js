@@ -21,6 +21,8 @@ class MatchController {
     // MATCH
 
     async start_music(req, res) {
+        const session = await db.startSession();
+
         try {
             const loggedId = req._id;
             const { trackId, artistId } = req.body;
@@ -35,46 +37,48 @@ class MatchController {
             const track = await Spotify.getTrack(loggedId, trackId);
 
             const session = await db.startSession();
-            session.startTransaction();
+      
+            const transactionResults = await session.withTransaction(async () => {
+               
+                const user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
 
-            const user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
+                // DİNLEDİĞİ MÜZİĞİ GÜNCELLE.
+                user.listen = {
+                    trackId: trackId,
+                    artistId: artistId,
 
-            // DİNLEDİĞİ MÜZİĞİ GÜNCELLE.
-            user.listen = {
-                trackId: trackId,
-                artistId: artistId,
+                    isListen: true,
+                    timestamp: Date.now(),
+                }
 
-                isListen: true,
-                timestamp: Date.now(),
-            }
-
-            if(user.lastTracks.length > 0) {
-                if(user.lastTracks[0] !== trackId) {
-                    // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
-                    if(user.lastTracks.length >= 10) user.lastTracks.pop();
+                if(user.lastTracks.length > 0) {
+                    if(user.lastTracks[0] !== trackId) {
+                        // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
+                        if(user.lastTracks.length >= 10) user.lastTracks.pop();
+                        user.lastTracks.unshift(trackId);
+                    }
+                } else {
+                    // LİSTEDE HİÇ ELEMAN YOK EKLE
                     user.lastTracks.unshift(trackId);
                 }
-            } else {
-                // LİSTEDE HİÇ ELEMAN YOK EKLE
-                user.lastTracks.unshift(trackId);
-            }
 
-            // KAYDET
-            await user.save();
-
-            await session.commitTransaction();
-            session.endSession();
-
-            // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
-            if(user.permissions.showLive) findListenersForTarget(loggedId, track);
-
-            console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
-
-            return res.status(200).json({
-                success: true,
-                track,
+                // KAYDET
+                await user.save();
             });
 
+            if(transactionResults) {
+                 // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
+                if(user.permissions.showLive) findListenersForTarget(loggedId, track);
+
+                console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
+
+                return res.status(200).json({
+                    success: true,
+                    track,
+                });
+            } else {
+                throw '';
+            }
         } catch (err) {
             Log({
                 file: 'MatchController.js',
@@ -86,6 +90,8 @@ class MatchController {
             return res.status(400).json({
                 success: false
             });
+        } finally {
+            session.endSession();
         }
     }
 

@@ -433,7 +433,7 @@ class UserController {
 
                 // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
                 users.forEach(model => {
-                    const findUser = shared.users.find(x => x.userId === model.id.toString());
+                    const findUser = shared.users.find(x => x.userId === model.userId.toString());
                     if(findUser) {
                         findUser.socket.emit('end_user', {
                             userId: model.userId,
