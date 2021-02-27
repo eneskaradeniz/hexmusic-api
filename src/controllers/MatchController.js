@@ -37,10 +37,12 @@ class MatchController {
             const track = await Spotify.getTrack(loggedId, trackId);
 
             const session = await db.startSession();
+
+            var user;
       
             const transactionResults = await session.withTransaction(async () => {
                
-                const user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
+                user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
 
                 // DİNLEDİĞİ MÜZİĞİ GÜNCELLE.
                 user.listen = {
@@ -67,7 +69,7 @@ class MatchController {
             });
 
             if(transactionResults) {
-                 // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
+                // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
                 if(user.permissions.showLive) findListenersForTarget(loggedId, track);
 
                 console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
@@ -80,6 +82,8 @@ class MatchController {
                 throw '';
             }
         } catch (err) {
+            await session.abortTransaction();
+            
             Log({
                 file: 'MatchController.js',
                 method: 'start_music',
