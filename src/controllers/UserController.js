@@ -1226,6 +1226,7 @@ class UserController {
                 users
             });
         } catch(err) {
+            console.log(err);
             Log({
                 file: 'UserController.js',
                 method: 'action',
