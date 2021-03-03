@@ -287,7 +287,7 @@ class ChatController {
    
                 // EĞER LIKE TRUE ISE
                 if(like) {
-
+                    
                     // CHATI GÜNCELLE
                     updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
                         lastMessage: {
