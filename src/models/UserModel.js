@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 const { isEmail } = require('validator');
 
-const any = require('../utils/any');
-
 const UserSchema = mongoose.Schema({
 
     listen: {
@@ -136,5 +134,4 @@ const UserSchema = mongoose.Schema({
     }
 });
 
-UserSchema.plugin(any);
 module.exports = mongoose.model('User', UserSchema);

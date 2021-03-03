@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 
-const any = require('../utils/any');
-
 const ChatSchema = mongoose.Schema({
     matchId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -43,5 +41,4 @@ const ChatSchema = mongoose.Schema({
     }
 });
 
-ChatSchema.plugin(any);
 module.exports = mongoose.model('Chat', ChatSchema);

@@ -654,40 +654,26 @@ class MatchController {
             }
 
             // TRANSACTION BAŞLAT
-            await session.withTransaction(async () => {
+            const transactionResults = await session.withTransaction(async () => {
                 const lowerId = loggedId < targetId ? loggedId : targetId;
                 const higherId = loggedId > targetId ? loggedId : targetId;
 
                 // EŞLEŞMİŞLER Mİ
                 const findMatch = await Match.countDocuments({ lowerId: lowerId, higherId: higherId }).session(session);
-                if(findMatch > 0) {
-                    return res.status(200).json({
-                        success: false,
-                        error: 'ALREADY_MATCH',
-                    });
-                }
+                if(findMatch > 0) return 'ALREADY_MATCH';
 
                 // İŞLEM VARSA GERİ AL
                 switch(type) {
                     case 'like':
                         const findLike = await Like.countDocuments({ from: loggedId, to: targetId }).session(session);
-                        if(findLike === 0) {
-                            return res.status(200).json({
-                                success: false,
-                                error: 'NOT_FOUND_LIKE',
-                            });
-                        }
+                        if(findLike === 0) return 'NOT_FOUND_LIKE';
+
                         await Like.findOneAndDelete({ from: loggedId, to: targetId }).session(session);
                         break;
                     case 'megaLike':
                         const findMegaLike = await Like.countDocuments({ from: loggedId, to: targetId }).session(session);
-                        if(findMegaLike === 0) {
-                            return res.status(200).json({
-                                success: false,
-                                error: 'NOT_FOUND_MEGALIKE',
-                            });
-                        }
-
+                        if(findMegaLike === 0) return 'NOT_FOUND_MEGALIKE';
+                    
                         await Like.findOneAndDelete({ from: loggedId, to: targetId }).session(session);
 
                         user.counts.megaLike += 1;
@@ -695,23 +681,43 @@ class MatchController {
                         break;
                     case 'dislike':
                         const findDislike = await Dislike.countDocuments({ from: loggedId, to: targetId }).session(session);
-                        if(findDislike === 0) {
-                            return res.status(200).json({
-                                success: false,
-                                error: 'NOT_FOUND_DISLIKE',
-                            });
-                        }
+                        if(findDislike === 0) return 'NOT_FOUND_DISLIKE';
 
                         await Dislike.findOneAndDelete({ from: loggedId, to: targetId }).session(session);
                         break;
                     default: {
-                        return res.status(200).json({
-                            success: false,
-                            error: 'INVALID_FIELDS',
-                        });
+                        return 'INVALID_FIELDS';
                     }
                 }
             });
+
+            switch(transactionResults) {
+                case 'ALREADY_MATCH':
+                    return res.status(200).json({
+                        success: false,
+                        error: transactionResults,
+                    });
+                case 'NOT_FOUND_LIKE':
+                    return res.status(200).json({
+                        success: false,
+                        error: transactionResults,
+                    });
+                case 'NOT_FOUND_MEGALIKE':
+                    return res.status(200).json({
+                        success: false,
+                        error: transactionResults,
+                    });
+                case 'NOT_FOUND_DISLIKE':
+                    return res.status(200).json({
+                        success: false,
+                        error: transactionResults,
+                    });
+                case 'INVALID_FIELDS':
+                    return res.status(200).json({
+                        success: false,
+                        error: transactionResults,
+                    });
+            }
 
             return res.status(200).json({
                 success: true,

@@ -183,18 +183,8 @@ class ChatController {
                     reply: replyId,
                 }], { session: session });
 
-                console.log('mesaj oluşturuldu:', messageId);
-
                 // MESAJI GETİR
                 newMessage = await Message.findById(messageId).populate('reply', 'from message type').session(session);
-
-                console.log('mesaj getirildi:', newMessage);
-
-                console.log('status 401 gönder');
-
-                return res.status(401).json({
-                    success: false,
-                });
 
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chatId, {
@@ -216,8 +206,6 @@ class ChatController {
                     .session(session);
             });
 
-            console.log('heyy buraya geldii');
-
             // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
             const { lowerChat, higherChat } = generateChats(updateChat);
 
@@ -237,16 +225,12 @@ class ChatController {
                 messageType: type
             }); 
 
-
-            console.log('birdaha gönderiyor..');
-
             return res.status(200).json({
                 success: true,
                 message: newMessage,
                 chat: isLower ? lowerChat : higherChat,
             });
         } catch (err) {
-            console.log('hataaa:', err);
             Error({
                 file: 'ChatController.js',
                 method: 'send_message',
@@ -301,7 +285,6 @@ class ChatController {
                 // MESAJI GÜNCELLE
                 updateMessage = await Message.findByIdAndUpdate(messageId, { like: like }, { new: true, upsert: true }).populate('reply', 'from message type').session(session);
         
-                // EĞER LIKE TRUE ISE
                 if(like) {
                     // CHATI GÜNCELLE
                     updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
@@ -347,7 +330,10 @@ class ChatController {
                     chat: isLower ? lowerChat : higherChat,
                 });
             } else {
-                throw 'The transaction was intentionally aborted.';
+                return res.status(200).json({
+                    success: false,
+                    error: 'NOT_FOUND_MESSAGE'
+                });
             }
 
         } catch(err) {
@@ -479,8 +465,8 @@ async function findChat({ chatId, lowerId, higherId }) {
             if(!findChat) return false;
             if(findChat._id.toString() !== chatId.toString()) return false;
         } else if (chatId) {
-            const chatExists = await Chat.any({ _id: chatId });
-            if(!chatExists) return false;
+            const chatExists = await Chat.countDocuments({ _id: chatId });
+            if(chatExists <= 0) return false;
         } else {
             return false;
         }

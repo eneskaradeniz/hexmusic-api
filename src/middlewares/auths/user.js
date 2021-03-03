@@ -48,8 +48,8 @@ module.exports = async (req, res, next) => {
             // BÖYLE BİR KULLANICININ OLUP OLMADIĞINI KONTROL ET.
             const id = decoded._id;
 
-            const userExists = await User.any({ _id: id });
-            if (!userExists) {
+            const userExists = await User.countDocuments({ _id: id });
+            if (userExists <= 0) {
                 return res.status(401).json({
                     success: false,
                     error: 'NOT_FOUND_USER'
