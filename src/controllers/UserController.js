@@ -1128,6 +1128,12 @@ class UserController {
             }
 
             const tracks = await Spotify.searchTracks(refresh_token, searchField);
+            if(!tracks) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
             
             return res.status(200).json({
                 success: true,
@@ -1160,6 +1166,12 @@ class UserController {
             }
 
             const artists = await Spotify.searchArtists(refresh_token, searchField);
+            if(!artists) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
 
             return res.status(200).json({
                 success: true,

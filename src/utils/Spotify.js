@@ -16,13 +16,13 @@ class Spotify {
     static async getAuthorizationCodeGrant(code) {
         try {
             const data = await spotifyApi.authorizationCodeGrant(code);
-            if(!data) return null;
 
             const access_token = data.body['access_token'];
             const refresh_token = data.body['refresh_token'];
 
             return { access_token, refresh_token }; 
         } catch (err) {
+            if(err.body.error === 'invalid_grant') return null;
             throw err;
         }
     }
@@ -31,16 +31,9 @@ class Spotify {
         try {
             spotifyApi.setRefreshToken(refresh_token);
             const data = await spotifyApi.refreshAccessToken();
-
             return data.body['access_token'];   
         } catch(err) {
-            console.log(err.body.error);
-            if(err.body.error === 'invalid_grant') {
-                // LOGINE AKTAR.
-                return null;
-            }
-
-            // FARLI BİR HATA throw AT.
+            if(err.body.error === 'invalid_grant') return null;
             throw err;
         }
     } 
@@ -65,10 +58,7 @@ class Spotify {
     static async getSpotifyId(access_token) {
         try {
             spotifyApi.setAccessToken(access_token);
-
             const data = await spotifyApi.getMe();
-            if(!data) return null;
-
             return data.body.id;
         } catch (err) {
             throw err;
@@ -77,18 +67,12 @@ class Spotify {
 
     // TRACKS AND ARTISTS
     
-    static async getTrack(userId, id) {
+    static async getTrack(access_token, id) {
         try {
-            const access_token = await this.getUserAccessToken(userId);
-            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
-
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTrack(id);
-            if(!data) throw 'NOT_FOUND_TRACK';
-
             const track = data.body;
-            if(!track) throw 'NOT_FOUND_TRACK';
 
             return {
                 id: track.id,
@@ -102,11 +86,8 @@ class Spotify {
         }
     }
 
-    static async getArtist(userId, id) {
+    static async getArtist(access_token, id) {
         try {
-            const access_token = await this.getUserAccessToken(userId);
-            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
-
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtist(id);
@@ -129,7 +110,6 @@ class Spotify {
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTracks(trackIds);
-        
             const tracks = data.body.tracks;
         
             var results = [];
@@ -159,7 +139,6 @@ class Spotify {
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtists(artistIds);
-        
             const artists = data.body.artists;
         
             var results = [];
@@ -194,8 +173,6 @@ class Spotify {
                 time_range: 'medium_term',
             });
 
-            if(!data) throw 'INVALID_ACCESS_TOKEN';
-
             const topArtists = data.body.items;
 
             if(topArtists.length > 0) {
@@ -229,8 +206,6 @@ class Spotify {
                 time_range: 'medium_term',
             });
 
-            if(!data) throw 'INVALID_ACCESS_TOKEN';
-            
             const topTracks = data.body.items;
 
             if(topTracks.length > 0) {
@@ -256,11 +231,8 @@ class Spotify {
 
     // LISTEN ITEMS
 
-    static async getTracksWithCount(userId, trackIds, _tracks) {
+    static async getTracksWithCount(access_token, trackIds, _tracks) {
         try {
-            const access_token = await this.getUserAccessToken(userId);
-            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
-
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTracks(trackIds);
@@ -292,11 +264,8 @@ class Spotify {
         }
     }
 
-    static async getArtistsWithCount(userId, artistIds, _artists) {
+    static async getArtistsWithCount(access_token, artistIds, _artists) {
         try {
-            const access_token = await this.getUserAccessToken(userId);
-            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
-
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtists(artistIds);
@@ -331,7 +300,7 @@ class Spotify {
     static async searchTracks(refresh_token, searchField) {
         try {
             const access_token = await this.refreshAccessToken(refresh_token);
-            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+            if(!access_token) return null;
 
             spotifyApi.setAccessToken(access_token);
 
@@ -367,7 +336,7 @@ class Spotify {
     static async searchArtists(refresh_token, searchField) {
         try {
             const access_token = await this.refreshAccessToken(refresh_token);
-            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+            if(!access_token) return null;
 
             spotifyApi.setAccessToken(access_token);
 
