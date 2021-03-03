@@ -284,7 +284,8 @@ class ChatController {
             const transactionResults = await session.withTransaction(async () => {
                 // MESAJI GÜNCELLE
                 updateMessage = await Message.findByIdAndUpdate(ObjectId('603a75fc6e07830017f06c98'), { like: like }, { new: true, upsert: true }).populate('reply', 'from message type').session(session);
-   
+                console.log(updateMessage);
+                
                 // EĞER LIKE TRUE ISE
                 if(like) {
 
