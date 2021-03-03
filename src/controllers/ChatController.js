@@ -284,8 +284,7 @@ class ChatController {
             const transactionResults = await session.withTransaction(async () => {
                 // MESAJI GÜNCELLE
                 updateMessage = await Message.findByIdAndUpdate('messageId', { like: like }, { new: true, upsert: true }).populate('reply', 'from message type').session(session);
-                if(!updateMessage) throw 'NOT_FOUND_MESSAGE';
-
+   
                 // EĞER LIKE TRUE ISE
                 if(like) {
 
