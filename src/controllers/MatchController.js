@@ -280,7 +280,12 @@ class MatchController {
 
             // beni beğenenleri getir ama benim like atmadığım olacak.
             const beniBegenenler = await Like.find({ to: loggedId }).populate('from', 'name photos isVerifed birthday permissions');
-            if(beniBegenenler.length === 0) return users;
+            if(beniBegenenler.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    users
+                });
+            }
     
             // beni beğenenlerin idlerini listeye aktar.
             var userIds = [];
