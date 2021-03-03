@@ -190,8 +190,11 @@ class ChatController {
 
                 console.log('mesaj getirildi:', newMessage);
 
-                // HATA VERDİR
-                blabla();
+                console.log('status 401 gönder');
+
+                return res.status(401).json({
+                    success: false,
+                });
 
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chatId, {
@@ -213,6 +216,8 @@ class ChatController {
                     .session(session);
             });
 
+            console.log('heyy buraya geldii');
+
             // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
             const { lowerChat, higherChat } = generateChats(updateChat);
 
@@ -232,12 +237,16 @@ class ChatController {
                 messageType: type
             }); 
 
+
+            console.log('birdaha gönderiyor..');
+
             return res.status(200).json({
                 success: true,
                 message: newMessage,
                 chat: isLower ? lowerChat : higherChat,
             });
         } catch (err) {
+            console.log('hataaa:', err);
             Error({
                 file: 'ChatController.js',
                 method: 'send_message',
