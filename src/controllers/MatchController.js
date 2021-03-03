@@ -691,6 +691,8 @@ class MatchController {
                 }
             });
 
+            console.log(transactionResults);
+
             switch(transactionResults) {
                 case 'ALREADY_MATCH':
                     return res.status(200).json({
