@@ -29,16 +29,19 @@ class Spotify {
 
     static async refreshAccessToken(refresh_token) {
         try {
-            if(!refresh_token) return null;
-
             spotifyApi.setRefreshToken(refresh_token);
             const data = await spotifyApi.refreshAccessToken();
-            if(!data) return null;
 
             return data.body['access_token'];   
         } catch(err) {
-            console.log(err);
-            return null;
+            console.log(err.body.error);
+            if(err.body.error === 'invalid_grant') {
+                // LOGINE AKTAR.
+                return null;
+            }
+
+            // FARLI BİR HATA throw AT.
+            throw err;
         }
     } 
 
