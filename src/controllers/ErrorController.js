@@ -1,16 +1,16 @@
-const Log = require('../models/LogModel');
+const Error = require('../models/ErrorModel');
 
-const log = (data) => {
+const error = (data) => {
     try {
-        return new Log({
+        return new Error({
             file: data.file,
             method: data.method,
             info: data.info,
             type: data.type
         }).save();
     } catch(err) {
-        console.log('log tutarken hata:', err);
+        console.log('Error tutarken hata:', err);
     }
 };
 
-module.exports = log;
+module.exports = error;

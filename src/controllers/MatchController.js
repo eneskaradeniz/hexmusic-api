@@ -14,7 +14,7 @@ const shared = require('../shared/index');
 const Spotify = require('../utils/Spotify');
 const Language = require('../utils/Language');
 
-const Log = require('./LogController');
+const Error = require('./ErrorController');
 
 class MatchController {
 
@@ -81,7 +81,7 @@ class MatchController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'start_music',
                 info: err,
@@ -111,7 +111,7 @@ class MatchController {
                 success: true
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'stop_music',
                 info: err,
@@ -165,7 +165,7 @@ class MatchController {
             });
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'live',
                 info: err,
@@ -237,7 +237,7 @@ class MatchController {
             });
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'explore',
                 info: err,
@@ -317,7 +317,7 @@ class MatchController {
             });
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'likes_me',
                 info: err,
@@ -566,7 +566,7 @@ class MatchController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'like',
                 info: err,
@@ -612,7 +612,7 @@ class MatchController {
                 success: true,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'dislike',
                 info: err,
@@ -722,7 +722,7 @@ class MatchController {
                 throw 'The transaction was intentionally aborted.';
             }    
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'rewind',
                 info: err,
@@ -914,7 +914,7 @@ async function findListenersForTarget(loggedId, track) {
                     });
                 }
             } catch (err) {
-                Log({
+                Error({
                     file: 'MatchController.js',
                     method: 'loggedFilter',
                     info: err,
@@ -983,7 +983,7 @@ async function loggedFilter(loggedUser, users, matchType) {
                 percentage: percentage,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'MatchController.js',
                 method: 'loggedFilter',
                 info: err,
@@ -1085,7 +1085,7 @@ async function pushMatchNotification({ lowerId, higherId }) {
             }
         }
     } catch (err) {
-        Log({
+        Error({
             file: 'MatchController.js',
             method: 'pushMatchNotification',
             info: err,
@@ -1114,7 +1114,7 @@ async function pushLikeNotification({ from, to }) {
             }        
         }
     } catch (err) {
-        Log({
+        Error({
             file: 'MatchController.js',
             method: 'pushLikeNotification',
             info: err,
@@ -1143,7 +1143,7 @@ async function pushMegaLikeNotification({ from, to }) {
             }        
         }
     } catch (err) {
-        Log({
+        Error({
             file: 'MatchController.js',
             method: 'pushMegaLikeNotification',
             info: err,

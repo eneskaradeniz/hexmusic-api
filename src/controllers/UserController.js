@@ -17,7 +17,7 @@ const FileController = require('../controllers/FileController');
 
 const shared = require('../shared/index');
 
-const Log = require('./LogController');
+const Error = require('./ErrorController');
 
 const generateJwtToken = (userId) => jwt.sign({ _id: userId }, jwtConfig.secret);
 
@@ -89,7 +89,7 @@ class UserController {
                 });            
             }
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'callback',
                 info: err,
@@ -172,7 +172,7 @@ class UserController {
         } catch (err) {
             FileController.deleteImages(photos);
 
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'register',
                 info: err,
@@ -197,7 +197,7 @@ class UserController {
                 user,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'me',
                 info: err,
@@ -350,7 +350,7 @@ class UserController {
             });
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'profile',
                 info: err,
@@ -462,7 +462,7 @@ class UserController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'delete_account',
                 info: err,
@@ -502,7 +502,7 @@ class UserController {
             });
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'blocked_users',
                 info: err,
@@ -567,7 +567,7 @@ class UserController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'end_user',
                 info: err,
@@ -637,7 +637,7 @@ class UserController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'block_user',
                 info: err,
@@ -680,7 +680,7 @@ class UserController {
             });
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'unblock_user',
                 info: err,
@@ -733,7 +733,7 @@ class UserController {
             // İŞLEM BAŞARISIZ GELEN FOTOĞRAF VARSA SİL.
             FileController.deleteImageById(imageId);
 
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'add_photo',
                 info: err,
@@ -763,7 +763,7 @@ class UserController {
                 success: true,
             });
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_photos',
                 info: err,
@@ -804,7 +804,7 @@ class UserController {
             });
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'delete_photo',
                 info: err,
@@ -853,7 +853,7 @@ class UserController {
                 success: true
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_profile',
                 info: err,
@@ -885,7 +885,7 @@ class UserController {
             });
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_firebase',
                 info: err,
@@ -916,7 +916,7 @@ class UserController {
             });
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_language',
                 info: err,
@@ -946,7 +946,7 @@ class UserController {
                 success: true,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_fav_tracks',
                 info: err,
@@ -976,7 +976,7 @@ class UserController {
                 success: true,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_fav_artists',
                 info: err,
@@ -1017,7 +1017,7 @@ class UserController {
             });
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_spotify_favorites',
                 info: err,
@@ -1047,7 +1047,7 @@ class UserController {
                 success: true,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_permissions',
                 info: err,
@@ -1077,7 +1077,7 @@ class UserController {
                 success: true,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_notifications',
                 info: err,
@@ -1115,7 +1115,7 @@ class UserController {
                 success: true
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'update_filtering',
                 info: err,
@@ -1149,7 +1149,7 @@ class UserController {
             })
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'search_tracks',
                 info: err,
@@ -1181,7 +1181,7 @@ class UserController {
             })
 
         } catch (err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'search_artists',
                 info: err,
@@ -1244,8 +1244,7 @@ class UserController {
                 users
             });
         } catch(err) {
-            console.log(err);
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'action',
                 info: err,
@@ -1280,7 +1279,7 @@ class UserController {
             }); 
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'UserController.js',
                 method: 'get_last_tracks',
                 info: err,

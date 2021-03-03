@@ -11,7 +11,7 @@ const shared = require('../shared/index');
 const Spotify = require('../utils/Spotify');
 const Language = require('../utils/Language');
 
-const Log = require('./LogController');
+const Error = require('./ErrorController');
 
 class ChatController {
 
@@ -48,7 +48,7 @@ class ChatController {
                 chats,
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'ChatController.js',
                 method: 'chat_list',
                 info: err,
@@ -88,7 +88,7 @@ class ChatController {
                 messages
             });
         } catch (err) {
-            Log({
+            Error({
                 file: 'ChatController.js',
                 method: 'message_list',
                 info: err,
@@ -235,7 +235,7 @@ class ChatController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            Log({
+            Error({
                 file: 'ChatController.js',
                 method: 'send_message',
                 info: err,
@@ -337,7 +337,7 @@ class ChatController {
             }
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'ChatController.js',
                 method: 'like_message',
                 info: err,
@@ -415,7 +415,7 @@ class ChatController {
                 throw 'The transaction was intentionally aborted.';
             }
         } catch(err) {
-            Log({
+            Error({
                 file: 'ChatController.js',
                 method: 'read_messages',
                 info: err,
@@ -565,7 +565,7 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
             }  
         }
     } catch (err) {
-        Log({
+        Error({
             file: 'ChatController.js',
             method: 'pushMessageNotification',
             info: err,
@@ -604,7 +604,7 @@ async function pushLikeNotification({ from, to, chatId }) {
             }  
         }
     } catch (err) {
-        Log({
+        Error({
             file: 'ChatController.js',
             method: 'pushLikeNotification',
             info: err,

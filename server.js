@@ -5,7 +5,7 @@ const mongoDB = require('./src/databases/mongodb/index');
 const socketIO = require('socket.io');
 const shared = require('./src/shared');
 
-const Log = require('./src/controllers/LogController');
+const Error = require('./src/controllers/ErrorController');
 
 const bodyParser = require('body-parser');
 
@@ -59,7 +59,7 @@ function initUser(socket, data) {
 
     console.log(`(${shared.users.length})`, "CONNECT SOCKETID/USERID: " + socket.id + "/" + userId);
   } catch(err) {
-    Log({
+    Error({
       file: 'server.js',
       method: 'initUser',
       info: err,
@@ -82,7 +82,7 @@ async function leftUser(socket) {
 
     console.log(`(${shared.users.length})`, "DISCONNECT SOCKETID/USERID: " + findUser.socket.id + "/" + findUser.userId);
   } catch(err) {
-    Log({
+    Error({
       file: 'server.js',
       method: 'leftUser',
       info: err,
@@ -117,7 +117,7 @@ function startTyping(socket, data) {
         }, 2000);
     }
   } catch(err) {
-    Log({
+    Error({
       file: 'server.js',
       method: 'startTyping',
       info: err,
@@ -135,7 +135,7 @@ async function stopMusic(userId) {
 
     console.log('(disconnect) müzik dinlemiyor:', userId);
   } catch (err) {
-    Log({
+    Error({
       file: 'server.js',
       method: 'stopMusic',
       info: err,
@@ -155,12 +155,16 @@ io.on('connection', socket => {
 const storage = new GridFsStorage({
     url: process.env.MONGO_URI,
     file: (req, file) => {
-      console.log('file uzantısı:', file.mimetype);
       if(file.mimetype === 'image/jpeg') {
         return new Promise((resolve, reject) => {
           crypto.randomBytes(16, (err, buf) => {
             if (err) {
-              console.log('gridfs:', err);
+              Error({
+                file: 'server.js',
+                method: 'storage',
+                info: err,
+                type: 'critical',
+              });
               return reject(err);
             }
             const filename = buf.toString('hex') + path.extname(file.originalname);
@@ -172,7 +176,6 @@ const storage = new GridFsStorage({
           });
         });
       } else {
-        console.log('farklı bir uzantı kabul edilemez');
         return null;
       }
     
@@ -259,7 +262,7 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     await Promise.all(promisesTR);
     await Promise.all(promisesEN);
   } catch(err) {
-    Log({
+    Error({
       file: 'server.js',
       method: 'daily_renew',
       info: err,

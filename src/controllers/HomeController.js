@@ -2,7 +2,7 @@ const User = require('../models/UserModel');
 
 const Spotify = require('../utils/Spotify');
 
-const Log = require('./LogController');
+const Error = require('./ErrorController');
 
 class HomeController {
 
@@ -38,8 +38,7 @@ class HomeController {
             });
 
         } catch(err) {
-            console.log(err);
-            Log({
+            Error({
                 file: 'HomeController.js',
                 method: 'home',
                 info: err,
@@ -114,7 +113,7 @@ class HomeController {
             });
             
         } catch(err) {
-            Log({
+            Error({
                 file: 'HomeController.js',
                 method: 'artist_tracks',
                 info: err,
@@ -156,7 +155,7 @@ class HomeController {
             });
 
         } catch(err) {
-            Log({
+            Error({
                 file: 'HomeController.js',
                 method: 'live_count',
                 info: err,

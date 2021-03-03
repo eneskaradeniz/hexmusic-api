@@ -3,6 +3,8 @@ const config = require('../../config/jwt');
 
 const User = require('../../models/UserModel');
 
+const Error = require('../../controllers/ErrorController');
+
 module.exports = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -59,8 +61,14 @@ module.exports = async (req, res, next) => {
             req._id = id;
             next();
         });
-    } catch(e) {
-        console.log(e);
+    } catch(err) {
+        Error({
+            file: 'user.js',
+            method: 'module.exports',
+            info: err,
+            type: 'critical',
+        });
+
         return res.status(401).json({
             success: false
         });

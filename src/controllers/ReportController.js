@@ -1,6 +1,6 @@
 const Report = require('../models/ReportModel');
 
-const Log = require('./LogController');
+const Error = require('./ErrorController');
 
 class ReportController {
 
@@ -27,7 +27,7 @@ class ReportController {
                 success: true
             });
         } catch(err) {
-            Log({
+            Error({
                 file: 'ReportController.js',
                 method: 'report_user',
                 info: err,
