@@ -459,11 +459,9 @@ class UserController {
                     success: true
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch(err) {
-            await session.abortTransaction();
-
             Log({
                 file: 'UserController.js',
                 method: 'delete_account',
@@ -566,11 +564,9 @@ class UserController {
                     success: true,
                 }); 
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            await session.abortTransaction();
-
             Log({
                 file: 'UserController.js',
                 method: 'end_user',
@@ -638,11 +634,9 @@ class UserController {
                     success: true,
                 }); 
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            await session.abortTransaction();
-            
             Log({
                 file: 'UserController.js',
                 method: 'block_user',

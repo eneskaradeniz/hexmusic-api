@@ -232,11 +232,9 @@ class ChatController {
                     chat: isLower ? lowerChat : higherChat,
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            await session.abortTransaction();
-
             Log({
                 file: 'ChatController.js',
                 method: 'send_message',
@@ -335,12 +333,10 @@ class ChatController {
                     chat: isLower ? lowerChat : higherChat,
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
 
         } catch(err) {
-            await session.abortTransaction();
-
             Log({
                 file: 'ChatController.js',
                 method: 'like_message',
@@ -416,11 +412,9 @@ class ChatController {
                     success: true
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch(err) {
-            await session.abortTransaction();
-
             Log({
                 file: 'ChatController.js',
                 method: 'read_messages',

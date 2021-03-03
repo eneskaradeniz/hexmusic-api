@@ -78,11 +78,9 @@ class MatchController {
                     track,
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
-            await session.abortTransaction();
-            
             Log({
                 file: 'MatchController.js',
                 method: 'start_music',
@@ -99,31 +97,20 @@ class MatchController {
     }
 
     async stop_music(req, res) {
-        const session = await db.startSession();
-
         try {
             const loggedId = req._id;
 
-            const transactionResults = await session.withTransaction(async () => {
-                // DİNLEDİĞİ MÜZİĞİ SİL.
-                await User.findByIdAndUpdate(loggedId, {
-                    "listen.isListen": false,
-                    "listen.timestamp": Date.now(),
-                });
+            await User.findByIdAndUpdate(loggedId, {
+                "listen.isListen": false,
+                "listen.timestamp": Date.now(),
             });
 
-            if(transactionResults) {
-                console.log("müzik dinlemiyor:", loggedId);
+            console.log("müzik dinlemiyor:", loggedId);
 
-                return res.status(200).json({
-                    success: true
-                });
-            } else {
-                throw '';
-            }
+            return res.status(200).json({
+                success: true
+            });
         } catch (err) {
-            session.abortTransaction();
-            
             Log({
                 file: 'MatchController.js',
                 method: 'stop_music',
@@ -576,7 +563,7 @@ class MatchController {
                     success: true
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }
         } catch (err) {
             Log({
@@ -732,7 +719,7 @@ class MatchController {
                     success: true,
                 });
             } else {
-                throw '';
+                throw 'The transaction was intentionally aborted.';
             }    
         } catch (err) {
             Log({
