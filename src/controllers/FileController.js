@@ -42,29 +42,6 @@ class FileController {
                     success: false
                 });
             }
-
-            /*gfs.find({ _id: ObjectId(imageId) }).toArray((err, files) => {
-                if(err) {
-                    return res.status(400).json({
-                        success: false,
-                    })
-                }
-
-                if (!files[0] || files.length === 0) {
-                    return res.status(200).json({
-                        success: false
-                    });
-                }
-
-                if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png' || files[0].contentType === 'image/jpg') {
-                    // render image to browser
-                    gfs.openDownloadStream(ObjectId(imageId)).pipe(res);
-                } else {
-                    return res.status(404).json({
-                        success: false
-                    });
-                }
-            });*/
         } catch(err) {
             Error({
                 file: 'FileController.js',
