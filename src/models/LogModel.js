@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const LogSchema = new mongoose.Schema({
     file: String,
     method: String,
-    info: String,
+    info: mongoose.Schema.Types.Mixed,
     type: String,
     createdAt: {
         type: Number,

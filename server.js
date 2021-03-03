@@ -192,31 +192,19 @@ const Language = require('./src/utils/Language');
 const _ = require("lodash");
 const firebaseAdmin = require("./src/firebase/firebaseAdmin");
 
+const DEFAULT_LIKE_COUNT = 30;
+const DEFAULT_ADS_COUNT = 5;
+
 schedule.scheduleJob('0 15 0 * * *', async () => {
-  console.log('günlük beğeni hakkı yenileme methodu çalışıyor...');
   try {
-    // FREE KULLANICILARIN LIKE: 20, MEGALIKE: 1, PREMIUM ISE LIKE: 20, MEGALIKE: 5 YAPILACAK.
-    // BİLDİRİM ALMAK İSTEYEN TÜM KULLANICILARIN TOKEN VE LANGUAGE LERİ ÇEKİLECEK
-    // GELEN LİSTE FOR A GİRECEK VE TR DİLİNDEKİLER BİR YERE EN DİLİNDEKİLER BİR LİSTEYE AKTARILACAK.
-    // BU İKİ LİSTEDEKİ TOKENLERE BİLDİRİMLER GÖNDERİLECEK.
-
-    // FREE KULLANICILARIN LIKE: 20, MEGALIKE: 1, ADS: 5 YAP.
-    await User.updateMany({ product: { $eq: 'free' } }, { counts: { like: 20, megaLike: 1, ads: 5 }});
-    console.log('freeler yapıldı');
-
-    // PREMIUM LITE KULLANICILARIN LIKE: 20, MEGALIKE: 3, ADS: 5 YAP.
-    await User.updateMany({ product: { $eq: 'premium_lite' } }, { counts: { like: 20, megaLike: 5, ads: 5 }});
-    console.log('premium_lite yapıldı');
-
-    // PREMIUM PLUS KULLANICILARIN LIKE: 20, MEGALIKE: 5, ADS: 5 YAP.
-    await User.updateMany({ product: { $eq: 'premium_plus' } }, { counts: { like: 20, megaLike: 5, ads: 5 }});
-    console.log('premium_plus yapıldı');
+    await User.updateMany({ product: { $eq: 'free' } }, { counts: { like: DEFAULT_LIKE_COUNT, megaLike: 1, ads: DEFAULT_ADS_COUNT }});
+    await User.updateMany({ product: { $eq: 'premium_lite' } }, { counts: { like: DEFAULT_LIKE_COUNT, megaLike: 3, ads: DEFAULT_ADS_COUNT }});
+    await User.updateMany({ product: { $eq: 'premium_plus' } }, { counts: { like: DEFAULT_LIKE_COUNT, megaLike: 5, ads: DEFAULT_ADS_COUNT }});
 
     var trTokens = [];
     var enTokens = [];
 
     const users = await User.find({ "notifications.renewLikes": true }).select('_id fcmToken language');
-    console.log('tüm kullanıcılar çekildi:', users);
 
     users.forEach(user => {
       switch(user.language) {
@@ -229,8 +217,6 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
       }
     });
 
-    console.log('dillere göre ayrıldı.');
-
     const trTitle = await Language.translate({ key: 'renew_likes_title', lang: 'tr' });
     const trBody = await Language.translate({ key: 'renew_likes_body', lang: 'tr' });
 
@@ -238,9 +224,7 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     const enBody = await Language.translate({ key: 'renew_likes_body', lang: 'en' });
 
     const trChunks = _.chunk(trTokens, 500);
-    console.log('trChunks:', trChunks);
     const enChunks = _.chunk(enTokens, 500);
-    console.log('enChunks:', enChunks);
 
     // TR İÇİN
     const promisesTR = trChunks.map((tokens) => {
@@ -253,8 +237,6 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
           notification_type: 'RENEW_LIKES',
         }
       };
-
-      console.log('tr:', payload);
 
       return firebaseAdmin.sendMulticastNotification(payload); 
     });
@@ -271,18 +253,17 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
         }
       };
 
-      console.log('en:', payload);
-
       return firebaseAdmin.sendMulticastNotification(payload); 
     });
 
     await Promise.all(promisesTR);
-    console.log('tr atıldı');
     await Promise.all(promisesEN);
-    console.log('en atıldı');
-
-    console.log('günlük beğeni hakkı yenileme işlemi başarılı!');
-  } catch(e) {
-    console.log('daily renew:', e);
+  } catch(err) {
+    Log({
+      file: 'server.js',
+      method: 'daily_renew',
+      info: err,
+      type: 'critical',
+    });
   }
 });

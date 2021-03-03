@@ -97,7 +97,6 @@ const UserSchema = mongoose.Schema({
 
     notifications: {
         renewLikes: {type: Boolean, default: true},
-
         newMatches: {type: Boolean, default: true},
         likes: {type: Boolean, default: true},
         megaLikes: {type: Boolean, default: true},
@@ -112,7 +111,7 @@ const UserSchema = mongoose.Schema({
     },
 
     counts: {
-        like: {type: Number, default: 20},
+        like: {type: Number, default: 30},
         megaLike: {type: Number, default: 1},
         ads: {type: Number, default: 5},
     },

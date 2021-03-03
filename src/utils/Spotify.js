@@ -11,47 +11,50 @@ const User = require('../models/UserModel');
 
 class Spotify {
 
-    static async getAccessToken(refresh_token) {
-        try {
-            spotifyApi.setRefreshToken(refresh_token);
-            const data = await spotifyApi.refreshAccessToken();
-            if(!data) throw 'INVALID_ACCESS_TOKEN';
+    // AUTH
 
-            return data.body['access_token'];   
-        } catch (e) {
-            throw e;
-        }
-    }   
-
-    static async getRefreshToken(code) {
+    static async getAuthorizationCodeGrant(code) {
         try {
             const data = await spotifyApi.authorizationCodeGrant(code);
-            if(!data) throw 'INVALID_CODE';
+            if(!data) return null;
 
             const access_token = data.body['access_token'];
             const refresh_token = data.body['refresh_token'];
 
-            return { access_token, refresh_token };
-            
-        } catch (e) {
-            throw e;
+            return { access_token, refresh_token }; 
+        } catch (err) {
+            throw err;
         }
     }
+
+    static async refreshAccessToken(refresh_token) {
+        try {
+            if(!refresh_token) return null;
+
+            spotifyApi.setRefreshToken(refresh_token);
+            const data = await spotifyApi.refreshAccessToken();
+            if(!data) return null;
+
+            return data.body['access_token'];   
+        } catch(err) {
+            throw err;
+        }
+    } 
 
     static async getUserAccessToken(userId) {
         try {
             const user = await User.findById(userId).select('spotifyRefreshToken');
-            if(!user) throw 'NOT_FOUND_USER';
+            if(!user) return null;
 
             const refresh_token = user.spotifyRefreshToken;
-            if(!refresh_token) throw 'NOT_FOUND_SPOTIFY_REFRESH_TOKEN';
+            if(!refresh_token) return null;
 
-            const access_token = await this.getAccessToken(refresh_token);
-            if(!access_token) throw 'INVALID_REFRESH_TOKEN';
+            const access_token = await this.refreshAccessToken(refresh_token);
+            if(!access_token) return null;
 
             return access_token;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
@@ -60,11 +63,11 @@ class Spotify {
             spotifyApi.setAccessToken(access_token);
 
             const data = await spotifyApi.getMe();
-            if(!data) throw 'INVALID_ACCESS_TOKEN';
+            if(!data) return null;
 
             return data.body.id;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
@@ -73,6 +76,8 @@ class Spotify {
     static async getTrack(userId, id) {
         try {
             const access_token = await this.getUserAccessToken(userId);
+            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTrack(id);
@@ -88,14 +93,16 @@ class Spotify {
                 artistName: track.artists[0].name,
                 imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
             };
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
     static async getArtist(userId, id) {
         try {
             const access_token = await this.getUserAccessToken(userId);
+            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtist(id);
@@ -106,8 +113,8 @@ class Spotify {
                 name: artist.name,
                 imageURL: artist.images[0] != null ? artist.images[0].url : null,
             };
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
@@ -136,8 +143,8 @@ class Spotify {
             }
             
             return results;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
     
@@ -164,8 +171,8 @@ class Spotify {
             }
         
             return results;
-        } catch(e) {
-            throw e;
+        } catch(err) {
+            throw err;
         }
     }
 
@@ -201,8 +208,8 @@ class Spotify {
 
             return { spotifyFavArtistIds, spotifyFavArtists };
 
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }     
     }
 
@@ -238,8 +245,8 @@ class Spotify {
 
             return { spotifyFavTrackIds, spotifyFavTracks };
 
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }     
     }
 
@@ -248,6 +255,8 @@ class Spotify {
     static async getTracksWithCount(userId, trackIds, _tracks) {
         try {
             const access_token = await this.getUserAccessToken(userId);
+            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTracks(trackIds);
@@ -274,14 +283,16 @@ class Spotify {
             }
             
             return results;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
     static async getArtistsWithCount(userId, artistIds, _artists) {
         try {
             const access_token = await this.getUserAccessToken(userId);
+            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtists(artistIds);
@@ -306,8 +317,8 @@ class Spotify {
             }
             
             return results;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
@@ -315,7 +326,9 @@ class Spotify {
 
     static async searchTracks(refresh_token, searchField) {
         try {
-            const access_token = await this.getAccessToken(refresh_token);
+            const access_token = await this.refreshAccessToken(refresh_token);
+            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+
             spotifyApi.setAccessToken(access_token);
 
             const data = await spotifyApi.searchTracks(searchField, {
@@ -342,14 +355,16 @@ class Spotify {
             }
 
             return results;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 
     static async searchArtists(refresh_token, searchField) {
         try {
-            const access_token = await this.getAccessToken(refresh_token);
+            const access_token = await this.refreshAccessToken(refresh_token);
+            if(!access_token) throw 'INVALID_SPOTIFY_REFRESH_TOKEN';
+
             spotifyApi.setAccessToken(access_token);
 
             const data = await spotifyApi.searchArtists(searchField, {
@@ -374,8 +389,8 @@ class Spotify {
             }
 
             return results;
-        } catch (e) {
-            throw e;
+        } catch (err) {
+            throw err;
         }
     }
 }

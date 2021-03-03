@@ -23,7 +23,7 @@ const ChatSchema = mongoose.Schema({
     lastMessage: {
         _id: { type: mongoose.Schema.Types.ObjectId },
         message: { type: String },
-        type: { type: String, enum: ['text','track','voice','gif','like']},
+        type: { type: String, enum: ['text','track','artist','podcast','voice','gif','like']},
         from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         createdAt: { type: Number }
     },

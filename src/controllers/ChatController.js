@@ -235,6 +235,8 @@ class ChatController {
                 throw '';
             }
         } catch (err) {
+            await session.abortTransaction();
+
             Log({
                 file: 'ChatController.js',
                 method: 'send_message',
@@ -278,9 +280,7 @@ class ChatController {
                 });
             }
 
-            var _lowerChat;
-            var _higherChat;
-
+            var updateChat;
             var updateMessage;
 
             const transactionResults = await session.withTransaction(async () => {
@@ -292,7 +292,7 @@ class ChatController {
                 if(like) {
 
                     // CHATI GÜNCELLE
-                    const updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
+                    updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
                         lastMessage: {
                             _id: updateMessage._id,
                             message: updateMessage.message,
@@ -306,20 +306,18 @@ class ChatController {
                     .populate('lowerId', 'name photos isVerifed')
                     .populate('higherId', 'name photos isVerifed')
                     .session(session);
-        
-                    // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-                    const { lowerChat, higherChat } = generateChats(updateChat);
-                    _lowerChat = lowerChat;
-                    _higherChat = higherChat;
                 }
             });
         
             if(transactionResults) {
+                // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
+                const { lowerChat, higherChat } = generateChats(updateChat);
+
                 // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
                 emitLikeMessage({
                     to,
                     message: updateMessage,
-                    chat: isLower ? _higherChat : _lowerChat
+                    chat: isLower ? higherChat : lowerChat
                 });
 
                 // TARGET A BİLDİRİM GÖNDER
@@ -334,13 +332,15 @@ class ChatController {
                 return res.status(200).json({
                     success: true,
                     message: updateMessage,
-                    chat: isLower ? _lowerChat : _higherChat,
+                    chat: isLower ? lowerChat : higherChat,
                 });
             } else {
                 throw '';
             }
 
         } catch(err) {
+            await session.abortTransaction();
+
             Log({
                 file: 'ChatController.js',
                 method: 'like_message',
@@ -419,6 +419,8 @@ class ChatController {
                 throw '';
             }
         } catch(err) {
+            await session.abortTransaction();
+
             Log({
                 file: 'ChatController.js',
                 method: 'read_messages',
@@ -440,43 +442,49 @@ module.exports = new ChatController();
 // UTILS
 
 function generateChats(chat) {
-    const lowerChat = {
-        _id: chat._id,
-        user: chat.higherId,
-
-        lastMessage: chat.lastMessage,
-
-        read: chat.lowerRead,
-        createdAt: chat.createdAt,
-    };
-
-    const higherChat = {
-        _id:  chat._id,
-        user: chat.lowerId,
-
-        lastMessage: chat.lastMessage,
-
-        read: chat.higherRead,
-        createdAt: chat.createdAt,
-    };
+    try {
+        const lowerChat = {
+            _id: chat._id,
+            user: chat.higherId,
     
-    return { lowerChat, higherChat };
+            lastMessage: chat.lastMessage,
+    
+            read: chat.lowerRead,
+            createdAt: chat.createdAt,
+        };
+    
+        const higherChat = {
+            _id:  chat._id,
+            user: chat.lowerId,
+    
+            lastMessage: chat.lastMessage,
+    
+            read: chat.higherRead,
+            createdAt: chat.createdAt,
+        };
+        
+        return { lowerChat, higherChat };
+    } catch(err) {
+        throw err;
+    }
 }
 
 async function findChat({ chatId, lowerId, higherId }) {
     try {
-        if(!lowerId || !higherId) {
-            const chatExists = await Chat.any({ _id: chatId });
-            if(!chatExists) return false;
-        } else {
+        if(lowerId && higherId) {
             const findChat = await Chat.findOne({ lowerId, higherId }).select('_id');
             if(!findChat) return false;
             if(findChat._id.toString() !== chatId.toString()) return false;
+        } else if (chatId) {
+            const chatExists = await Chat.any({ _id: chatId });
+            if(!chatExists) return false;
+        } else {
+            return false;
         }
         
         return true;
-    } catch (e) {
-        throw e;
+    } catch (err) {
+        throw err;
     }
 }
 
@@ -489,8 +497,8 @@ function emitReceiveMessage({ to, message, chat }) {
                 chat: chat,
             });
         }
-    } catch (e) {
-        console.log(e);
+    } catch (err) {
+        console.log(err);
     }
 }
 
@@ -503,8 +511,8 @@ function emitLikeMessage({ to, message, chat }) {
                 chat: chat,
             });
         }
-    } catch (e) {
-        console.log(e);
+    } catch (err) {
+        console.log(err);
     }
 }
 
@@ -516,8 +524,8 @@ function emitReadMessages({ to, chatId }) {
                 chatId
             });
         }
-    } catch (e) {
-        console.log(e);
+    } catch (err) {
+        console.log(err);
     }
 }
 
@@ -526,7 +534,7 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
         const toUser = await User.findById(to).select('fcmToken notifications language');
         if (toUser && toUser.fcmToken) {
 
-            // Bu kullanıcının chat bildirimi alıp almadığını kontrol et.
+            // BU KULLANICNIN CHAT BİLDİRİMİ ALIP ALMADIĞINI KONTROL ET.
             if(toUser.notifications.textMessages) {
                 const fromUser = await User.findById(from).select('name photos isVerifed');
 

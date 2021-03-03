@@ -26,7 +26,6 @@ class ReportController {
             return res.status(200).json({
                 success: true
             });
-
         } catch(err) {
             Log({
                 file: 'ReportController.js',

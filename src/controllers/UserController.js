@@ -19,9 +19,7 @@ const shared = require('../shared/index');
 
 const Log = require('./LogController');
 
-const generateJwtToken = (userId) => {
-    return jwt.sign({ _id: userId }, jwtConfig.secret);
-}
+const generateJwtToken = (userId) => jwt.sign({ _id: userId }, jwtConfig.secret);
 
 class UserController {
 
@@ -37,9 +35,23 @@ class UserController {
                 });
             }
 
-            const { access_token, refresh_token } = await Spotify.getRefreshToken(code);
+            const codeGrant = await Spotify.getAuthorizationCodeGrant(code);
+            if(!codeGrant) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'INVALID_CODE',
+                });
+            }
+
+            const { access_token, refresh_token } = codeGrant;
 
             const spotifyId = await Spotify.getSpotifyId(access_token);
+            if(!spotifyId) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'INVALID_CODE',
+                });
+            }
 
             const user = await User.findOne({ spotifyId }).select('_id');
             if(user) {
@@ -52,6 +64,7 @@ class UserController {
 
                 return res.status(200).json({ 
                     success: true,
+
                     userId: user._id,
                     token: token,
                     spotifyRefreshToken: refresh_token,
@@ -64,6 +77,7 @@ class UserController {
 
                 return res.status(200).json({
                     success: true,
+
                     spotifyId: spotifyId,
                     spotifyRefreshToken: refresh_token,
 
@@ -91,18 +105,19 @@ class UserController {
     async register(req, res) {
         // GELEN FOTOĞRAFLARI LISTEYE AKTAR
         var photos = [];
-        req.files.forEach(file => {
-            photos.push(file.id);
-        });
-
+      
         try {
+            req.files.forEach(file => {
+                photos.push(file.id);
+            });
+
             const { spotifyId, spotifyRefreshToken, spotifyFavArtists, spotifyFavTracks, email, name, birthday, gender, bio, city, favTracks, favArtists, language } = JSON.parse(req.body._body);
             if(!spotifyId || !spotifyRefreshToken || !spotifyFavArtists || !spotifyFavTracks || !email || !name || !birthday || !gender || !language) {
                 FileController.deleteImages(photos);
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
-                })
+                });
             }
 
             // ADULT VALIDATOR
@@ -118,7 +133,6 @@ class UserController {
             const userExists = await User.countDocuments({ spotifyId: spotifyId });
             if (userExists > 0) {
                 FileController.deleteImages(photos);
-
                 return res.status(200).json({
                     success: false,
                     error: 'ALREADY_REGISTER',
@@ -208,7 +222,7 @@ class UserController {
             }
 
             // GEREKLI BİLGİLERİ ÇEK
-            const loggedProfile = await User.findById(loggedId).select('name photos isVerifed spotifyFavTracks spotifyFavArtists');
+            const loggedProfile = await User.findById(loggedId).select('name photos isVerifed spotifyFavTracks spotifyFavArtists spotifyRefreshToken');
  
             const targetProfile = await User.findById(targetId).select('name photos isVerifed birthday city bio socialAccounts lastTracks favTracks favArtists spotifyFavTracks spotifyFavArtists spotifyRefreshToken permissions');
             if(!targetProfile) {
@@ -218,7 +232,13 @@ class UserController {
                 });
             }
 
-            const access_token = await Spotify.getAccessToken(targetProfile.spotifyRefreshToken);
+            const access_token = await Spotify.refreshAccessToken(loggedProfile.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
 
             // PROFILE
 
@@ -258,14 +278,7 @@ class UserController {
             const commonTracks = await Spotify.getTracks(access_token, commonTrackIds);
             const commonArtists = await Spotify.getArtists(access_token, commonArtistIds);
 
-            var percentage = 0;
-
-            if(commonArtists.length > 0) {
-                const loggedPercentage = Math.trunc((100 / (loggedProfile.spotifyFavArtists.length / commonArtists.length)));
-                const targetPercentage = Math.trunc((100 / (targetProfile.spotifyFavArtists.length / commonArtists.length)));
-    
-                percentage = loggedPercentage >= targetPercentage ? loggedPercentage : targetPercentage;
-            }
+            var percentage = calculatePercentage(commonArtists.length, loggedProfile.spotifyFavArtists.length, targetProfile.spotifyFavArtists.length);
 
             const common = {
                 commonTracks: commonTracks,
@@ -446,10 +459,11 @@ class UserController {
                     success: true
                 });
             } else {
-                // İŞLEMLER GERÇEKLEŞTİRİLİRKEN HATA OLUŞTU
                 throw '';
             }
         } catch(err) {
+            await session.abortTransaction();
+
             Log({
                 file: 'UserController.js',
                 method: 'delete_account',
@@ -555,6 +569,8 @@ class UserController {
                 throw '';
             }
         } catch (err) {
+            await session.abortTransaction();
+
             Log({
                 file: 'UserController.js',
                 method: 'end_user',
@@ -625,6 +641,8 @@ class UserController {
                 throw '';
             }
         } catch (err) {
+            await session.abortTransaction();
+            
             Log({
                 file: 'UserController.js',
                 method: 'block_user',
@@ -982,7 +1000,13 @@ class UserController {
             const loggedId = req._id;
 
             const user = await User.findById(loggedId).select('spotifyRefreshToken');
-            const access_token = await Spotify.getAccessToken(user.spotifyRefreshToken);
+            const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
 
             const myTopTracks = await Spotify.getMyTopTracks(access_token);
             const myTopArtists = await Spotify.getMyTopArtists(access_token);
@@ -1246,7 +1270,14 @@ class UserController {
 
             const user = await User.findById(loggedId).select('spotifyRefreshToken lastTracks');
 
-            const access_token = await Spotify.getAccessToken(user.spotifyRefreshToken);
+            const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
+
             const lastTracks = await Spotify.getTracks(access_token, user.lastTracks);
 
             return res.status(200).json({
@@ -1287,7 +1318,13 @@ async function getMyProfile(loggedId) {
     try {
         const user = await User.findById(loggedId).select('email name photos isVerifed birthday city bio gender socialAccounts lastTracks favTracks favArtists permissions notifications filtering product spotifyFavTracks spotifyFavArtists spotifyRefreshToken');
     
-        const access_token = await Spotify.getAccessToken(user.spotifyRefreshToken);
+        const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
+        if(!access_token) {
+            return res.status(401).json({
+                success: false,
+                error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+            });
+        }
 
         const lastTracks = await Spotify.getTracks(access_token, user.lastTracks);
         const favTracks = await Spotify.getTracks(access_token, user.favTracks);
@@ -1328,8 +1365,8 @@ async function getMyProfile(loggedId) {
             product: user.product,
         };
        
-    } catch(e) {
-        throw e;
+    } catch(err) {
+        throw err;
     }
 }
 
@@ -1345,4 +1382,15 @@ function isAdult(timestamp) {
     } catch(err) {
         throw err;
     }
+}
+
+function calculatePercentage(commonArtistsLength, loggedSpotifyFavArtistsLength, targetSpotifyFavArtistsLength) {
+    if(commonArtistsLength > 0) {
+        const loggedPercentage = Math.trunc((100 / (loggedSpotifyFavArtistsLength / commonArtistsLength)));
+        const targetPercentage = Math.trunc((100 / (targetSpotifyFavArtistsLength / commonArtistsLength)));
+
+        return loggedPercentage >= targetPercentage ? loggedPercentage : targetPercentage;
+    }
+
+    return 0;
 }

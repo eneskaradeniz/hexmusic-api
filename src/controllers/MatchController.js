@@ -36,15 +36,13 @@ class MatchController {
             // GELEN MÜZİĞİN BİLGİLERİNİ ÇEK.
             const track = await Spotify.getTrack(loggedId, trackId);
 
-            const session = await db.startSession();
-
             var user;
       
             const transactionResults = await session.withTransaction(async () => {
                
                 user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
 
-                // DİNLEDİĞİ MÜZİĞİ GÜNCELLE.
+                // DİNLEDİĞİ MÜZİĞİ GÜNCELLE
                 user.listen = {
                     trackId: trackId,
                     artistId: artistId,
@@ -53,6 +51,7 @@ class MatchController {
                     timestamp: Date.now(),
                 }
 
+                // SON DİNLEDİKLERİME EKLE
                 if(user.lastTracks.length > 0) {
                     if(user.lastTracks[0] !== trackId) {
                         // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
@@ -100,22 +99,31 @@ class MatchController {
     }
 
     async stop_music(req, res) {
+        const session = await db.startSession();
+
         try {
             const loggedId = req._id;
 
-            // DİNLEDİĞİ MÜZİĞİ SİL.
-            await User.findByIdAndUpdate(loggedId, {
-                "listen.isListen": false,
-                "listen.timestamp": Date.now(),
+            const transactionResults = await session.withTransaction(async () => {
+                // DİNLEDİĞİ MÜZİĞİ SİL.
+                await User.findByIdAndUpdate(loggedId, {
+                    "listen.isListen": false,
+                    "listen.timestamp": Date.now(),
+                });
             });
 
-            console.log("müzik dinlemiyor:", loggedId);
+            if(transactionResults) {
+                console.log("müzik dinlemiyor:", loggedId);
 
-            return res.status(200).json({
-                success: true
-            });
-
+                return res.status(200).json({
+                    success: true
+                });
+            } else {
+                throw '';
+            }
         } catch (err) {
+            session.abortTransaction();
+            
             Log({
                 file: 'MatchController.js',
                 method: 'stop_music',

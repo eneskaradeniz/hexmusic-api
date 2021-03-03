@@ -26,9 +26,6 @@ module.exports = (upload) => {
     router.get('/action', [middlewares.user], UserController.action);
     router.get('/get_last_tracks', [middlewares.user], UserController.get_last_tracks);
     
-    // REPORT
-    router.post('/report_user/:userId', [middlewares.user], ReportController.report_user);
-    
     // USER PHOTOS
     router.post('/add_photo', [middlewares.user], upload.single('photo'), UserController.add_photo);
     router.post('/update_photos', [middlewares.user], UserController.update_photos);
@@ -39,6 +36,7 @@ module.exports = (upload) => {
     router.post('/end_user/:userId', [middlewares.user], UserController.end_user);
     router.post('/block_user/:userId', [middlewares.user], UserController.block_user);
     router.post('/unblock_user/:userId', [middlewares.user], UserController.unblock_user);
+    router.post('/report_user/:userId', [middlewares.user], ReportController.report_user);
 
     // USER GET AND UPDATE 
     router.post('/update_profile', [middlewares.user], UserController.update_profile);
@@ -65,9 +63,10 @@ module.exports = (upload) => {
 
     // HOME
     router.get('/home', [middlewares.user], HomeController.home);
-    router.get('/artist_tracks/:artistId', [middlewares.user], HomeController.artist_tracks);
     router.get('/live_count', HomeController.live_count);
 
+    router.get('/artist_tracks/:artistId', [middlewares.user], HomeController.artist_tracks);
+    
     // CHAT
     router.get('/chat_list', [middlewares.user], ChatController.chat_list);
     router.get('/message_list/:chatId', [middlewares.user], ChatController.message_list);
