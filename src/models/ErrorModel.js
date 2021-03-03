@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const LogSchema = new mongoose.Schema({
+const ErrorSchema = new mongoose.Schema({
     file: String,
     method: String,
     info: mongoose.Schema.Types.Mixed,
@@ -11,4 +11,4 @@ const LogSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Log', LogSchema);
+module.exports = mongoose.model('Error', ErrorSchema);
