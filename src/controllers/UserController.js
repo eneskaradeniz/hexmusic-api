@@ -385,7 +385,7 @@ class UserController {
             var photos = [];
             var users = [];
             
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                 // KULLANICININ FOTOĞRAFLARINI ÇEK
                 const user = await User.findById(loggedId).select('photos');
                 photos = user.photos;
@@ -438,29 +438,23 @@ class UserController {
                 }).session(session);
             });
 
-            if(transactionResults) {
-                // İŞLEMLER BAŞARILI
-                
-                // TÜM FOTOĞRAFLARINI SİL
-                FileController.deleteImages(photos);
+            // TÜM FOTOĞRAFLARINI SİL
+            FileController.deleteImages(photos);
 
-                // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
-                users.forEach(model => {
-                    const findUser = shared.users.find(x => x.userId === model.userId.toString());
-                    if(findUser) {
-                        findUser.socket.emit('end_user', {
-                            userId: model.userId,
-                            chatId: model.chatId,
-                        });
-                    }   
-                });
+            // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
+            users.forEach(model => {
+                const findUser = shared.users.find(x => x.userId === model.userId.toString());
+                if(findUser) {
+                    findUser.socket.emit('end_user', {
+                        userId: model.userId,
+                        chatId: model.chatId,
+                    });
+                }   
+            });
 
-                return res.status(200).json({
-                    success: true
-                });
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }
+            return res.status(200).json({
+                success: true
+            });
         } catch(err) {
             Error({
                 file: 'UserController.js',
@@ -544,28 +538,24 @@ class UserController {
                 });
             }
    
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
                 await Chat.findByIdAndDelete(findMatch.chatId).session(session);
                 await Message.deleteMany({ chatId: findMatch.chatId }).session(session);
                 await Match.findByIdAndDelete(findMatch._id).session(session);
             });
 
-            if(transactionResults) {
-                const findTargetUser = shared.users.find(x => x.userId === targetId);
-                if(findTargetUser) {
-                    findTargetUser.socket.emit('end_user', {
-                        userId: loggedId,
-                        chatId: findMatch.chatId,
-                    });
-                }    
-                
-                return res.status(200).json({
-                    success: true,
-                }); 
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }
+            const findTargetUser = shared.users.find(x => x.userId === targetId);
+            if(findTargetUser) {
+                findTargetUser.socket.emit('end_user', {
+                    userId: loggedId,
+                    chatId: findMatch.chatId,
+                });
+            }    
+            
+            return res.status(200).json({
+                success: true,
+            });
         } catch (err) {
             Error({
                 file: 'UserController.js',
@@ -611,7 +601,7 @@ class UserController {
                 });
             }
    
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
                 await Chat.findByIdAndDelete(findMatch.chatId).session(session);
                 await Message.deleteMany({ chatId: findMatch.chatId }).session(session);
@@ -621,21 +611,17 @@ class UserController {
                 await BlockedUser.create([{ from: loggedId, to: targetId }], { session: session });
             });
 
-            if(transactionResults) {
-                const findTargetUser = shared.users.find(x => x.userId === targetId);
-                if(findTargetUser) {
-                    findTargetUser.socket.emit('end_user', {
-                        userId: loggedId,
-                        chatId: findMatch.chatId,
-                    });
-                }    
-                
-                return res.status(200).json({
-                    success: true,
-                }); 
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }
+            const findTargetUser = shared.users.find(x => x.userId === targetId);
+            if(findTargetUser) {
+                findTargetUser.socket.emit('end_user', {
+                    userId: loggedId,
+                    chatId: findMatch.chatId,
+                });
+            }    
+            
+            return res.status(200).json({
+                success: true,
+            });
         } catch (err) {
             Error({
                 file: 'UserController.js',

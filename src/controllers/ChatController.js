@@ -170,7 +170,7 @@ class ChatController {
             var newMessage;
             var updateChat;
 
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
 
                 // MESAJI OLUŞTUR
                 const messageId = ObjectId();
@@ -183,8 +183,15 @@ class ChatController {
                     reply: replyId,
                 }], { session: session });
 
+                console.log('mesaj oluşturuldu:', messageId);
+
                 // MESAJI GETİR
                 newMessage = await Message.findById(messageId).populate('reply', 'from message type').session(session);
+
+                console.log('mesaj getirildi:', newMessage);
+
+                // HATA VERDİR
+                blabla();
 
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chatId, {
@@ -206,34 +213,30 @@ class ChatController {
                     .session(session);
             });
 
-            if(transactionResults) {
-                // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-                const { lowerChat, higherChat } = generateChats(updateChat);
+            // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
+            const { lowerChat, higherChat } = generateChats(updateChat);
 
-                // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
-                emitReceiveMessage({
-                    to,
-                    message: newMessage,
-                    chat: isLower ? higherChat : lowerChat
-                });
+            // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
+            emitReceiveMessage({
+                to,
+                message: newMessage,
+                chat: isLower ? higherChat : lowerChat
+            });
 
-                // TARGET A BİLDİRİM GÖNDER
-                pushMessageNotification({
-                    from,
-                    to,
-                    chatId,
-                    message: _message,
-                    messageType: type
-                }); 
+            // TARGET A BİLDİRİM GÖNDER
+            pushMessageNotification({
+                from,
+                to,
+                chatId,
+                message: _message,
+                messageType: type
+            }); 
 
-                return res.status(200).json({
-                    success: true,
-                    message: newMessage,
-                    chat: isLower ? lowerChat : higherChat,
-                });
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }
+            return res.status(200).json({
+                success: true,
+                message: newMessage,
+                chat: isLower ? lowerChat : higherChat,
+            });
         } catch (err) {
             Error({
                 file: 'ChatController.js',
@@ -308,8 +311,6 @@ class ChatController {
                     .session(session);
                 }
             });
-
-            console.log(transactionResults);
         
             if(transactionResults) {
                 // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
@@ -384,7 +385,7 @@ class ChatController {
                 });
             }
 
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
                 await Message.updateMany({ 
                     chatId,
@@ -404,20 +405,15 @@ class ChatController {
                 }
             });
 
-            if(transactionResults) {
+            // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE.
+            emitReadMessages({
+                to,
+                chatId
+            });
 
-                // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE.
-                emitReadMessages({
-                    to,
-                    chatId
-                });
-    
-                return res.status(200).json({
-                    success: true
-                });
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }
+            return res.status(200).json({
+                success: true
+            });
         } catch(err) {
             Error({
                 file: 'ChatController.js',

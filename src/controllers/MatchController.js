@@ -38,7 +38,7 @@ class MatchController {
 
             var user;
       
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                
                 user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
 
@@ -67,19 +67,15 @@ class MatchController {
                 await user.save();
             });
 
-            if(transactionResults) {
-                // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
-                if(user.permissions.showLive) findListenersForTarget(loggedId, track);
+            // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
+            if(user.permissions.showLive) findListenersForTarget(loggedId, track);
 
-                console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
+            console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
 
-                return res.status(200).json({
-                    success: true,
-                    track,
-                });
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }
+            return res.status(200).json({
+                success: true,
+                track,
+            });
         } catch (err) {
             Error({
                 file: 'MatchController.js',
@@ -97,12 +93,16 @@ class MatchController {
     }
 
     async stop_music(req, res) {
+        const session = await db.startSession();
+
         try {
             const loggedId = req._id;
 
-            await User.findByIdAndUpdate(loggedId, {
-                "listen.isListen": false,
-                "listen.timestamp": Date.now(),
+            await session.withTransaction(async () => {
+                await User.findByIdAndUpdate(loggedId, {
+                    "listen.isListen": false,
+                    "listen.timestamp": Date.now(),
+                }).session(session);
             });
 
             console.log("müzik dinlemiyor:", loggedId);
@@ -121,6 +121,8 @@ class MatchController {
             return res.status(400).json({
                 success: false
             });
+        } finally {
+            session.endSession();
         }
     }
 
@@ -407,7 +409,7 @@ class MatchController {
             var match;
 
             // TRANSACTION BAŞLAT
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
 
                 // TARGET IN LIKE ATIP ATMADIĞINI KONTROL ET
                 targetLike = await Like.findOne({ from: targetId, to: loggedId }).session(session);
@@ -470,7 +472,7 @@ class MatchController {
                         newMatch.lowerTrackId = await Spotify.getTrack(lowerId, newMatch.lowerTrackId);
     
                     if(newMatch.higherTrackId) 
-                        newMatch.higherTrackId = await Spotify.getTrack(lowerId, newMatch.higherTrackId);
+                        newMatch.higherTrackId = await Spotify.getTrack(higherId, newMatch.higherTrackId);
         
                     // LOWER VE HIGHER IÇIN MATCHLARI OLUŞTUR
                     match = generateMatchs(newMatch, chatId);
@@ -519,52 +521,49 @@ class MatchController {
                 }
             });
 
-            if(transactionResults) {
-                if(targetLike) {
-                    // SOCKETLERE GEREKLI BILGILERI GÖNDER
-                    const findLowerUser = shared.users.find(x => x.userId === lowerId);
-                    if(findLowerUser) {
-                        findLowerUser.socket.emit('new_match', {
-                            chat: chat.lowerChat,
-                            newMatch: match.lowerMatch,
-                        });
-                    }
-    
-                    const findHigherUser = shared.users.find(x => x.userId === higherId);
-                    if(findHigherUser) {
-                        findHigherUser.socket.emit('new_match', {
-                            chat: chat.higherChat,
-                            newMatch: match.higherMatch,
-                        });
-                    }
-    
-                    // IKI TARAFADA BILDIRIM GÖNDER
-                    pushMatchNotification({ lowerId: lowerId, higherId: higherId });
-                } else {
-
-                    // TARGET A BİLDİRİM GÖNDER
-                    switch(likeType) {
-                        case 'like':
-                            pushLikeNotification({
-                                from: loggedId,
-                                to: targetId,
-                            });
-                            break;
-                        case 'megaLike':
-                            pushMegaLikeNotification({
-                                from: loggedId,
-                                to: targetId,
-                            });
-                            break;
-                    }
+            if(targetLike) {
+                // SOCKETLERE GEREKLI BILGILERI GÖNDER
+                const findLowerUser = shared.users.find(x => x.userId === lowerId);
+                if(findLowerUser) {
+                    findLowerUser.socket.emit('new_match', {
+                        chat: chat.lowerChat,
+                        newMatch: match.lowerMatch,
+                    });
                 }
-               
-                return res.status(200).json({
-                    success: true
-                });
+
+                const findHigherUser = shared.users.find(x => x.userId === higherId);
+                if(findHigherUser) {
+                    findHigherUser.socket.emit('new_match', {
+                        chat: chat.higherChat,
+                        newMatch: match.higherMatch,
+                    });
+                }
+
+                // IKI TARAFADA BILDIRIM GÖNDER
+                pushMatchNotification({ lowerId: lowerId, higherId: higherId });
             } else {
-                throw 'The transaction was intentionally aborted.';
+
+                // TARGET A BİLDİRİM GÖNDER
+                switch(likeType) {
+                    case 'like':
+                        pushLikeNotification({
+                            from: loggedId,
+                            to: targetId,
+                        });
+                        break;
+                    case 'megaLike':
+                        pushMegaLikeNotification({
+                            from: loggedId,
+                            to: targetId,
+                        });
+                        break;
+                }
             }
+           
+            return res.status(200).json({
+                success: true
+            });
+
         } catch (err) {
             Error({
                 file: 'MatchController.js',
@@ -655,7 +654,7 @@ class MatchController {
             }
 
             // TRANSACTION BAŞLAT
-            const transactionResults = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                 const lowerId = loggedId < targetId ? loggedId : targetId;
                 const higherId = loggedId > targetId ? loggedId : targetId;
 
@@ -714,13 +713,9 @@ class MatchController {
                 }
             });
 
-            if(transactionResults) {
-                return res.status(200).json({
-                    success: true,
-                });
-            } else {
-                throw 'The transaction was intentionally aborted.';
-            }    
+            return res.status(200).json({
+                success: true,
+            });
         } catch (err) {
             Error({
                 file: 'MatchController.js',
