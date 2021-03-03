@@ -37,7 +37,8 @@ class Spotify {
 
             return data.body['access_token'];   
         } catch(err) {
-            throw err;
+            console.log(err);
+            return null;
         }
     } 
 
