@@ -140,9 +140,15 @@ class MatchController {
     async live(req, res) {
         try {
             const loggedId = req._id;
-
-            // LOGGEDIN BİLGİLERİNİ GETİR.
             const loggedUser = await User.findById(loggedId).select('filtering listen spotifyRefreshToken');
+
+            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
 
             // BU MÜZİĞİ DİNLEYEN KULLANICILARI GETİR.
             var allListeners = [];
@@ -167,7 +173,7 @@ class MatchController {
             } 
 
             // LOGGED A UYGUN FİLTRELEMEYİ YAP VE O KULLANICILARI GÖNDER.
-            const users = await loggedFilter(loggedUser, allListeners, 'live');
+            const users = await loggedFilter(access_token, loggedUser, allListeners, 'live');
 
             // BU KULLANICILAR İÇERİSİNDE PREMİUM PLUS OLANDAN OLMAYANLARA DOĞRU SIRALA
             const sortResult = sortByPremiumPlus(users);
@@ -192,16 +198,24 @@ class MatchController {
     }
 
     async explore(req, res) {
+        
+        // KULLANICIYI BEĞENEN MAX 10 KULLANICI ÇEK (PERMISSON.SHOWEXPLORE TRUE OLANLARI ÇEK)
+        // 50 - GELEN KULLANICI KADAR DB DEN KULLANICI ÇEK (PERMISSON.SHOWEXPLORE TRUE OLANLARI ÇEK)
+        // LOGGED A UYGUN OLACAK ŞEKİLDE FİLTRELE PREMIUM ISE PREMIUM A GÖRE FİLTRELE (BU İŞLEMLERİ YAPARKEN MÜZİK ZEVK ORANLARINI DA HESAPLA)
+        // LİSTEYİ KARIŞTIR
+        // BU LİSTEYİ PREMİUM KULLANICILARDAN FREEYE DOĞRU SIRALA
+
         try {
             const loggedId = req._id;
-
-            // KULLANICIYI BEĞENEN MAX 10 KULLANICI ÇEK (PERMISSON.SHOWEXPLORE TRUE OLANLARI ÇEK)
-            // 50 - GELEN KULLANICI KADAR DB DEN KULLANICI ÇEK (PERMISSON.SHOWEXPLORE TRUE OLANLARI ÇEK)
-            // LOGGED A UYGUN OLACAK ŞEKİLDE FİLTRELE PREMIUM ISE PREMIUM A GÖRE FİLTRELE (BU İŞLEMLERİ YAPARKEN MÜZİK ZEVK ORANLARINI DA HESAPLA)
-            // LİSTEYİ KARIŞTIR
-            // BU LİSTEYİ PREMİUM KULLANICILARDAN FREEYE DOĞRU SIRALA
-
             const loggedUser = await User.findById(loggedId).select('filtering listen spotifyRefreshToken');
+
+            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
 
             // KULLANICIYI BEĞENEN 10 KİŞİYİ ÇEK
             const likes = await Like.find({ to: loggedId }).limit(10);
@@ -236,7 +250,7 @@ class MatchController {
             const result = likedUsers.concat(findUsers);
 
             // LİSTEYİ FİLTRLEYECEK
-            const filterResult = await loggedFilter(loggedUser, result, 'explore');
+            const filterResult = await loggedFilter(access_token, loggedUser, result, 'explore');
 
             // LİSTEYİ KARIŞTIRACAK
             const shuffleResult = shuffle(filterResult);
@@ -267,7 +281,7 @@ class MatchController {
         try {
             const loggedId = req._id;
 
-            // KULLANICININ PREMIUM OLUP OLMADIĞINI KONTROL ET
+            // KULLANICININ PREMIUM_PLUS OLUP OLMADIĞINI KONTROL ET
             const loggedUser = await User.findById(loggedId).select('product spotifyRefreshToken');
             if(loggedUser.product !== 'premium_plus') {
                 return res.status(200).json({
@@ -278,7 +292,7 @@ class MatchController {
 
             var users = [];
 
-            // beni beğenenleri getir ama benim like atmadığım olacak.
+            // KULLANICIYI BEĞENEN KULLANICILARI GETİR
             const beniBegenenler = await Like.find({ to: loggedId }).populate('from', 'name photos isVerifed birthday permissions');
             if(beniBegenenler.length === 0) {
                 return res.status(200).json({
@@ -287,14 +301,14 @@ class MatchController {
                 });
             }
     
-            // beni beğenenlerin idlerini listeye aktar.
+            // KULLANICIYI BEĞENENLERİN IDLERINI LİSTEYE AKTAR
             var userIds = [];
 
             beniBegenenler.forEach(like => {
                 userIds.push(like.from._id);
             });
 
-            // beni beğenenlerdekilere ben dislike atıp atmadığımı kontrol et
+            // KULLANICIYI BEĞENENLERDE DİSLİKE ATTIĞIM VARSA ÇIKAR LİSTEDEN.
             const dislikeAttiklarim = await Dislike.find({ from: loggedId, to: { $in: userIds } });
             var result = beniBegenenler;
 
@@ -304,9 +318,26 @@ class MatchController {
            
             // HEPSİNİ SIRAYLA TARA MATCH TYPE I LIVE OLANLARIN SPOTİFYDAN MÜZİK BİLGİLERİNİ ÇEK VE LİSTEYE EKLE
             if(result.length > 0) {
+
+                const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+                if(!access_token) {
+                    return res.status(401).json({
+                        success: false,
+                        error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                    });
+                }
+
+                var trackIds = [];
+
+                result.forEach(like => {
+                    if(like.trackId != null) trackIds.push(like.trackId);
+                });
+
+                var tracks = await Spotify.getTracks(access_token, trackIds);
+            
                 for(const like of result) {
-                    var track;
-                    if(like.trackId != null) track = await Spotify.getTrack(loggedId, like.trackId);
+                    let track;
+                    if(like.trackId != null) track = tracks.find(x => x.id === like.trackId);
 
                     const percentage = await calculatePercentage(loggedId, like.from._id);
                     
@@ -344,8 +375,6 @@ class MatchController {
     }
 
     async like(req, res) {
-        const session = await db.startSession();
-
         try {
             const loggedId = req._id;
             const targetId = req.params.userId;
@@ -369,212 +398,31 @@ class MatchController {
                 });
             }
 
-            // KULLANICININ BEĞENİ HAKKININ OLUP OLMADIĞINI KONTROL ET
-            // EĞER YOKSA UYARI VER.
-            // EĞER VARSA KONTROLLERİ YAP (LİKE ATMAYA UYGUN MU)
-
-            // EĞER TARGET LIKE ATMIŞSA:
-            // CHATI OLUŞTUR
-            // CHATI GETİR
-            // LOWER VE HIGHER İÇİN CHAT OLUŞTUR
-            // MATCH OLUŞTUR
-            // MATCHI GETIR (TRACK VARSA ONLARI DA GETİR)
-            // LOWER VE HIGHER İÇİN MATCH OLUŞTUR
-            // LOGGEDIN LIKE HAKKINI GÜNCELLE
-            // TARGETIN LIKE NI SİL.
-            // EĞER TÜM İŞLEMLER BAŞARILI OLURSA: BİLDİRİM VE SOKETLERE BİLGİLERİ GÖNDER.
-
-            // EĞER TARGET LIKE ATMAMIŞSA:
-            // LIKE OLUŞTUR
-            // LOGGEDIN LIKE HAKKINI GÜNCELLE
-            // EĞER TÜM İŞLEMLER BAŞARILI OLURSA: BİLDİRİM GÖNDER.
-
             // LIKE HAKKINI KONTROL ET
             const { isNotFree, canLike, updateCounts } = await canSendLike(loggedId, likeType);
 
-            // HANGI LIKE TİPİ İLE GÖNDERDİYSE ONUN HATASINI GÖNDER.
-            if(!canLike) {
+            if(canLike) {
+                // İŞLEMLERİ BAŞLAT
+                _like({
+                    loggedId,
+                    targetId,
+                    likeType,
+                    matchType,
+                    trackId,
+                    isNotFree,
+                    updateCounts,
+                });
+
+                return res.status(200).json({
+                    success: true
+                });
+            } else {
                 return res.status(200).json({
                     success: false,
                     adsCount: updateCounts.ads,
                     error: likeType === 'like' ? 'NOT_ENOUGH_LIKE' : 'NOT_ENOUGH_MEGALIKE'
                 });
-            } 
-
-            const lowerId = loggedId < targetId ? loggedId : targetId;
-            const higherId = loggedId > targetId ? loggedId : targetId;
-
-            const isLower = loggedId === lowerId;
-
-            // KONTROLLER YAPILACAK
-            const result = await doChecks({ loggedId, targetId, isLower });
-            if(!result) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_AVAILABLE',
-                });
             }
-
-            var targetLike;
-            var chat;
-            var match;
-
-            // TRANSACTION BAŞLAT
-            await session.withTransaction(async () => {
-
-                // TARGET IN LIKE ATIP ATMADIĞINI KONTROL ET
-                targetLike = await Like.findOne({ from: targetId, to: loggedId }).session(session);
-
-                if(targetLike) {
-                
-                    // İKİ KULLANICIYI EŞLEŞTİR
-    
-                    var chatId = ObjectId();
-                    var matchId = ObjectId();
-        
-                    // CHATI OLUŞTUR
-                    await Chat.create([{
-                        _id: chatId,
-                        matchId,
-                        lowerId,
-                        higherId,
-                    }], { session: session });
-        
-                    // CHATI GETIR
-                    const newChat = await Chat.findById(chatId)
-                        .populate('lowerId', 'name photos isVerifed')
-                        .populate('higherId', 'name photos isVerifed')
-                        .session(session);
-        
-                    // LOWER VE HIGHER İÇİN CHATLERI OLUŞTUR
-                    chat = generateChats(newChat);
-        
-                    // MATCHI OLUŞTUR
-                    const lowerLikeType = isLower ? likeType : targetLike.likeType;
-                    const higherLikeType = isLower ? targetLike.likeType : likeType;
-    
-                    const lowerMatchType = isLower ? matchType : targetLike.matchType;
-                    const higherMatchType = isLower ? targetLike.matchType : matchType;
-    
-                    const lowerTrackId = isLower ? trackId : targetLike.trackId;
-                    const higherTrackId = isLower ? targetLike.trackId : trackId;
-    
-                    await Match.create([{
-                        _id: matchId,
-                        chatId,
-                        lowerId,
-                        higherId,
-                        lowerLikeType,
-                        higherLikeType,
-                        lowerMatchType,
-                        higherMatchType,
-                        lowerTrackId,
-                        higherTrackId,
-                    }], { session: session });
-        
-                    // MATCHI GETIR
-                    const newMatch = await Match.findById(matchId)
-                        .populate('lowerId', 'name photos isVerifed')
-                        .populate('higherId', 'name photos isVerifed')
-                        .session(session);
-        
-                    // MATCHDE TRACKLAR VARSA ONLARIN BILGILERINI ÇEK
-                    if(newMatch.lowerTrackId) 
-                        newMatch.lowerTrackId = await Spotify.getTrack(lowerId, newMatch.lowerTrackId);
-    
-                    if(newMatch.higherTrackId) 
-                        newMatch.higherTrackId = await Spotify.getTrack(higherId, newMatch.higherTrackId);
-        
-                    // LOWER VE HIGHER IÇIN MATCHLARI OLUŞTUR
-                    match = generateMatchs(newMatch, chatId);
-        
-                    // LOGGEDIN LIKE HAKKINI GÜNCELLE
-                    switch(likeType) {
-                        case 'like':
-                            if(!isNotFree) {
-                                // LIKE HAKKINDAN BİR EKSİLT
-                                await User.findByIdAndUpdate(loggedId, { 'counts.like': updateCounts.like }).session(session); 
-                            }
-                            break;
-                        case 'megaLike':
-                            // MEGA LIKE HAKKINDAN BİR EKSİLT
-                            await User.findByIdAndUpdate(loggedId, { 'counts.megaLike': updateCounts.megaLike }).session(session); 
-                            break;
-                    }
-                    
-                    // TARGETIN LIKE'INI SIL
-                    await Like.findOneAndDelete({ from: targetId, to: loggedId }).session(session);
-    
-                } else {
-    
-                    // LIKE AT
-                    await Like.create([{
-                        from: loggedId,
-                        to: targetId,
-                        likeType: likeType,
-                        matchType: matchType,
-                        trackId: trackId,
-                    }], { session: session });
-    
-                    // LOGGEDIN LIKE HAKKINI GÜNCELLE
-                    switch(likeType) {
-                        case 'like':
-                            if(!isNotFree) {
-                                // LIKE HAKKINDAN BİR EKSİLT
-                                await User.findByIdAndUpdate(loggedId, { 'counts.like': updateCounts.like }).session(session); 
-                            }
-                            break;
-                        case 'megaLike':
-                            // MEGA LIKE HAKKINDAN BİR EKSİLT
-                            await User.findByIdAndUpdate(loggedId, { 'counts.megaLike': updateCounts.megaLike }).session(session); 
-                            break;
-                    }
-                }
-            });
-
-            if(targetLike) {
-                // SOCKETLERE GEREKLI BILGILERI GÖNDER
-                const findLowerUser = shared.users.find(x => x.userId === lowerId);
-                if(findLowerUser) {
-                    findLowerUser.socket.emit('new_match', {
-                        chat: chat.lowerChat,
-                        newMatch: match.lowerMatch,
-                    });
-                }
-
-                const findHigherUser = shared.users.find(x => x.userId === higherId);
-                if(findHigherUser) {
-                    findHigherUser.socket.emit('new_match', {
-                        chat: chat.higherChat,
-                        newMatch: match.higherMatch,
-                    });
-                }
-
-                // IKI TARAFADA BILDIRIM GÖNDER
-                pushMatchNotification({ lowerId: lowerId, higherId: higherId });
-            } else {
-
-                // TARGET A BİLDİRİM GÖNDER
-                switch(likeType) {
-                    case 'like':
-                        pushLikeNotification({
-                            from: loggedId,
-                            to: targetId,
-                        });
-                        break;
-                    case 'megaLike':
-                        pushMegaLikeNotification({
-                            from: loggedId,
-                            to: targetId,
-                        });
-                        break;
-                }
-            }
-           
-            return res.status(200).json({
-                success: true
-            });
-
         } catch (err) {
             Error({
                 file: 'MatchController.js',
@@ -586,8 +434,6 @@ class MatchController {
             return res.status(400).json({
                 success: false
             });
-        } finally {
-            session.endSession();
         }
     }
 
@@ -602,21 +448,10 @@ class MatchController {
                 });
             }
 
-            // KONTROLLER YAPILACAK
-            const isLower = loggedId < targetId;
-            const result = await doChecks({ loggedId, targetId, isLower });
-            if(!result) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_AVAILABLE',
-                });
-            }
-
-            // DISLIKE AT
-            await Dislike.create({
-                from: loggedId,
-                to: targetId
-            }); 
+            _dislike({
+                loggedId,
+                targetId,
+            });
 
             return res.status(200).json({
                 success: true,
@@ -636,6 +471,12 @@ class MatchController {
     }
 
     async rewind(req, res) {
+        // PREMIUM OLUP OLMADIĞINI KONTROL ET
+        // EŞLEŞİP EŞLEŞMEDİKLERİNİ KONTROL ET
+        // BÖYLE BİR İŞLEM VARMI KONTROL ET
+        // VARSA İŞLEMİ SİL
+        // EĞER İŞLEM MEGALIKE İSE MEGALIKE HAKKINI GERİ VER.
+
         const session = await db.startSession();
 
         try {
@@ -648,12 +489,6 @@ class MatchController {
                     error: 'INVALID_FIELDS',
                 });
             }
-
-            // PREMIUM OLUP OLMADIĞINI KONTROL ET
-            // EŞLEŞİP EŞLEŞMEDİKLERİNİ KONTROL ET
-            // BÖYLE BİR İŞLEM VARMI KONTROL ET
-            // VARSA İŞLEMİ SİL
-            // EĞER İŞLEM MEGALIKE İSE MEGALIKE HAKKINI GERİ VER.
 
             // PREMİUM OLUP OLMADIĞINI KONTROL ET
             const user = await User.findById(loggedId).select('counts product');
@@ -752,6 +587,244 @@ class MatchController {
 
 module.exports = new MatchController();
 
+// NEWS
+
+async function _like({ loggedId, targetId, likeType, matchType, trackId, isNotFree, updateCounts }) {
+
+    // KULLANICININ BEĞENİ HAKKININ OLUP OLMADIĞINI KONTROL ET
+    // EĞER YOKSA UYARI VER.
+    // EĞER VARSA İŞLEM BAŞARILI DE HIZLI OLSUN DİYE SONRA İŞLEMİ BAŞLAT
+
+    // KONTROLLERİ YAP (LİKE ATMAYA UYGUN MU)
+
+    // EĞER TARGET LIKE ATMIŞSA:
+    // CHATI OLUŞTUR
+    // CHATI GETİR
+    // LOWER VE HIGHER İÇİN CHAT OLUŞTUR
+    // MATCH OLUŞTUR
+    // MATCHI GETIR (TRACK VARSA ONLARI DA GETİR)
+    // LOWER VE HIGHER İÇİN MATCH OLUŞTUR
+    // LOGGEDIN LIKE HAKKINI GÜNCELLE
+    // TARGETIN LIKE NI SİL.
+    // EĞER TÜM İŞLEMLER BAŞARILI OLURSA: BİLDİRİM VE SOKETLERE BİLGİLERİ GÖNDER.
+
+    // EĞER TARGET LIKE ATMAMIŞSA:
+    // LIKE OLUŞTUR
+    // LOGGEDIN LIKE HAKKINI GÜNCELLE
+    // EĞER TÜM İŞLEMLER BAŞARILI OLURSA: BİLDİRİM GÖNDER.
+
+    const session = await db.startSession();
+
+    try {
+        // ACCESS_TOKEN I GETİR VE KONTROL ET
+        const loggedUser = await User.findById(loggedId).select('spotifyRefreshToken');
+        const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+        if(!access_token) return;
+
+        const lowerId = loggedId < targetId ? loggedId : targetId;
+        const higherId = loggedId > targetId ? loggedId : targetId;
+
+        const isLower = loggedId === lowerId;
+
+        // KONTROLLER YAPILACAK
+        const result = await doChecks({ loggedId, targetId, isLower });
+        if(!result) return;
+
+        var targetLike;
+        var chat;
+        var match;
+
+        await session.withTransaction(async () => {
+
+            // TARGET IN LIKE ATIP ATMADIĞINI KONTROL ET
+            targetLike = await Like.findOne({ from: targetId, to: loggedId }).session(session);
+
+            if(targetLike) {
+            
+                // İKİ KULLANICIYI EŞLEŞTİR
+
+                var chatId = ObjectId();
+                var matchId = ObjectId();
+    
+                // CHATI OLUŞTUR
+                await Chat.create([{
+                    _id: chatId,
+                    matchId,
+                    lowerId,
+                    higherId,
+                }], { session: session });
+    
+                // CHATI GETIR
+                const newChat = await Chat.findById(chatId)
+                    .populate('lowerId', 'name photos isVerifed')
+                    .populate('higherId', 'name photos isVerifed')
+                    .session(session);
+    
+                // LOWER VE HIGHER İÇİN CHATLERI OLUŞTUR
+                chat = generateChats(newChat);
+    
+                // MATCHI OLUŞTUR
+                const lowerLikeType = isLower ? likeType : targetLike.likeType;
+                const higherLikeType = isLower ? targetLike.likeType : likeType;
+
+                const lowerMatchType = isLower ? matchType : targetLike.matchType;
+                const higherMatchType = isLower ? targetLike.matchType : matchType;
+
+                const lowerTrackId = isLower ? trackId : targetLike.trackId;
+                const higherTrackId = isLower ? targetLike.trackId : trackId;
+
+                await Match.create([{
+                    _id: matchId,
+                    chatId,
+                    lowerId,
+                    higherId,
+                    lowerLikeType,
+                    higherLikeType,
+                    lowerMatchType,
+                    higherMatchType,
+                    lowerTrackId,
+                    higherTrackId,
+                }], { session: session });
+    
+                // MATCHI GETIR
+                const newMatch = await Match.findById(matchId)
+                    .populate('lowerId', 'name photos isVerifed')
+                    .populate('higherId', 'name photos isVerifed')
+                    .session(session);
+    
+                // MATCHDE TRACKLAR VARSA ONLARIN BILGILERINI ÇEK
+                if(newMatch.lowerTrackId) 
+                    newMatch.lowerTrackId = await Spotify.getTrack(access_token, newMatch.lowerTrackId);
+
+                if(newMatch.higherTrackId) 
+                    newMatch.higherTrackId = await Spotify.getTrack(access_token, newMatch.higherTrackId);
+    
+                // LOWER VE HIGHER IÇIN MATCHLARI OLUŞTUR
+                match = generateMatchs(newMatch, chatId);
+    
+                // LOGGEDIN LIKE HAKKINI GÜNCELLE
+                switch(likeType) {
+                    case 'like':
+                        if(!isNotFree) {
+                            // LIKE HAKKINDAN BİR EKSİLT
+                            await User.findByIdAndUpdate(loggedId, { 'counts.like': updateCounts.like }).session(session); 
+                        }
+                        break;
+                    case 'megaLike':
+                        // MEGA LIKE HAKKINDAN BİR EKSİLT
+                        await User.findByIdAndUpdate(loggedId, { 'counts.megaLike': updateCounts.megaLike }).session(session); 
+                        break;
+                }
+                
+                // TARGETIN LIKE'INI SIL
+                await Like.findOneAndDelete({ from: targetId, to: loggedId }).session(session);
+
+            } else {
+
+                // LIKE AT
+                await Like.create([{
+                    from: loggedId,
+                    to: targetId,
+                    likeType: likeType,
+                    matchType: matchType,
+                    trackId: trackId,
+                }], { session: session });
+
+                // LOGGEDIN LIKE HAKKINI GÜNCELLE
+                switch(likeType) {
+                    case 'like':
+                        if(!isNotFree) {
+                            // LIKE HAKKINDAN BİR EKSİLT
+                            await User.findByIdAndUpdate(loggedId, { 'counts.like': updateCounts.like }).session(session); 
+                        }
+                        break;
+                    case 'megaLike':
+                        // MEGA LIKE HAKKINDAN BİR EKSİLT
+                        await User.findByIdAndUpdate(loggedId, { 'counts.megaLike': updateCounts.megaLike }).session(session); 
+                        break;
+                }
+            }
+        });
+
+        if(targetLike) {
+            // SOCKETLERE GEREKLI BILGILERI GÖNDER
+            const findLowerUser = shared.users.find(x => x.userId === lowerId);
+            if(findLowerUser) {
+                findLowerUser.socket.emit('new_match', {
+                    chat: chat.lowerChat,
+                    newMatch: match.lowerMatch,
+                });
+            }
+
+            const findHigherUser = shared.users.find(x => x.userId === higherId);
+            if(findHigherUser) {
+                findHigherUser.socket.emit('new_match', {
+                    chat: chat.higherChat,
+                    newMatch: match.higherMatch,
+                });
+            }
+
+            // IKI TARAFADA BILDIRIM GÖNDER
+            pushMatchNotification({ lowerId: lowerId, higherId: higherId });
+        } else {
+
+            // TARGET A BİLDİRİM GÖNDER
+            switch(likeType) {
+                case 'like':
+                    pushLikeNotification({
+                        from: loggedId,
+                        to: targetId,
+                    });
+                    break;
+                case 'megaLike':
+                    pushMegaLikeNotification({
+                        from: loggedId,
+                        to: targetId,
+                    });
+                    break;
+            }
+        }
+    } catch(err) {
+        Error({
+            file: 'MatchController.js',
+            method: '_like',
+            info: err,
+            type: 'critical',
+        });
+    } finally {
+        session.endSession();
+    }
+}
+
+async function _dislike({ loggedId, targetId }) {
+    const session = await db.startSession();
+
+    try {
+        // KONTROLLER YAPILACAK
+        const isLower = loggedId < targetId;
+        const result = await doChecks({ loggedId, targetId, isLower });
+        if(!result) return;
+
+        // DISLIKE AT
+        session.withTransaction(async () => {
+            return await Dislike.create([{
+                from: loggedId,
+                to: targetId
+            }], { session: session }); 
+        });
+
+    } catch(err) {
+        Error({
+            file: 'MatchController.js',
+            method: '_dislike',
+            info: err,
+            type: 'critical',
+        });
+    } finally {
+        session.endSession();
+    }
+}
+
 // UTILS
 
 function shuffle(array) {
@@ -838,6 +911,52 @@ function generateMatchs(match, chatId) {
     return { lowerMatch, higherMatch };
 }
 
+async function canSendLike(loggedId, likeType) {
+    try {
+        const loggedUser = await User.findById(loggedId).select('counts product');
+
+        const isNotFree = loggedUser.product !== 'free' ? true : false;
+        var updateCounts = loggedUser.counts;
+        var canLike;
+        
+        switch(likeType) {
+            case 'like':
+                if(isNotFree) canLike = true;
+                else {
+                    canLike = updateCounts.like > 0;
+                    if(canLike) updateCounts.like--;
+                }
+                break;
+            case 'megaLike':
+                canLike = updateCounts.megaLike > 0;
+                if(canLike) updateCounts.megaLike--;
+                break;
+        }
+
+        return { isNotFree, canLike, updateCounts };
+    
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function doChecks({ loggedId, targetId, isLower }) {
+    try {
+        let loggedLike = await Like.countDocuments({ from: loggedId, to: targetId });
+        if(loggedLike > 0) return false;
+
+        let loggedDislike = await Dislike.countDocuments({ from: loggedId, to: targetId });
+        if(loggedDislike > 0) return false;
+
+        let findMatch = await Match.countDocuments({$and: [{lowerId: isLower ? loggedId : targetId }, {higherId: isLower ? targetId : loggedId}]});
+        if(findMatch > 0) return false;
+
+        return true;
+    } catch (err) {
+        throw err;
+    }
+}
+
 async function getMatch({ loggedId, targetId }) {
     try {
         const lowerId = loggedId < targetId ? loggedId : targetId;
@@ -847,6 +966,90 @@ async function getMatch({ loggedId, targetId }) {
         return findMatch > 0 ? true : false;
     } catch (e){
         throw e;
+    }
+}
+
+async function loggedFilter(access_token, loggedUser, users, matchType) {
+    try {
+        var filterUsers = [];
+        if(users.length === 0) return filterUsers;
+    
+        var tracks = [];
+        if(matchType === 'live') {
+            if(loggedUser.filtering.artist) {
+                var trackIds = [];
+                users.forEach(user => trackIds.push(user.listen.trackId));
+                tracks = await Spotify.getTracks(access_token, trackIds);
+            } else {
+                let track = await Spotify.getTrack(access_token, loggedUser.listen.trackId);
+                tracks.push(track);
+            }
+        }
+    
+        for(const targetUser of users) {
+            try {
+                // ZORUNLU FİLTRELEMELER
+                
+                if(loggedUser._id.toString() === targetUser._id.toString()) continue;
+    
+                let targetCheckBlock = await BlockedUser.countDocuments({ from: targetUser._id, to: loggedUser._id });
+                if(targetCheckBlock > 0) continue;
+    
+                let loggedCheckBlock = await BlockedUser.countDocuments({ from: loggedUser._id, to: targetUser._id });
+                if(loggedCheckBlock > 0) continue;
+        
+                let loggedCheckLike = await Like.countDocuments({ from: loggedUser._id, to: targetUser._id });
+                if(loggedCheckLike > 0) continue;
+        
+                let loggedCheckDislike = await Dislike.countDocuments({ from: loggedUser._id, to: targetUser._id });
+                if(loggedCheckDislike > 0) continue;
+            
+                let findMatch = await getMatch({ loggedId: loggedUser._id, targetId: targetUser._id});
+                if(findMatch) continue;
+            
+                // LOGGED PREMIUM FILTRELEMELERI
+        
+                var targetAge = calculateAge(targetUser.birthday);
+        
+                if(!((loggedUser.filtering.minAge <= targetAge) && ( targetAge <= loggedUser.filtering.maxAge))) continue;
+                if(loggedUser.filtering.genderPreference !== 'all' && targetUser.gender !== loggedUser.filtering.genderPreference) continue;
+    
+                // LİSTEYE EKLEME İŞLEMİNİ YAP
+    
+                var birthday;
+                if(targetUser.permissions.showAge) birthday = targetUser.birthday;
+                
+                var track;
+                if(matchType === 'live') track = tracks.find(x => x.id === targetUser.listen.trackId);
+    
+                const percentage = await calculatePercentage(loggedUser._id, targetUser._id);
+                
+                filterUsers.push({
+                    user: {
+                        _id: targetUser._id,
+                        name: targetUser.name,
+                        photos: targetUser.photos,
+                        isVerifed: targetUser.isVerifed,
+                    },
+                    birthday: birthday,
+                    track: track,
+                    percentage: percentage,
+                });
+            } catch (err) {
+                Error({
+                    file: 'MatchController.js',
+                    method: 'loggedFilter',
+                    info: err,
+                    type: 'critical',
+                });
+    
+                continue;
+            }
+        }
+    
+        return filterUsers;
+    } catch(err) {
+        throw err;
     }
 }
 
@@ -910,10 +1113,7 @@ async function findListenersForTarget(loggedId, track) {
         
                 var loggedAge = calculateAge(loggedUser.birthday);
         
-                // YAŞ ARALIĞI
                 if(!((targetUser.filtering.minAge <= loggedAge) && ( loggedAge <= targetUser.filtering.maxAge))) continue;
-            
-                // CİNSİYET TERCİHİ
                 if(targetUser.filtering.genderPreference !== 'all' && loggedUser.gender !== targetUser.filtering.genderPreference) continue;
 
                 const percentage = await calculatePercentage(loggedUser._id, targetUser._id);
@@ -928,7 +1128,7 @@ async function findListenersForTarget(loggedId, track) {
             } catch (err) {
                 Error({
                     file: 'MatchController.js',
-                    method: 'loggedFilter',
+                    method: 'findListenersForTarget',
                     info: err,
                     type: 'critical',
                 });
@@ -936,77 +1136,14 @@ async function findListenersForTarget(loggedId, track) {
                 continue;
             }
         }
-    } catch (e) {
-        throw e;
+    } catch (err) {
+        Error({
+            file: 'MatchController.js',
+            method: 'findListenersForTarget',
+            info: err,
+            type: 'critical',
+        });
     }
-}
-
-async function loggedFilter(loggedUser, users, matchType) {
-    var filterUsers = [];
-
-    for(const targetUser of users) {
-        try {
-            // ZORUNLU FİLTRELEMELER
-
-            if(loggedUser._id.toString() === targetUser._id.toString()) continue;
-
-            let targetCheckBlock = await BlockedUser.countDocuments({ from: targetUser._id, to: loggedUser._id });
-            if(targetCheckBlock > 0) continue;
-
-            let loggedCheckBlock = await BlockedUser.countDocuments({ from: loggedUser._id, to: targetUser._id });
-            if(loggedCheckBlock > 0) continue;
-    
-            let loggedCheckLike = await Like.countDocuments({ from: loggedUser._id, to: targetUser._id });
-            if(loggedCheckLike > 0) continue;
-    
-            let loggedCheckDislike = await Dislike.countDocuments({ from: loggedUser._id, to: targetUser._id });
-            if(loggedCheckDislike > 0) continue;
-        
-            let findMatch = await getMatch({ loggedId: loggedUser._id, targetId: targetUser._id});
-            if(findMatch) continue;
-        
-            // LOGGED PREMIUM FILTRELEMELERI
-    
-            var targetAge = calculateAge(targetUser.birthday);
-    
-            // YAŞ ARALIĞI
-            if(!((loggedUser.filtering.minAge <= targetAge) && ( targetAge <= loggedUser.filtering.maxAge))) continue;
-        
-            // CİNSİYET TERCİHİ
-            if(loggedUser.filtering.genderPreference !== 'all' && targetUser.gender !== loggedUser.filtering.genderPreference) continue;
-
-            var birthday;
-            if(targetUser.permissions.showAge) birthday = targetUser.birthday;
-            
-            var track;
-            if(matchType === 'live') track = await Spotify.getTrack(loggedUser._id, targetUser.listen.trackId);
-
-            const percentage = await calculatePercentage(loggedUser._id, targetUser._id);
-            
-            filterUsers.push({
-                user: {
-                    _id: targetUser._id,
-                    name: targetUser.name,
-                    photos: targetUser.photos,
-                    isVerifed: targetUser.isVerifed,
-                },
-                birthday: birthday,
-                track: track,
-                percentage: percentage,
-            });
-        } catch (err) {
-            Error({
-                file: 'MatchController.js',
-                method: 'loggedFilter',
-                info: err,
-                type: 'critical',
-            });
-
-            continue;
-        }
-    }
-
-    return filterUsers;
 }
 
 async function calculatePercentage(loggedId, targetId) {
@@ -1023,54 +1160,8 @@ async function calculatePercentage(loggedId, targetId) {
         }
 
         return 0;
-    } catch (e) {
-        throw e;
-    }
-}
-
-async function canSendLike(loggedId, likeType) {
-    try {
-        const loggedUser = await User.findById(loggedId).select('counts product');
-
-        const isNotFree = loggedUser.product !== 'free' ? true : false;
-        var updateCounts = loggedUser.counts;
-        var canLike;
-        
-        switch(likeType) {
-            case 'like':
-                if(isNotFree) canLike = true;
-                else {
-                    canLike = likeType === 'like' ? updateCounts.like > 0 : updateCounts.megaLike > 0;
-                    if(canLike) updateCounts.like--;
-                }
-                break;
-            case 'megaLike':
-                canLike = likeType === 'like' ? updateCounts.like > 0 : updateCounts.megaLike > 0;
-                if(canLike) updateCounts.megaLike--;
-                break;
-        }
-
-        return { isNotFree, canLike, updateCounts };
-    
-    } catch (e) {
-        throw e;
-    }
-}
-
-async function doChecks({ loggedId, targetId, isLower }) {
-    try {
-        let loggedLike = await Like.countDocuments({ from: loggedId, to: targetId });
-        if(loggedLike > 0) return false;
-
-        let loggedDislike = await Dislike.countDocuments({ from: loggedId, to: targetId });
-        if(loggedDislike > 0) return false;
-
-        let findMatch = await Match.countDocuments({$and: [{lowerId: isLower ? loggedId : targetId }, {higherId: isLower ? targetId : loggedId}]});
-        if(findMatch > 0) return false;
-
-        return true;
-    } catch (e) {
-        throw e;
+    } catch (err) {
+        throw err;
     }
 }
 

@@ -1232,8 +1232,12 @@ class UserController {
 
             var users = [];
 
+            var trackIds = [];
+            result.forEach(user => trackIds.push(user.listen.trackId));
+            var tracks = await Spotify.getTracks(access_token, trackIds);
+
             for(const user of result) {
-                const track = await Spotify.getTrack(access_token, user.listen.trackId);
+                const track = tracks.find(x => x.id === user.listen.trackId);
                 users.push({
                     user: {
                         _id: user._id,
