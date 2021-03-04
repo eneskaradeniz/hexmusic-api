@@ -17,11 +17,11 @@ class Language {
 
                         "like_title": "Yeni Beğeni!",
                         "free_like_body": "Biri seni beğendi! Kim olduğunu öğrenmek için Premium satın al.",
-                        "premium_like_body": "%name seni beğendi! Görüntülemek için tıkla.",
+                        "premium_like_body": "%name seni beğendi! Beni beğenenler sekmesinden kimin olduğunu gör.",
 
                         "mega_like_title": "Yeni Mega Like!",
                         "free_mega_like_body": "Biri seni çok beğendi! Kim olduğunu öğrenmek için Premium satın al.",
-                        "premium_mega_like_body": "%name seni çok beğendi! Görüntülemek için tıkla."
+                        "premium_mega_like_body": "%name seni çok beğendi! Beni beğenenler sekmesinden kimin olduğunu gör."
                     };
                     break;
                 case 'en':
@@ -37,11 +37,11 @@ class Language {
 
                         "like_title": "New Like!",
                         "free_like_body": "Someone likes you! Buy Premium to find out who you are.",
-                        "premium_like_body": "%name liked you! Click to view.",
+                        "premium_like_body": "%name liked you! See who's on the likes me tab.",
 
                         "mega_like_title": "New Mega Like!",
                         "free_mega_like_body": "Someone Mega Liked you! Buy Premium to find out who you are.",
-                        "premium_mega_like_body": "%name Mega Liked you! Click to view."
+                        "premium_mega_like_body": "%name Mega Liked you! See who's on the likes me tab."
                     };
                     break;
             }
