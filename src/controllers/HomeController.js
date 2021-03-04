@@ -21,6 +21,8 @@ class HomeController {
                 });
             }
 
+            test(access_token, loggedUser.spotifyFavArtists);
+
             // TREND ARTIST AND ARTIST TOP 10
             const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
@@ -103,6 +105,49 @@ class HomeController {
 }
 
 module.exports = new HomeController();
+
+async function test(access_token, spotifyFavArtists) {
+    try {
+        // UYGULAMADAKİ TÜM DİNLEYİCİLERİN TRACKIDLERINI ÇEK VE HEPSİNİN MÜZİĞİNİ TOPLU ÇEK
+
+        var allTracks = [];
+        var allTrackIds = [];
+
+        var allArtists = [];
+        var allArtistIds = [];
+
+        // TÜM DİNLENEN MÜZİKLERİ ÇEK
+        const _all = await User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.trackId",
+                    count: { $sum: 1 },
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.artistId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        console.log(_all);
+
+    } catch(err) {
+        console.log(err);
+    }
+}
 
 // UTILS
 
