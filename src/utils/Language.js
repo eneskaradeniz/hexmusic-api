@@ -15,8 +15,6 @@ class Language {
                     break;
             }
 
-            if(!value) throw ('NOT_FOUND_KEY:', key);
-
             return value;
         } catch(err) {
             throw err;
