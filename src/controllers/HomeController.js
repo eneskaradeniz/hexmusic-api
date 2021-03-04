@@ -108,16 +108,14 @@ module.exports = new HomeController();
 
 async function test(access_token, spotifyFavArtists) {
     try {
-        // UYGULAMADAKİ TÜM DİNLEYİCİLERİN TRACKIDLERINI ÇEK VE HEPSİNİN MÜZİĞİNİ TOPLU ÇEK
+        // EN ÇOK DİNLENEN SANATÇI VE TOP 10 ŞARKISI
+        const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
-        var allTracks = [];
-        var allTrackIds = [];
+        // KULLANICIN FAVARTİSTLERİNE GÖRE ÖNERİLEN ŞARKILAR VE SANATÇILAR
+        // GERİ KALAN DİĞERLERİDE POPÜLER ŞARKILAR VE SANATÇILAR
 
-        var allArtists = [];
-        var allArtistIds = [];
-
-        // TÜM DİNLENEN MÜZİKLERİ ÇEK
-        const _all = await User.aggregate([
+        // TÜM DİNLENEN ŞARKILARI ÇEK
+        const _allTracks = await User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -134,6 +132,26 @@ async function test(access_token, spotifyFavArtists) {
                     count: { $sum: 1 },
                 }
             },
+        ]);
+
+        var allTrackIds = [];
+        var allTracks = [];
+
+        _allTracks.forEach(element => allTrackIds.push(element._id));
+        allTracks = await Spotify.getTracksWithCount(access_token, trackIds, _allTracks);
+
+        // TÜM DİNLENEN SANATÇILARI ÇEK
+        const _allArtists = await User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
             {
                 $group: {
                     _id: "$listen.artistId",
@@ -142,7 +160,14 @@ async function test(access_token, spotifyFavArtists) {
             },
         ]);
 
-        console.log(_all);
+        var allArtistIds = [];
+        var allArtists = [];
+
+        _allArtists.forEach(element => allArtistIds.push(element._id));
+        allArtists = await Spotify.getArtistsWithCount(access_token, allArtistIds, _allArtists);
+
+        console.log('ALL_TRACKS:', allTracks);
+        console.log('ALL_ARTISTS:', allArtists);
 
     } catch(err) {
         console.log(err);
