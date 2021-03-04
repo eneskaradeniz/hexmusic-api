@@ -23,21 +23,6 @@ class HomeController {
 
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
 
-            /*// TREND ARTIST AND ARTIST TOP 10
-            const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
-
-            // SUGGESTED TRACKS
-            const suggestedTracks = await getSuggestedTracks(access_token, loggedUser.spotifyFavArtists);
-            
-            // SUGGESTED ARTISTS
-            const suggestedArtists = await getSuggestedArtists(access_token, loggedUser.spotifyFavArtists);
-
-            // POPULAR TRACKS
-            const popularTracks = await getPopularTracks(access_token, suggestedTracks);
-
-            // POPULAR ARTISTS
-            const popularArtists = await getPopularArtists(access_token, suggestedArtists);*/
-
             return res.status(200).json({
                 success: true,
                 trendArtist,
@@ -105,6 +90,8 @@ class HomeController {
 }
 
 module.exports = new HomeController();
+
+// UTILS
 
 async function test(access_token, spotifyFavArtists) {
     try {
@@ -192,8 +179,6 @@ async function test(access_token, spotifyFavArtists) {
     }
 }
 
-// UTILS
-
 async function getTrendArtistAndTop10Tracks(access_token) {
     try {
         const _artists = await User.aggregate([
@@ -275,6 +260,8 @@ async function getTrendArtistAndTop10Tracks(access_token) {
         throw err;
     }
 }
+
+// OLD UTILS
 
 async function getPopularTracks(access_token, suggestedTracks) {
     try {
