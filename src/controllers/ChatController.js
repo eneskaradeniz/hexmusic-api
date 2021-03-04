@@ -296,7 +296,7 @@ class ChatController {
         
                 if(like) {
                     // CHATI GÜNCELLE
-                    updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
+                    const updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
                         lastMessage: {
                             _id: updateMessage._id,
                             message: updateMessage.message,
@@ -310,12 +310,14 @@ class ChatController {
                     .populate('lowerId', 'name photos isVerifed')
                     .populate('higherId', 'name photos isVerifed')
                     .session(session);
+
+                    // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
+                    updateChat = generateChats(updateChat);
                 }
             });
         
             if(transactionResults) {
-                // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-                const { lowerChat, higherChat } = generateChats(updateChat);
+                const { lowerChat, higherChat } = updateChat;
 
                 // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
                 emitLikeMessage({
@@ -346,6 +348,7 @@ class ChatController {
             }
 
         } catch(err) {
+            console.log(err);
             Error({
                 file: 'ChatController.js',
                 method: 'like_message',
