@@ -106,6 +106,8 @@ module.exports = new HomeController();
 
 async function test(access_token, spotifyFavArtists) {
     try {
+        console.log(spotifyFavArtists);
+        
         const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
         var recommendedTracks = [];
