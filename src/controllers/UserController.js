@@ -324,10 +324,10 @@ class UserController {
                 var targetTrack = {};
 
                 if(loggedTrackId)
-                    loggedTrack = await Spotify.getTrack(loggedId, loggedTrackId);
+                    loggedTrack = await Spotify.getTrack(access_token, loggedTrackId);
                 
                 if(targetTrackId)
-                    targetTrack = await Spotify.getTrack(targetId, targetTrackId);
+                    targetTrack = await Spotify.getTrack(access_token, targetTrackId);
     
                 match = {
                     loggedUser,
@@ -1198,6 +1198,17 @@ class UserController {
         try {
             const loggedId = req._id;
 
+            // LOGGEDIN ACCESS TOKENI GETİR
+            const loggedUser = await User.findById(loggedId).select('spotifyRefreshToken');
+
+            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
+
             // KULLANICININ EŞLEŞTİĞİ İNSANLARI ÇEK
             const matches = await Match.find({
                 $or: [{ lowerId: loggedId }, { higherId: loggedId }]
@@ -1222,7 +1233,7 @@ class UserController {
             var users = [];
 
             for(const user of result) {
-                const track = await Spotify.getTrack(loggedId, user.listen.trackId);
+                const track = await Spotify.getTrack(access_token, user.listen.trackId);
                 users.push({
                     user: {
                         _id: user._id,
