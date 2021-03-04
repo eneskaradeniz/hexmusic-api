@@ -106,7 +106,6 @@ module.exports = new HomeController();
 
 async function test(access_token, spotifyFavArtists) {
     try {
-        console.log(spotifyFavArtists);
         const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
         var recommendedTracks = [];
@@ -144,14 +143,8 @@ async function test(access_token, spotifyFavArtists) {
             _allTracks.forEach(element => allTrackIds.push(element._id));
             allTracks = await Spotify.getTracksWithCount(access_token, allTrackIds, _allTracks);
 
-            recommendedTracks = allTracks.filter(x => {
-                console.log('recommended:', x);
-                return spotifyFavArtists.includes(x.artistId);
-            });
-            popularTracks = allTracks.filter(x => {
-                console.log('popular:', x);
-                return !spotifyFavArtists.includes(x.artistId);
-            });
+            recommendedTracks = allTracks.filter(x => spotifyFavArtists.includes(x.track.artistId));
+            popularTracks = allTracks.filter(x => !spotifyFavArtists.includes(x.track.artistId));
         } 
 
         // TÜM DİNLENEN SANATÇILARI ÇEK
@@ -180,8 +173,8 @@ async function test(access_token, spotifyFavArtists) {
             _allArtists.forEach(element => allArtistIds.push(element._id));
             allArtists = await Spotify.getArtistsWithCount(access_token, allArtistIds, _allArtists);
 
-            recommendedArtists = allArtists.filter(x => spotifyFavArtists.includes(x.id));
-            popularArtists = allArtists.filter(x => !spotifyFavArtists.includes(x.id));
+            recommendedArtists = allArtists.filter(x => spotifyFavArtists.includes(x.artist.id));
+            popularArtists = allArtists.filter(x => !spotifyFavArtists.includes(x.artist.id));
         }
 
         return {
