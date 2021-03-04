@@ -417,7 +417,7 @@ class ChatController {
                 }
             });
 
-            // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE.
+            // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE
             emitReadMessages({
                 to,
                 chatId
