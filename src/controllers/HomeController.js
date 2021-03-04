@@ -21,9 +21,9 @@ class HomeController {
                 });
             }
 
-            test(access_token, loggedUser.spotifyFavArtists);
+            const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
 
-            // TREND ARTIST AND ARTIST TOP 10
+            /*// TREND ARTIST AND ARTIST TOP 10
             const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
             // SUGGESTED TRACKS
@@ -36,13 +36,13 @@ class HomeController {
             const popularTracks = await getPopularTracks(access_token, suggestedTracks);
 
             // POPULAR ARTISTS
-            const popularArtists = await getPopularArtists(access_token, suggestedArtists);
+            const popularArtists = await getPopularArtists(access_token, suggestedArtists);*/
 
             return res.status(200).json({
                 success: true,
                 trendArtist,
-                suggestedTracks,
-                suggestedArtists,
+                suggestedTracks: recommendedTracks,
+                suggestedArtists: recommendedArtists,
                 popularTracks,
                 popularArtists
             });
@@ -79,9 +79,7 @@ class HomeController {
             ]);
 
             aggregate.forEach(element => {
-                if(element) {
-                    count = element.count;
-                }
+                if(element) count = element.count;
             });
 
             return res.status(200).json({
@@ -108,11 +106,16 @@ module.exports = new HomeController();
 
 async function test(access_token, spotifyFavArtists) {
     try {
-        // EN ÇOK DİNLENEN SANATÇI VE TOP 10 ŞARKISI
         const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
-        // KULLANICIN FAVARTİSTLERİNE GÖRE ÖNERİLEN ŞARKILAR VE SANATÇILAR
-        // GERİ KALAN DİĞERLERİDE POPÜLER ŞARKILAR VE SANATÇILAR
+        var recommendedTracks = [];
+        var recommendedArtists = [];
+
+        var popularTracks = [];
+        var popularArtists = [];
+
+        var allTracks = [];
+        var allArtists = [];
 
         // TÜM DİNLENEN ŞARKILARI ÇEK
         const _allTracks = await User.aggregate([
@@ -134,11 +137,15 @@ async function test(access_token, spotifyFavArtists) {
             },
         ]);
 
-        var allTrackIds = [];
-        var allTracks = [];
+        if(_allTracks.length > 0) {
+            var allTrackIds = [];
 
-        _allTracks.forEach(element => allTrackIds.push(element._id));
-        allTracks = await Spotify.getTracksWithCount(access_token, allTrackIds, _allTracks);
+            _allTracks.forEach(element => allTrackIds.push(element._id));
+            allTracks = await Spotify.getTracksWithCount(access_token, allTrackIds, _allTracks);
+
+            recommendedTracks = allTracks.filter(x => spotifyFavArtists.includes(x.artistId));
+            popularTracks = allTracks.filter(x => !spotifyFavArtists.includes(x.artistId));
+        } 
 
         // TÜM DİNLENEN SANATÇILARI ÇEK
         const _allArtists = await User.aggregate([
@@ -160,17 +167,26 @@ async function test(access_token, spotifyFavArtists) {
             },
         ]);
 
-        var allArtistIds = [];
-        var allArtists = [];
+        if(_allArtists.length > 0) {
+            var allArtistIds = [];
 
-        _allArtists.forEach(element => allArtistIds.push(element._id));
-        allArtists = await Spotify.getArtistsWithCount(access_token, allArtistIds, _allArtists);
+            _allArtists.forEach(element => allArtistIds.push(element._id));
+            allArtists = await Spotify.getArtistsWithCount(access_token, allArtistIds, _allArtists);
 
-        console.log('ALL_TRACKS:', allTracks);
-        console.log('ALL_ARTISTS:', allArtists);
+            recommendedArtists = allArtists.filter(x => spotifyFavArtists.includes(x.id));
+            popularArtists = allArtists.filter(x => !spotifyFavArtists.includes(x.id));
+        }
+
+        return {
+            trendArtist,
+            recommendedTracks,
+            recommendedArtists,
+            popularTracks,
+            popularArtists,
+        };
 
     } catch(err) {
-        console.log(err);
+        throw err;
     }
 }
 
