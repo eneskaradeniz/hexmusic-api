@@ -44,7 +44,7 @@ class MatchController {
                 const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
                 if(!access_token) return;
 
-                track = await Spotify.getTrack(loggedId, trackId);
+                track = await Spotify.getTrack(access_token, trackId);
 
                 // DİNLEDİĞİ MÜZİĞİ GÜNCELLE
                 user.listen = {
