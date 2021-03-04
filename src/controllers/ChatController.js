@@ -283,7 +283,9 @@ class ChatController {
                 });
             }
 
-            var updateChat;
+            var _lowerChat;
+            var _higherChat;
+
             var updateMessage;
 
             const transactionResults = await session.withTransaction(async () => {
@@ -312,18 +314,18 @@ class ChatController {
                     .session(session);
 
                     // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-                    updateChat = generateChats(updateChat);
+                    const { lowerChat, higherChat } = generateChats(updateChat);
+                    _lowerChat = lowerChat;
+                    _higherChat = higherChat;
                 }
             });
         
             if(transactionResults) {
-                const { lowerChat, higherChat } = updateChat;
-
                 // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
                 emitLikeMessage({
                     to,
                     message: updateMessage,
-                    chat: isLower ? higherChat : lowerChat
+                    chat: isLower ? _higherChat : _lowerChat
                 });
 
                 // TARGET A BİLDİRİM GÖNDER
@@ -338,7 +340,7 @@ class ChatController {
                 return res.status(200).json({
                     success: true,
                     message: updateMessage,
-                    chat: isLower ? lowerChat : higherChat,
+                    chat: isLower ? _lowerChat : _higherChat,
                 });
             } else {
                 return res.status(200).json({
@@ -348,7 +350,6 @@ class ChatController {
             }
 
         } catch(err) {
-            console.log(err);
             Error({
                 file: 'ChatController.js',
                 method: 'like_message',
