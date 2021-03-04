@@ -65,8 +65,6 @@ module.exports = (upload) => {
     router.get('/home', [middlewares.user], HomeController.home);
     router.get('/live_count', HomeController.live_count);
 
-    router.get('/artist_tracks/:artistId', [middlewares.user], HomeController.artist_tracks);
-    
     // CHAT
     router.get('/chat_list', [middlewares.user], ChatController.chat_list);
     router.get('/message_list/:chatId', [middlewares.user], ChatController.message_list);

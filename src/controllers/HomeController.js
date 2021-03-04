@@ -11,22 +11,30 @@ class HomeController {
     async home(req, res) {
         try {
             const loggedId = req._id;
-            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists');
+            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
+
+            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
 
             // TREND ARTIST AND ARTIST TOP 10
-            const trendArtist = await getTrendArtistAndTop10Tracks(loggedId);
+            const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
 
             // SUGGESTED TRACKS
-            const suggestedTracks = await getSuggestedTracks(loggedId, loggedUser.spotifyFavArtists);
+            const suggestedTracks = await getSuggestedTracks(access_token, loggedUser.spotifyFavArtists);
             
             // SUGGESTED ARTISTS
-            const suggestedArtists = await getSuggestedArtists(loggedId, loggedUser.spotifyFavArtists);
+            const suggestedArtists = await getSuggestedArtists(access_token, loggedUser.spotifyFavArtists);
 
             // POPULAR TRACKS
-            const popularTracks = await getPopularTracks(loggedId, suggestedTracks);
+            const popularTracks = await getPopularTracks(access_token, suggestedTracks);
 
             // POPULAR ARTISTS
-            const popularArtists = await getPopularArtists(loggedId, suggestedArtists);
+            const popularArtists = await getPopularArtists(access_token, suggestedArtists);
 
             return res.status(200).json({
                 success: true,
@@ -51,81 +59,6 @@ class HomeController {
         }
     }
 
-    async artist_tracks(req, res) {
-        try {
-            const loggedId = req._id;
-            const artistId = req.params.artistId;
-
-            // SANATÇININ BİLGİLERİNİ ÇEK
-            const artist = await Spotify.getArtist(loggedId, artistId);
-
-            // BU SANATÇIYI DİNLEYEN KULLANICI SAYISINI ÇEK
-            const aggregate = await User.aggregate([
-                {
-                    $match: { 
-                        $and: [
-                            { "listen.isListen": true },
-                            { "listen.artistId": artistId },
-                            { "permissions.showLive": true },
-                        ]   
-                    }
-                },
-                { $count: "count" },
-            ]);
-
-            let count = 0;
-            aggregate.forEach(element => {
-                if(element) count = element.count;
-            });
-
-            const listenArtist = { artist, count };
-
-            // BU SANATÇININ DİNLENEN TÜM MÜZİKLERİNİ ÇEK
-            const _tracks = await User.aggregate([{
-                $match: { 
-                    $and: [
-                        { "listen.isListen": true },
-                        { "listen.artistId": artistId },
-                        { "permissions.showLive": true },
-                    ]   
-                } },
-                { $group: {
-                    _id: "$listen.trackId",
-                    count: { $sum: 1 },
-                } },
-                {
-                    $sort: { 'count': -1 }
-                },
-            ]);
-
-            // BU TRACKIDLERI BİR LİSTEYE AKTAR VE BİLGİLERİNİ GETİR.
-
-            const trackIds = [];
-            _tracks.forEach(track => {
-                trackIds.push(track._id);
-            });
-
-            const tracks = await Spotify.getTracksWithCount(loggedId, trackIds, _tracks);
-
-            return res.status(200).json({
-                listenArtist,
-                tracks
-            });
-            
-        } catch(err) {
-            Error({
-                file: 'HomeController.js',
-                method: 'artist_tracks',
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-    
     async live_count(req, res) {
         try {
             let count = 0;
@@ -173,7 +106,7 @@ module.exports = new HomeController();
 
 // UTILS
 
-async function getTrendArtistAndTop10Tracks(loggedId) {
+async function getTrendArtistAndTop10Tracks(access_token) {
     try {
         const _artists = await User.aggregate([
             {
@@ -229,7 +162,7 @@ async function getTrendArtistAndTop10Tracks(loggedId) {
 
             if(_tracks.length > 0) {
                 // SANATÇININ BİLGİLERİNİ GETİR
-                const artist = await Spotify.getArtist(loggedId, _artist._id);
+                const artist = await Spotify.getArtist(access_token, _artist._id);
 
                 const listenArtist = {
                     artist,
@@ -237,26 +170,25 @@ async function getTrendArtistAndTop10Tracks(loggedId) {
                 };
 
                 // ŞARKILARININ BİLGİLERİNİ GETİR
-
                 var trackIds = [];
 
                 _tracks.forEach(track => {
                     trackIds.push(track._id);
                 });
 
-                const tracks = await Spotify.getTracksWithCount(loggedId, trackIds, _tracks);
+                const tracks = await Spotify.getTracksWithCount(access_token, trackIds, _tracks);
 
                 return { listenArtist, tracks };
             }
         }
 
         return null;
-    } catch(e) {
-        throw e;
+    } catch(err) {
+        throw err;
     }
 }
 
-async function getPopularTracks(loggedId, suggestedTracks) {
+async function getPopularTracks(access_token, suggestedTracks) {
     try {
 
         // ÖNERİLEN ŞARKILARIN IDLERINI ÇEK
@@ -298,17 +230,17 @@ async function getPopularTracks(loggedId, suggestedTracks) {
                 trackIds.push(track._id);
             });
 
-            tracks = await Spotify.getTracksWithCount(loggedId, trackIds, _tracks);
+            tracks = await Spotify.getTracksWithCount(access_token, trackIds, _tracks);
         }
 
         return tracks;
 
-    } catch(e) {
-        throw e;
+    } catch(err) {
+        throw err;
     }
 }
 
-async function getPopularArtists(loggedId, suggestedArtists) {
+async function getPopularArtists(access_token, suggestedArtists) {
     try {
 
         // ÖNERİLEN SANATÇILARIN IDLERINI ÇEK
@@ -350,17 +282,17 @@ async function getPopularArtists(loggedId, suggestedArtists) {
                 artistIds.push(artist._id);
             });
 
-            artists = await Spotify.getArtistsWithCount(loggedId, artistIds, _artists);
+            artists = await Spotify.getArtistsWithCount(access_token, artistIds, _artists);
         }
 
         return artists;
 
-    } catch(e) {
-        throw e;
+    } catch(err) {
+        throw err;
     }
 }
 
-async function getSuggestedTracks(loggedId, artistIds) {
+async function getSuggestedTracks(access_token, artistIds) {
    try {
         // DB DEN ŞARKILARI GETIR
         const _tracks = await User.aggregate([
@@ -392,16 +324,16 @@ async function getSuggestedTracks(loggedId, artistIds) {
                 trackIds.push(track._id);
             });
 
-            tracks = await Spotify.getTracksWithCount(loggedId, trackIds, _tracks);
+            tracks = await Spotify.getTracksWithCount(access_token, trackIds, _tracks);
         }
 
         return tracks;
-   } catch(e) {
-       throw e;
+   } catch(err) {
+       throw err;
    }
 }
 
-async function getSuggestedArtists(loggedId, artistIds) {
+async function getSuggestedArtists(access_token, artistIds) {
     try {
         // DB DEN SANATÇILARI GETIR
         const _artists = await User.aggregate([
@@ -433,11 +365,11 @@ async function getSuggestedArtists(loggedId, artistIds) {
                 artistIds.push(artist._id);
             });
 
-            artists = await Spotify.getArtistsWithCount(loggedId, artistIds, _artists);
+            artists = await Spotify.getArtistsWithCount(access_token, artistIds, _artists);
         }
 
         return artists;
-   } catch(e) {
-       throw e;
+   } catch(err) {
+       throw err;
    }
 }

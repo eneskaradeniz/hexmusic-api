@@ -33,14 +33,18 @@ class MatchController {
                 });
             }
 
-            // GELEN MÜZİĞİN BİLGİLERİNİ ÇEK.
-            const track = await Spotify.getTrack(loggedId, trackId);
-
             var user;
+            var track;
       
-            await session.withTransaction(async () => {
+            const transactionResults = await session.withTransaction(async () => {
                
-                user = await User.findById(loggedId).select('listen lastTracks permissions').session(session);
+                user = await User.findById(loggedId).select('listen lastTracks permissions spotifyRefreshToken').session(session);
+
+                // GELEN MÜZİĞİN BİLGİLERİNİ ÇEK.
+                const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
+                if(!access_token) return;
+
+                track = await Spotify.getTrack(loggedId, trackId);
 
                 // DİNLEDİĞİ MÜZİĞİ GÜNCELLE
                 user.listen = {
@@ -67,15 +71,22 @@ class MatchController {
                 await user.save();
             });
 
-            // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
-            if(user.permissions.showLive) findListenersForTarget(loggedId, track);
+            if(transactionResults) {
+                // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
+                if(user.permissions.showLive) findListenersForTarget(loggedId, track);
 
-            console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
+                console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
 
-            return res.status(200).json({
-                success: true,
-                track,
-            });
+                return res.status(200).json({
+                    success: true,
+                    track,
+                });                
+            } else {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
         } catch (err) {
             Error({
                 file: 'MatchController.js',
@@ -257,8 +268,8 @@ class MatchController {
             const loggedId = req._id;
 
             // KULLANICININ PREMIUM OLUP OLMADIĞINI KONTROL ET
-            const user = await User.findById(loggedId).select('product');
-            if(user.product !== 'premium_plus') {
+            const loggedUser = await User.findById(loggedId).select('product spotifyRefreshToken');
+            if(loggedUser.product !== 'premium_plus') {
                 return res.status(200).json({
                     success: false,
                     error: 'NO_PERMISSION',
@@ -690,7 +701,7 @@ class MatchController {
                     }
                 }
             });
-            
+
             switch(transactionResults) {
                 case 'ALREADY_MATCH':
                     return res.status(200).json({

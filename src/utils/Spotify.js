@@ -38,23 +38,6 @@ class Spotify {
         }
     } 
 
-    static async getUserAccessToken(userId) {
-        try {
-            const user = await User.findById(userId).select('spotifyRefreshToken');
-            if(!user) return null;
-
-            const refresh_token = user.spotifyRefreshToken;
-            if(!refresh_token) return null;
-
-            const access_token = await this.refreshAccessToken(refresh_token);
-            if(!access_token) return null;
-
-            return access_token;
-        } catch (err) {
-            throw err;
-        }
-    }
-
     static async getSpotifyId(access_token) {
         try {
             spotifyApi.setAccessToken(access_token);
@@ -236,7 +219,6 @@ class Spotify {
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTracks(trackIds);
-        
             const tracks = data.body.tracks;
         
             var results = [];
@@ -269,7 +251,6 @@ class Spotify {
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtists(artistIds);
-        
             const artists = data.body.artists;
         
             var results = [];
