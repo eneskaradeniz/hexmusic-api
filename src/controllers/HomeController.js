@@ -138,7 +138,7 @@ async function test(access_token, spotifyFavArtists) {
         var allTracks = [];
 
         _allTracks.forEach(element => allTrackIds.push(element._id));
-        allTracks = await Spotify.getTracksWithCount(access_token, trackIds, _allTracks);
+        allTracks = await Spotify.getTracksWithCount(access_token, allTrackIds, _allTracks);
 
         // TÜM DİNLENEN SANATÇILARI ÇEK
         const _allArtists = await User.aggregate([
