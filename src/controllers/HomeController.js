@@ -41,8 +41,8 @@ class HomeController {
             return res.status(200).json({
                 success: true,
                 trendArtist,
-                suggestedTracks: recommendedTracks,
-                suggestedArtists: recommendedArtists,
+                recommendedTracks,
+                recommendedArtists,
                 popularTracks,
                 popularArtists
             });
