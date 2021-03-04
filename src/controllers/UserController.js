@@ -92,6 +92,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'callback',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -175,6 +176,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'register',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -200,6 +202,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'me',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -353,6 +356,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'profile',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -459,6 +463,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'delete_account',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -499,6 +504,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'blocked_users',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -560,6 +566,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'end_user',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -626,6 +633,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'block_user',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -669,6 +677,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'unblock_user',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -722,6 +731,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'add_photo',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -752,6 +762,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_photos',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -793,6 +804,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'delete_photo',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -842,6 +854,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_profile',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -874,6 +887,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_firebase',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -905,6 +919,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_language',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -935,6 +950,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_fav_tracks',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -965,6 +981,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_fav_artists',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1006,6 +1023,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_spotify_favorites',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1036,6 +1054,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_permissions',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1066,6 +1085,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_notifications',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1104,6 +1124,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'update_filtering',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1144,6 +1165,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'search_tracks',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1182,6 +1204,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'search_artists',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1260,6 +1283,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'action',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -1295,6 +1319,7 @@ class UserController {
             Error({
                 file: 'UserController.js',
                 method: 'get_last_tracks',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });

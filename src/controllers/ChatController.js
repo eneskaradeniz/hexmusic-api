@@ -51,6 +51,7 @@ class ChatController {
             Error({
                 file: 'ChatController.js',
                 method: 'chat_list',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -91,6 +92,7 @@ class ChatController {
             Error({
                 file: 'ChatController.js',
                 method: 'message_list',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -243,6 +245,7 @@ class ChatController {
             Error({
                 file: 'ChatController.js',
                 method: 'send_message',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -353,6 +356,7 @@ class ChatController {
             Error({
                 file: 'ChatController.js',
                 method: 'like_message',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -426,6 +430,7 @@ class ChatController {
             Error({
                 file: 'ChatController.js',
                 method: 'read_messages',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -576,6 +581,7 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
         Error({
             file: 'ChatController.js',
             method: 'pushMessageNotification',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });
@@ -615,6 +621,7 @@ async function pushLikeNotification({ from, to, chatId }) {
         Error({
             file: 'ChatController.js',
             method: 'pushLikeNotification',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });

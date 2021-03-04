@@ -65,6 +65,7 @@ module.exports = async (req, res, next) => {
         Error({
             file: 'user.js',
             method: 'module.exports',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });

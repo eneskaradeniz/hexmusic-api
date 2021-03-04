@@ -51,6 +51,7 @@ class HomeController {
             Error({
                 file: 'HomeController.js',
                 method: 'home',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -91,6 +92,7 @@ class HomeController {
             Error({
                 file: 'HomeController.js',
                 method: 'live_count',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });

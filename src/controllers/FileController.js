@@ -46,6 +46,7 @@ class FileController {
             Error({
                 file: 'FileController.js',
                 method: 'getImageById',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -83,6 +84,7 @@ class FileController {
             Error({
                 file: 'FileController.js',
                 method: 'deleteImages',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });

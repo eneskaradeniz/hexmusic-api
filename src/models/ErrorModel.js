@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const ErrorSchema = new mongoose.Schema({
     file: String,
     method: String,
+    title: String,
     info: mongoose.Schema.Types.Mixed,
     type: String,
     createdAt: {

@@ -5,6 +5,7 @@ const error = (data) => {
         return new Error({
             file: data.file,
             method: data.method,
+            title: data.title,
             info: data.info,
             type: data.type
         }).save();

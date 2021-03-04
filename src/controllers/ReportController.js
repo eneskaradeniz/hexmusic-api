@@ -30,6 +30,7 @@ class ReportController {
             Error({
                 file: 'ReportController.js',
                 method: 'report_user',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });

@@ -91,6 +91,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'start_music',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -125,6 +126,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'stop_music',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -187,6 +189,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'live',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -267,6 +270,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'explore',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -364,6 +368,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'likes_me',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -427,6 +432,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'like',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -460,6 +466,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'dislike',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -572,6 +579,7 @@ class MatchController {
             Error({
                 file: 'MatchController.js',
                 method: 'rewind',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
             });
@@ -788,6 +796,7 @@ async function _like({ loggedId, targetId, likeType, matchType, trackId, isNotFr
         Error({
             file: 'MatchController.js',
             method: '_like',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });
@@ -817,6 +826,7 @@ async function _dislike({ loggedId, targetId }) {
         Error({
             file: 'MatchController.js',
             method: '_dislike',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });
@@ -1039,6 +1049,7 @@ async function loggedFilter(access_token, loggedUser, users, matchType) {
                 Error({
                     file: 'MatchController.js',
                     method: 'loggedFilter',
+                    title: err.toString(),
                     info: err,
                     type: 'critical',
                 });
@@ -1129,6 +1140,7 @@ async function findListenersForTarget(loggedId, track) {
                 Error({
                     file: 'MatchController.js',
                     method: 'findListenersForTarget',
+                    title: err.toString(),
                     info: err,
                     type: 'critical',
                 });
@@ -1140,6 +1152,7 @@ async function findListenersForTarget(loggedId, track) {
         Error({
             file: 'MatchController.js',
             method: 'findListenersForTarget',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });
@@ -1191,6 +1204,7 @@ async function pushMatchNotification({ lowerId, higherId }) {
         Error({
             file: 'MatchController.js',
             method: 'pushMatchNotification',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });
@@ -1220,6 +1234,7 @@ async function pushLikeNotification({ from, to }) {
         Error({
             file: 'MatchController.js',
             method: 'pushLikeNotification',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });
@@ -1249,6 +1264,7 @@ async function pushMegaLikeNotification({ from, to }) {
         Error({
             file: 'MatchController.js',
             method: 'pushMegaLikeNotification',
+            title: err.toString(),
             info: err,
             type: 'critical',
         });

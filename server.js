@@ -62,6 +62,7 @@ function initUser(socket, data) {
     Error({
       file: 'server.js',
       method: 'initUser',
+      title: err.toString(),
       info: err,
       type: 'critical',
     });
@@ -85,6 +86,7 @@ async function leftUser(socket) {
     Error({
       file: 'server.js',
       method: 'leftUser',
+      title: err.toString(),
       info: err,
       type: 'critical',
     });
@@ -120,6 +122,7 @@ function startTyping(socket, data) {
     Error({
       file: 'server.js',
       method: 'startTyping',
+      title: err.toString(),
       info: err,
       type: 'critical',
     });
@@ -138,6 +141,7 @@ async function stopMusic(userId) {
     Error({
       file: 'server.js',
       method: 'stopMusic',
+      title: err.toString(),
       info: err,
       type: 'critical',
     });
@@ -162,6 +166,7 @@ const storage = new GridFsStorage({
               Error({
                 file: 'server.js',
                 method: 'storage',
+                title: err.toString(),
                 info: err,
                 type: 'critical',
               });
@@ -265,6 +270,7 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     Error({
       file: 'server.js',
       method: 'daily_renew',
+      title: err.toString(),
       info: err,
       type: 'critical',
     });
