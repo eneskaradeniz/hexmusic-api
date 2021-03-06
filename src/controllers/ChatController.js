@@ -152,7 +152,12 @@ class ChatController {
                     }
 
                     const track = await Spotify.getTrack(access_token, message);
-                    console.log(JSON.stringify(track));
+
+                    const string = JSON.stringify(track);
+                    const json =  JSON.parse(string);
+                    console.log('string:', string);
+                    console.log('json:', json);
+                    
                     _message = `${track.id}_${track.name}_${track.artistName}_${track.imageURL}`;
                     break;
                 case 'artist':
