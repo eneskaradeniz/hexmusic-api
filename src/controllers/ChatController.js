@@ -569,11 +569,8 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
                         body = message;
                         break;
                     case 'track':
-                        const track = JSON.stringify(message);
+                        const track = JSON.parse(message);
                         translate = await Language.translate({ key: "track_message", lang: toUser.language });
-
-                        console.log('track:', track);
-                        console.log('translate:', translate);
 
                         var mapObj = {
                             "%name": fromUser.name,
@@ -585,7 +582,7 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
                         console.log('body:', body);
                         break;
                     case 'artist':
-                        const artist = JSON.stringify(message);
+                        const artist = JSON.parse(message);
                         translate = await Language.translate({ key: "artist_message", lang: toUser.language });
 
                         var mapObj = {
