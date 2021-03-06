@@ -57,11 +57,17 @@ class Spotify {
             const data = await spotifyApi.getTrack(id);
             const track = data.body;
 
+            var artists = [];
+
+            track.artists.forEach(artist => {
+                artists.push(artist.name);
+            });
+
             return {
                 id: track.id,
                 artistId: track.artists[0].id,
                 name: track.name,
-                artistName: track.artists[0].name,
+                artists: artists,
                 imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
             };
         } catch (err) {

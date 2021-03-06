@@ -152,13 +152,7 @@ class ChatController {
                     }
 
                     const track = await Spotify.getTrack(access_token, message);
-
-                    const string = JSON.stringify(track);
-                    const json =  JSON.parse(string);
-                    console.log('string:', string);
-                    console.log('json:', json);
-                    
-                    _message = `${track.id}_${track.name}_${track.artistName}_${track.imageURL}`;
+                    _message = JSON.stringify(track);
                     break;
                 case 'artist':
                     findUser = await User.findById(from).select('spotifyRefreshToken');
@@ -171,8 +165,7 @@ class ChatController {
                     }
 
                     const artist = await Spotify.getArtist(access_token, message);
-                    console.log(JSON.stringify(artist));
-                    _message = `${artist.id}_${artist.name}_${artist.imageURL}`;
+                    _message = JSON.stringify(artist);
                     break;
                 default:
                     return res.status(200).json({
