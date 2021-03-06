@@ -149,7 +149,22 @@ class ChatController {
                     }
 
                     const track = await Spotify.getTrack(access_token, message);
+                    console.log(JSON.stringify(track));
                     _message = `${track.id}_${track.name}_${track.artistName}_${track.imageURL}`;
+                    break;
+                case 'artist':
+                    const findUser = await User.findById(from).select('spotifyRefreshToken');
+                    const access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
+                    if(!access_token) {
+                        return res.status(401).json({
+                            success: false,
+                            error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                        });
+                    }
+
+                    const artist = await Spotify.getArtist(access_token, message);
+                    console.log(JSON.stringify(artist));
+                    _message = `${artist.id}_${artist.name}_${artist.imageURL}`;
                     break;
                 default:
                     return res.status(200).json({
