@@ -568,11 +568,27 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
                         body = message;
                         break;
                     case 'track':
-                        const trackName = message.split('_')[1];
+                        const track = JSON.stringify(message);
                         const translate = await Language.translate({ key: "track_message", lang: toUser.language });
+
+                        var mapObj = {
+                            "%name": fromUser.name,
+                            "%trackName": track.name,
+                            "%artistName": track.artists[0],
+                        };
                         
-                        var a = translate.replace('%name', fromUser.name);
-                        body = a.replace('%trackName', trackName);
+                        body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
+                        break;
+                    case 'artist':
+                        const artist = JSON.stringify(message);
+                        const translate = await Language.translate({ key: "artist_message", lang: toUser.language });
+
+                        var mapObj = {
+                            "%name": fromUser.name,
+                            "%artistName": artist.name,
+                        };
+                        
+                        body = translate.replace(/%name|%artistName/gi, function(matched) { return mapObj[matched]; });
                         break;
                 }
 

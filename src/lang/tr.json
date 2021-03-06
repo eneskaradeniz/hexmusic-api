@@ -3,7 +3,8 @@
     "renew_likes_body": "Kaydırmaya kaldığın yerden devam et!",
 
     "like_message": "Bir mesajını beğendi.",
-    "track_message": "%name sizinle %trackName dinlemek istiyor.",
+    "track_message": "%name sizinle %artistName - %trackName dinlemek istiyor.",
+    "artist_message": "%name sizinle %artistName dinlemek istiyor.",
 
     "new_match_title": "Yeni Eşleşme!",
     "new_match_body": "%name ile hisleriniz karşılıklı!",
