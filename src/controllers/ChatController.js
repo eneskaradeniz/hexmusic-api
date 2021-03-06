@@ -563,13 +563,14 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
 
                 // MESAJ TİPİNE GÖRE MESAJI AYARLA (KULLANICININ DİLİNE GÖRE ÇEVİRİ YAP)
                 var body;
+                var translate;
                 switch(messageType) {
                     case 'text':
                         body = message;
                         break;
                     case 'track':
                         const track = JSON.stringify(message);
-                        const translate = await Language.translate({ key: "track_message", lang: toUser.language });
+                        translate = await Language.translate({ key: "track_message", lang: toUser.language });
 
                         var mapObj = {
                             "%name": fromUser.name,
@@ -581,7 +582,7 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
                         break;
                     case 'artist':
                         const artist = JSON.stringify(message);
-                        const translate = await Language.translate({ key: "artist_message", lang: toUser.language });
+                        translate = await Language.translate({ key: "artist_message", lang: toUser.language });
 
                         var mapObj = {
                             "%name": fromUser.name,
