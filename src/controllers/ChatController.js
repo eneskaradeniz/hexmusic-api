@@ -572,13 +572,17 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
                         const track = JSON.stringify(message);
                         translate = await Language.translate({ key: "track_message", lang: toUser.language });
 
+                        console.log('track:', track);
+                        console.log('translate:', translate);
+
                         var mapObj = {
                             "%name": fromUser.name,
-                            "%trackName": track.name,
                             "%artistName": track.artists[0],
+                            "%trackName": track.name,
                         };
                         
                         body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
+                        console.log('body:', body);
                         break;
                     case 'artist':
                         const artist = JSON.stringify(message);
