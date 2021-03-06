@@ -134,13 +134,16 @@ class ChatController {
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _message;
 
+            var findUser;
+            var access_token;
+
             switch(type) {
                 case 'text':
                     _message = message;
                     break;
                 case 'track':
-                    const findUser = await User.findById(from).select('spotifyRefreshToken');
-                    const access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
+                    findUser = await User.findById(from).select('spotifyRefreshToken');
+                    access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
                     if(!access_token) {
                         return res.status(401).json({
                             success: false,
@@ -153,8 +156,8 @@ class ChatController {
                     _message = `${track.id}_${track.name}_${track.artistName}_${track.imageURL}`;
                     break;
                 case 'artist':
-                    const findUser = await User.findById(from).select('spotifyRefreshToken');
-                    const access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
+                    findUser = await User.findById(from).select('spotifyRefreshToken');
+                    access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
                     if(!access_token) {
                         return res.status(401).json({
                             success: false,
