@@ -6,14 +6,29 @@ const Error = require('./ErrorController');
 
 class HomeController {
 
+    async test_ms(req, res) {
+        try {
+            const loggedId = req._id;
+
+
+        } catch(err) {
+            console.log('test_ms:', err);
+        }
+    }
+
     // HOME
 
     async home(req, res) {
         try {
             const loggedId = req._id;
-            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
 
+            console.time('fetchUser');
+            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
+            console.timeEnd('fetchUser');
+
+            console.time('refreshAccessToken');
             const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
+            console.timeEnd('refreshAccessToken');
             if(!access_token) {
                 return res.status(401).json({
                     success: false,
@@ -21,7 +36,9 @@ class HomeController {
                 });
             }
 
+            console.time('test');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
+            console.timeEnd('test');
 
             return res.status(200).json({
                 success: true,
