@@ -180,7 +180,7 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         console.timeEnd('promise_1');
 
         var _trend_artist_id;
-        if(values[0][0].length > 0) _trend_artist_id = values[0][0]._id;
+        if(values[0].length > 0) _trend_artist_id = values[0][0]._id.toString();
 
         // SPOTIFY DAN VERILER ÇEKİLECEK
 
@@ -190,8 +190,8 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         const all_artists_ids = [];
         values[2].forEach(element => all_artists_ids.push(element._id));
 
-        const spotify_all_tracks = Spotify.getTracksWithCount(access_token, all_track_ids, values[1], _trend_artist_id.toString());
-        const spotify_all_artists = Spotify.getArtistsWithCount(access_token, all_artists_ids, values[2], _trend_artist_id.toString());
+        const spotify_all_tracks = Spotify.getTracksWithCount(access_token, all_track_ids, values[1], _trend_artist_id);
+        const spotify_all_artists = Spotify.getArtistsWithCount(access_token, all_artists_ids, values[2], _trend_artist_id);
 
         console.time('promise_2');
         const values2 = await Promise.all([spotify_all_tracks, spotify_all_artists]);
