@@ -297,7 +297,7 @@ class Spotify {
                         imageURL: artist.images[0] != null ? artist.images[0].url : null,
                     };
 
-                    if(model.artistId === _trend_artist_id) trend_artist = model;
+                    if(model.id === _trend_artist_id) trend_artist = model;
             
                     results.push({
                         artist: model,

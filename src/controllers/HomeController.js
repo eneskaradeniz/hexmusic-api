@@ -198,7 +198,7 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         console.timeEnd('promise_2');
 
         const all_tracks = values2[0].results;
-        const allArtists = values2[1].results;
+        const all_artists = values2[1].results;
 
         // FINISH
 
@@ -210,8 +210,8 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         recommendedTracks = all_tracks.filter(x => spotifyFavArtists.includes(x.track.artistId));
         popularTracks = all_tracks.filter(x => !spotifyFavArtists.includes(x.track.artistId));
 
-        recommendedArtists = allArtists.filter(x => spotifyFavArtists.includes(x.artist.id));
-        popularArtists = allArtists.filter(x => !spotifyFavArtists.includes(x.artist.id));
+        recommendedArtists = all_artists.filter(x => spotifyFavArtists.includes(x.artist.id));
+        popularArtists = all_artists.filter(x => !spotifyFavArtists.includes(x.artist.id));
 
         return {
             trendArtist,
