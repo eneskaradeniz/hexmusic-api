@@ -234,6 +234,8 @@ class Spotify {
 
     static async getTracksWithCount(access_token, trackIds, _tracks) {
         try {
+            if(trackIds.length == 0) return [];
+
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTracks(trackIds);
@@ -272,6 +274,8 @@ class Spotify {
 
     static async getArtistsWithCount(access_token, artistIds, _artists) {
         try {
+            if(artistIds.length == 0) return [];
+
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtists(artistIds);
