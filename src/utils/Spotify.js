@@ -263,7 +263,7 @@ class Spotify {
                         count: obj.count
                     };
 
-                    if(model.artistId === _trend_artist_id) trend_tracks.push(model);
+                    if(model.track.artistId === _trend_artist_id) trend_tracks.push(model);
             
                     results.push(model);
                 }); 
@@ -297,10 +297,10 @@ class Spotify {
                             name: artist.name,
                             imageURL: artist.images[0] != null ? artist.images[0].url : null,
                         },
-                        count: obj.count,
+                        count: obj.count
                     };
 
-                    if(model.id === _trend_artist_id) trend_artist = model;
+                    if(model.artist.id === _trend_artist_id) trend_artist = model;
             
                     results.push(model);
                 }); 
