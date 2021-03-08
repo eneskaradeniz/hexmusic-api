@@ -4,43 +4,6 @@ const Spotify = require('../utils/Spotify');
 
 const Error = require('./ErrorController');
 
-require('dotenv').config();
-var request = require("request");
-
-var encodedData = Buffer.from(process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET).toString('base64');
-var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
-
-async function refreshAccessToken(refresh_token) {
-    try {
-        const refreshBody = JSON.stringify({
-            grant_type: 'refresh_token',
-            refresh_token: refresh_token,
-        });
-
-        const req = await request(
-            {
-              url: "https://accounts.spotify.com/api/token", 
-              method: 'POST',
-              headers:{
-                'Authorization': authorizationHeaderString,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(refreshBody)
-              }
-            },
-            (err, res) => {
-              if (res) {
-                const resData = JSON.parse(res.body);
-                console.log('request:', resData);
-              } else if (err) {
-                console.log('request:', err);
-              }
-            }
-        );
-    } catch(err) {
-        throw err;
-    }
-}
-
 class HomeController {
 
     // HOME
@@ -52,10 +15,6 @@ class HomeController {
             console.time('fetchUser');
             const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
             console.timeEnd('fetchUser');
-
-            console.time('my_refresh');
-            await refreshAccessToken(loggedUser.spotifyRefreshToken);
-            console.time('my_refresh');
 
             console.time('refreshAccessToken');
             const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
