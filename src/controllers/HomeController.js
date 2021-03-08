@@ -4,10 +4,10 @@ const Spotify = require('../utils/Spotify');
 
 const Error = require('./ErrorController');
 
+require('dotenv').config();
 var request = require("request");
-var clientId = 'a0bda580-cb41-4ff6-8f06-28ffb4227594';
-var clientSecret = 'e4meQ53cXGq53j6uffdULVjRl8It8M3FVsupKei0nSg';
-var encodedData = Buffer.from(clientId + ':' + clientSecret).toString('base64');
+
+var encodedData = Buffer.from(process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET).toString('base64');
 var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
 
 async function refreshAccessToken(refresh_token) {
