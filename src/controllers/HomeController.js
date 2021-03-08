@@ -189,7 +189,7 @@ async function test(access_token, spotifyFavArtists) {
 
             console.time('_allArtists_foreach');
             _allArtists.forEach(element => allArtistIds.push(element._id));
-            console.timeEnd('spotify_all_tracks');
+            console.timeEnd('_allArtists_foreach');
 
             console.time('spotify_all_artists');
             allArtists = await Spotify.getArtistsWithCount(access_token, allArtistIds, _allArtists);
