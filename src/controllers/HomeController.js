@@ -105,7 +105,7 @@ module.exports = new HomeController();
 async function deneme() {
     try {
         console.time('deneme');
-        const _allTracks = User.aggregate([
+        const a1 = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -124,7 +124,7 @@ async function deneme() {
             },
         ]);
 
-        const _allArtists = User.aggregate([
+        const b1 = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -143,7 +143,45 @@ async function deneme() {
             },
         ]);
 
-        await Promise.all([_allTracks, _allArtists]);
+        const a2 = User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.trackId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        const b2 = User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.artistId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        await Promise.all([a1, b1, a2, b2]);
         console.timeEnd('deneme');
     } catch(err) {
         throw err;
