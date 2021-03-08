@@ -36,9 +36,9 @@ class HomeController {
                 });
             }
 
-            console.time('test');
+            console.time('total_test');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
-            console.timeEnd('test');
+            console.timeEnd('total_test');
 
             return res.status(200).json({
                 success: true,
@@ -112,9 +112,9 @@ module.exports = new HomeController();
 
 async function test(access_token, spotifyFavArtists) {
     try {
-        console.time('trendArtist');
+        console.time('total_trend_artist');
         const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
-        console.timeEnd('trendArtist');
+        console.timeEnd('total_trend_artist');
 
         var recommendedTracks = [];
         var recommendedArtists = [];
@@ -214,6 +214,7 @@ async function test(access_token, spotifyFavArtists) {
 
 async function getTrendArtistAndTop10Tracks(access_token) {
     try {
+        console.time('fetchTrendArtist');
         const _artists = await User.aggregate([
             {
                 $match: { 
@@ -237,11 +238,13 @@ async function getTrendArtistAndTop10Tracks(access_token) {
                 $limit: 1
             },
         ]);
+        console.timeEnd('fetchTrendArtist');
 
         if(_artists.length > 0) {
             const _artist = _artists[0];
 
             // BU SANATÇININ TOP 10 TRACKSLARINI GETIR
+            console.time('fetchTrendArtistTop10Tracks');
             const _tracks = await User.aggregate([
                 {
                     $match: { 
@@ -265,10 +268,13 @@ async function getTrendArtistAndTop10Tracks(access_token) {
                     $limit: 10
                 },
             ]);
+            console.timeEnd('fetchTrendArtistTop10Tracks');
 
             if(_tracks.length > 0) {
                 // SANATÇININ BİLGİLERİNİ GETİR
+                console.time('spotify_trend_artist');
                 const artist = await Spotify.getArtist(access_token, _artist._id);
+                console.timeEnd('spotify_trend_artist');
 
                 const listenArtist = {
                     artist,
@@ -282,7 +288,9 @@ async function getTrendArtistAndTop10Tracks(access_token) {
                     trackIds.push(track._id);
                 });
 
+                console.time('spotify_trend_tracks');
                 const tracks = await Spotify.getTracksWithCount(access_token, trackIds, _tracks);
+                console.timeEnd('spotify_trend_tracks');
 
                 return { listenArtist, tracks };
             }
