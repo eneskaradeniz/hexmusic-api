@@ -232,9 +232,9 @@ class Spotify {
 
     // LISTEN ITEMS
 
-    static async getTracksWithCount(access_token, trackIds, _tracks) {
+    static async getTracksWithCount(access_token, trackIds, _tracks, _trend_artist_id) {
         try {
-            if(trackIds.length == 0) return [];
+            if(trackIds.length == 0) return { results: [], trend_tracks: null };
 
             spotifyApi.setAccessToken(access_token);
     
@@ -242,39 +242,42 @@ class Spotify {
             const tracks = data.body.tracks;
         
             var results = [];
+
+            var trend_tracks = [];
         
             if(tracks.length > 0) {
                 tracks.forEach(track => {
                     let obj = _tracks.find(o => o._id === track.id);
 
                     var artists = [];
+                    track.artists.forEach(artist => artists.push(artist.name));
 
-                    track.artists.forEach(artist => {
-                        artists.push(artist.name);
-                    });
+                    var model = {
+                        id: track.id,
+                        artistId: track.artists[0].id,
+                        name: track.name,
+                        artists: artists,
+                        imageURL: track.album.images[0] ? track.album.images[0].url : null,
+                    };
+
+                    if(model.artistId === _trend_artist_id) trend_tracks.push(model);
             
                     results.push({
-                        track: {
-                            id: track.id,
-                            artistId: track.artists[0].id,
-                            name: track.name,
-                            artists: artists,
-                            imageURL: track.album.images[0] ? track.album.images[0].url : null,
-                        },
+                        track: model,
                         count: obj.count,
                     });
                 }); 
             }
             
-            return results;
+            return { results, trend_tracks };
         } catch (err) {
             throw err;
         }
     }
 
-    static async getArtistsWithCount(access_token, artistIds, _artists) {
+    static async getArtistsWithCount(access_token, artistIds, _artists, _trend_artist_id) {
         try {
-            if(artistIds.length == 0) return [];
+            if(artistIds.length == 0) return { results: [], trend_artist: null };
 
             spotifyApi.setAccessToken(access_token);
     
@@ -282,23 +285,28 @@ class Spotify {
             const artists = data.body.artists;
         
             var results = [];
+            var trend_artist;
         
             if(artists.length > 0) {
                 artists.forEach(artist => {
                     let obj = _artists.find(o => o._id === artist.id);
+
+                    var model = {
+                        id: artist.id,
+                        name: artist.name,
+                        imageURL: artist.images[0] != null ? artist.images[0].url : null,
+                    };
+
+                    if(model.artistId === _trend_artist_id) trend_artist = model;
             
                     results.push({
-                        artist: {
-                            id: artist.id,
-                            name: artist.name,
-                            imageURL: artist.images[0] != null ? artist.images[0].url : null,
-                        },
+                        artist: model,
                         count: obj.count,
                     });
                 }); 
             }
             
-            return results;
+            return { results, trend_artist };
         } catch (err) {
             throw err;
         }

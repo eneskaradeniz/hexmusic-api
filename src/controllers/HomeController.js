@@ -27,13 +27,13 @@ class HomeController {
                 });
             }
 
-            /*console.time('total_fetch_datas');
+            console.time('total_fetch_datas');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas(access_token, loggedUser.spotifyFavArtists);
-            console.timeEnd('total_fetch_datas');*/
+            console.timeEnd('total_fetch_datas');
 
-            console.time('total_test');
+            /*console.time('total_test');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
-            console.timeEnd('total_test');
+            console.timeEnd('total_test');*/
 
             return res.status(200).json({
                 success: true,
@@ -190,17 +190,22 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         const all_artists_ids = [];
         values[2].forEach(element => all_artists_ids.push(element._id));
 
-        const spotify_all_tracks = Spotify.getTracksWithCount(access_token, all_track_ids, values[1]);
-        const spotify_all_artists = Spotify.getArtistsWithCount(access_token, all_artists_ids, values[2]);
+        const spotify_all_tracks = Spotify.getTracksWithCount(access_token, all_track_ids, values[1], _trend_artist_id.toString());
+        const spotify_all_artists = Spotify.getArtistsWithCount(access_token, all_artists_ids, values[2], _trend_artist_id.toString());
 
         console.time('promise_2');
         const values2 = await Promise.all([spotify_all_tracks, spotify_all_artists]);
         console.timeEnd('promise_2');
 
-        const all_tracks = values2[0];
-        const allArtists = values2[1];
+        const all_tracks = values2[0].results;
+        const allArtists = values2[1].results;
 
         // FINISH
+
+        trendArtist = {
+            listenArtist: values2[1].trend_artist,
+            tracks: values2[0].trend_tracks,
+        };
 
         recommendedTracks = all_tracks.filter(x => spotifyFavArtists.includes(x.track.artistId));
         popularTracks = all_tracks.filter(x => !spotifyFavArtists.includes(x.track.artistId));
