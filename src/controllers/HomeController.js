@@ -27,6 +27,7 @@ class HomeController {
             }
 
             await deneme();
+            await deneme2();
 
             console.time('total_test');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
@@ -269,6 +270,8 @@ async function deneme2() {
             },
         ]);
         console.timeEnd('deneme2');
+
+        console.log([a1, b1, a2, b2]);
     } catch(err) {
         throw err;
     }
