@@ -13,13 +13,13 @@ class HomeController {
         try {
             const loggedId = req._id;
 
-            console.time('fetchUser');
+            console.time('fetch_user');
             const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
-            console.timeEnd('fetchUser');
+            console.timeEnd('fetch_user');
 
-            console.time('refreshAccessToken');
+            console.time('spotify_refresh_token');
             const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-            console.timeEnd('refreshAccessToken');
+            console.timeEnd('spotify_refresh_token');
             if(!access_token) {
                 return res.status(401).json({
                     success: false,
@@ -175,9 +175,9 @@ async function fetchDatas(access_token, spotifyFavArtists) {
             },
         ]);
 
-        console.time('promise_1');
+        console.time('fetch_all_listeners');
         const values = await Promise.all([_trend_artist, _all_tracks, _all_artists]);
-        console.timeEnd('promise_1');
+        console.timeEnd('fetch_all_listeners');
 
         var _trend_artist_id;
         if(values[0].length > 0) _trend_artist_id = values[0][0]._id.toString();
@@ -193,9 +193,9 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         const spotify_all_tracks = Spotify.getTracksWithCount(access_token, all_track_ids, values[1], _trend_artist_id);
         const spotify_all_artists = Spotify.getArtistsWithCount(access_token, all_artists_ids, values[2], _trend_artist_id);
 
-        console.time('promise_2');
+        console.time('spotify_fetch_all');
         const values2 = await Promise.all([spotify_all_tracks, spotify_all_artists]);
-        console.timeEnd('promise_2');
+        console.timeEnd('spotify_fetch_all');
 
         const all_tracks = values2[0].results;
         const all_artists = values2[1].results;
