@@ -112,7 +112,9 @@ module.exports = new HomeController();
 
 async function test(access_token, spotifyFavArtists) {
     try {
+        console.time('trendArtist');
         const trendArtist = await getTrendArtistAndTop10Tracks(access_token);
+        console.timeEnd('trendArtist');
 
         var recommendedTracks = [];
         var recommendedArtists = [];
@@ -124,6 +126,7 @@ async function test(access_token, spotifyFavArtists) {
         var allArtists = [];
 
         // TÜM DİNLENEN ŞARKILARI ÇEK
+        console.time('_allTracks');
         const _allTracks = await User.aggregate([
             {
                 $match: { 
@@ -142,18 +145,25 @@ async function test(access_token, spotifyFavArtists) {
                 }
             },
         ]);
+        console.timeEnd('_allTracks');
 
         if(_allTracks.length > 0) {
             var allTrackIds = [];
 
+            console.time('_allTracks_foreach');
             _allTracks.forEach(element => allTrackIds.push(element._id));
+            console.timeEnd('_allTracks_foreach');
+
+            console.time('spotify_all_tracks');
             allTracks = await Spotify.getTracksWithCount(access_token, allTrackIds, _allTracks);
+            console.timeEnd('spotify_all_tracks');
 
             recommendedTracks = allTracks.filter(x => spotifyFavArtists.includes(x.track.artistId));
             popularTracks = allTracks.filter(x => !spotifyFavArtists.includes(x.track.artistId));
         } 
 
         // TÜM DİNLENEN SANATÇILARI ÇEK
+        console.time('_allArtists');
         const _allArtists = await User.aggregate([
             {
                 $match: { 
@@ -172,12 +182,18 @@ async function test(access_token, spotifyFavArtists) {
                 }
             },
         ]);
+        console.timeEnd('_allArtists');
 
         if(_allArtists.length > 0) {
             var allArtistIds = [];
 
+            console.time('_allArtists_foreach');
             _allArtists.forEach(element => allArtistIds.push(element._id));
+            console.timeEnd('spotify_all_tracks');
+
+            console.time('spotify_all_artists');
             allArtists = await Spotify.getArtistsWithCount(access_token, allArtistIds, _allArtists);
+            console.timeEnd('spotify_all_artists');
 
             recommendedArtists = allArtists.filter(x => spotifyFavArtists.includes(x.artist.id));
             popularArtists = allArtists.filter(x => !spotifyFavArtists.includes(x.artist.id));
