@@ -4,17 +4,44 @@ const Spotify = require('../utils/Spotify');
 
 const Error = require('./ErrorController');
 
-class HomeController {
+var request = require("request");
+var clientId = 'a0bda580-cb41-4ff6-8f06-28ffb4227594';
+var clientSecret = 'e4meQ53cXGq53j6uffdULVjRl8It8M3FVsupKei0nSg';
+var encodedData = Buffer.from(clientId + ':' + clientSecret).toString('base64');
+var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
 
-    async test_ms(req, res) {
-        try {
-            const loggedId = req._id;
+async function refreshAccessToken(refresh_token) {
+    try {
+        const refreshBody = JSON.stringify({
+            grant_type: 'refresh_token',
+            refresh_token: refresh_token,
+        });
 
-
-        } catch(err) {
-            console.log('test_ms:', err);
-        }
+        const req = await request(
+            {
+              url: "https://accounts.spotify.com/api/token", 
+              method: 'POST',
+              headers:{
+                'Authorization': authorizationHeaderString,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(refreshBody)
+              }
+            },
+            (err, res) => {
+              if (res) {
+                const resData = JSON.parse(res.body);
+                console.log('request:', resData);
+              } else if (err) {
+                console.log('request:', err);
+              }
+            }
+        );
+    } catch(err) {
+        throw err;
     }
+}
+
+class HomeController {
 
     // HOME
 
@@ -25,6 +52,10 @@ class HomeController {
             console.time('fetchUser');
             const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
             console.timeEnd('fetchUser');
+
+            console.time('my_refresh');
+            await refreshAccessToken(loggedUser.spotifyRefreshToken);
+            console.time('my_refresh');
 
             console.time('refreshAccessToken');
             const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
