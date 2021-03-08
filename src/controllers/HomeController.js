@@ -181,8 +181,94 @@ async function deneme() {
             },
         ]);
 
-        await Promise.all([a1, b1, a2, b2]);
+        const result = await Promise.all([a1, b1, a2, b2]);
         console.timeEnd('deneme');
+
+        console.log('PROMISE:', result);
+    } catch(err) {
+        throw err;
+    }
+}
+
+async function deneme2() {
+    try {
+        console.time('deneme2');
+        const a1 = await User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.trackId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        const b1 = await User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.artistId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        const a2 = await User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.trackId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        const b2 = await User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.artistId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+        console.timeEnd('deneme2');
     } catch(err) {
         throw err;
     }
