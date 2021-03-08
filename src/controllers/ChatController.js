@@ -134,13 +134,16 @@ class ChatController {
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _message;
 
+            var findUser;
+            var access_token;
+
             switch(type) {
                 case 'text':
                     _message = message;
                     break;
                 case 'track':
-                    const findUser = await User.findById(from).select('spotifyRefreshToken');
-                    const access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
+                    findUser = await User.findById(from).select('spotifyRefreshToken');
+                    access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
                     if(!access_token) {
                         return res.status(401).json({
                             success: false,
@@ -149,7 +152,20 @@ class ChatController {
                     }
 
                     const track = await Spotify.getTrack(access_token, message);
-                    _message = `${track.id}_${track.name}_${track.artistName}_${track.imageURL}`;
+                    _message = JSON.stringify(track);
+                    break;
+                case 'artist':
+                    findUser = await User.findById(from).select('spotifyRefreshToken');
+                    access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
+                    if(!access_token) {
+                        return res.status(401).json({
+                            success: false,
+                            error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                        });
+                    }
+
+                    const artist = await Spotify.getArtist(access_token, message);
+                    _message = JSON.stringify(artist);
                     break;
                 default:
                     return res.status(200).json({
@@ -547,16 +563,34 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
 
                 // MESAJ TİPİNE GÖRE MESAJI AYARLA (KULLANICININ DİLİNE GÖRE ÇEVİRİ YAP)
                 var body;
+                var translate;
                 switch(messageType) {
                     case 'text':
                         body = message;
                         break;
                     case 'track':
-                        const trackName = message.split('_')[1];
-                        const translate = await Language.translate({ key: "track_message", lang: toUser.language });
+                        const track = JSON.parse(message);
+                        translate = await Language.translate({ key: "track_message", lang: toUser.language });
+
+                        var mapObj = {
+                            "%name": fromUser.name,
+                            "%artistName": track.artists[0],
+                            "%trackName": track.name,
+                        };
                         
-                        var a = translate.replace('%name', fromUser.name);
-                        body = a.replace('%trackName', trackName);
+                        body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
+                        console.log('body:', body);
+                        break;
+                    case 'artist':
+                        const artist = JSON.parse(message);
+                        translate = await Language.translate({ key: "artist_message", lang: toUser.language });
+
+                        var mapObj = {
+                            "%name": fromUser.name,
+                            "%artistName": artist.name,
+                        };
+                        
+                        body = translate.replace(/%name|%artistName/gi, function(matched) { return mapObj[matched]; });
                         break;
                 }
 

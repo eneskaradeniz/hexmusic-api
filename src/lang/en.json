@@ -3,7 +3,8 @@
     "renew_likes_body": "Continue scrolling where you left off!",
 
     "like_message": "Liked your message.",
-    "track_message": "%name wants to listen to %trackName with you.",
+    "track_message": "%name wants to listen to %artistName - %trackName with you.",
+    "artist_message": "%name wants to listen to %artistName with you.",
 
     "new_match_title": "New Match!",
     "new_match_body": "Your feelings with %name are mutual!",

@@ -57,11 +57,17 @@ class Spotify {
             const data = await spotifyApi.getTrack(id);
             const track = data.body;
 
+            var artists = [];
+
+            track.artists.forEach(artist => {
+                artists.push(artist.name);
+            });
+
             return {
                 id: track.id,
                 artistId: track.artists[0].id,
                 name: track.name,
-                artistName: track.artists[0].name,
+                artists: artists,
                 imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
             };
         } catch (err) {
@@ -99,11 +105,17 @@ class Spotify {
         
             if(tracks.length > 0) {
                 tracks.forEach(track => {
+                    var artists = [];
+
+                    track.artists.forEach(artist => {
+                        artists.push(artist.name);
+                    });
+
                     results.push({
                         id: track.id,
                         artistId: track.artists[0].id,
                         name: track.name,
-                        artistName: track.artists[0].name,
+                        artists: artists,
                         imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
                     });
                 }); 
@@ -194,12 +206,18 @@ class Spotify {
             if(topTracks.length > 0) {
                 topTracks.forEach(track => {
                     spotifyFavTrackIds.push(track.id);
+
+                    var artists = [];
+
+                    track.artists.forEach(artist => {
+                        artists.push(artist.name);
+                    });
     
                     spotifyFavTracks.push({
                         id: track.id,
                         artistId: track.artists[0].id,
                         name: track.name,
-                        artistName: track.artists[0].name,
+                        artists: artists,
                         imageURL: track.album.images[0] ? track.album.images[0].url : null,
                     });
                 });
@@ -226,13 +244,19 @@ class Spotify {
             if(tracks.length > 0) {
                 tracks.forEach(track => {
                     let obj = _tracks.find(o => o._id === track.id);
+
+                    var artists = [];
+
+                    track.artists.forEach(artist => {
+                        artists.push(artist.name);
+                    });
             
                     results.push({
                         track: {
                             id: track.id,
                             artistId: track.artists[0].id,
                             name: track.name,
-                            artistName: track.artists[0].name,
+                            artists: artists,
                             imageURL: track.album.images[0] ? track.album.images[0].url : null,
                         },
                         count: obj.count,
@@ -296,12 +320,19 @@ class Spotify {
             
             if(tracks.length > 0) {
                 tracks.forEach(track => {
+
+                    var artists = [];
+
+                    track.artists.forEach(artist => {
+                        artists.push(artist.name);
+                    });
+
                     if(track.name.toLowerCase().includes(searchField)) {
                         results.push({
                             id: track.id,
                             artistId: track.artists[0].id,
                             name: track.name,
-                            artistName: track.artists[0].name,
+                            artists: artists,
                             imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
                         });
                     }
