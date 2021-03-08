@@ -253,19 +253,19 @@ class Spotify {
                     track.artists.forEach(artist => artists.push(artist.name));
 
                     var model = {
-                        id: track.id,
-                        artistId: track.artists[0].id,
-                        name: track.name,
-                        artists: artists,
-                        imageURL: track.album.images[0] ? track.album.images[0].url : null,
+                        track: {
+                            id: track.id,
+                            artistId: track.artists[0].id,
+                            name: track.name,
+                            artists: artists,
+                            imageURL: track.album.images[0] ? track.album.images[0].url : null,
+                        },
+                        count: obj.count
                     };
 
                     if(model.artistId === _trend_artist_id) trend_tracks.push(model);
             
-                    results.push({
-                        track: model,
-                        count: obj.count,
-                    });
+                    results.push(model);
                 }); 
             }
             
@@ -292,17 +292,17 @@ class Spotify {
                     let obj = _artists.find(o => o._id === artist.id);
 
                     var model = {
-                        id: artist.id,
-                        name: artist.name,
-                        imageURL: artist.images[0] != null ? artist.images[0].url : null,
+                        artist: {
+                            id: artist.id,
+                            name: artist.name,
+                            imageURL: artist.images[0] != null ? artist.images[0].url : null,
+                        },
+                        count: obj.count,
                     };
 
                     if(model.id === _trend_artist_id) trend_artist = model;
             
-                    results.push({
-                        artist: model,
-                        count: obj.count,
-                    });
+                    results.push(model);
                 }); 
             }
             
