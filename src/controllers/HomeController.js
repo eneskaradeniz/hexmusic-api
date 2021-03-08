@@ -28,7 +28,7 @@ class HomeController {
             }
 
             console.time('total_fetch_datas');
-            const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas();
+            const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas(access_token, loggedUser.spotifyFavArtists);
             console.timeEnd('total_fetch_datas');
 
             /*console.time('total_test');
