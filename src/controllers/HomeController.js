@@ -26,6 +26,8 @@ class HomeController {
                 });
             }
 
+            await deneme();
+
             console.time('total_test');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
             console.timeEnd('total_test');
@@ -99,6 +101,54 @@ class HomeController {
 module.exports = new HomeController();
 
 // UTILS
+
+async function deneme() {
+    try {
+        console.time('deneme');
+        const _allTracks = User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.trackId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        const _allArtists = User.aggregate([
+            {
+                $match: { 
+                    $and: [
+                        { "listen.isListen": true },
+                        { "listen.trackId": { $ne: null } },
+                        { "listen.artistId": { $ne: null } },
+                        { "permissions.showLive": true },
+                    ]   
+                }
+            },
+            {
+                $group: {
+                    _id: "$listen.artistId",
+                    count: { $sum: 1 },
+                }
+            },
+        ]);
+
+        await Promise.all([_allTracks, _allArtists]);
+        console.timeEnd('deneme');
+    } catch(err) {
+        throw err;
+    }
+}
 
 async function test(access_token, spotifyFavArtists) {
     try {

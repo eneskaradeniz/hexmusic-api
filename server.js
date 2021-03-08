@@ -264,8 +264,7 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
       return firebaseAdmin.sendMulticastNotification(payload); 
     });
 
-    await Promise.all(promisesTR);
-    await Promise.all(promisesEN);
+    await Promise.all([promisesTR, promisesEN]);
   } catch(err) {
     Error({
       file: 'server.js',
