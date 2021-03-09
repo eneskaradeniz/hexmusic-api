@@ -4,6 +4,36 @@ const Spotify = require('../utils/Spotify');
 
 const Error = require('./ErrorController');
 
+const axios = require('axios').default;
+require('dotenv').config();
+
+var encodedData = Buffer.from(process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET).toString('base64');
+var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
+
+async function asd(refresh_token) {
+    try {
+        const refreshBody = querystring.stringify({
+            grant_type: 'refresh_token',
+            refresh_token: refresh_token,
+        });
+
+        const req = axios.post("https://accounts.spotify.com/api/token", 
+        {
+            
+        }, 
+        {
+            headers: {
+                'Authorization': authorizationHeaderString,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(refreshBody),
+            },
+        }
+        )
+    } catch(err) {
+        throw err;
+    }
+}
+
 class HomeController {
 
     // HOME
@@ -25,6 +55,10 @@ class HomeController {
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
                 });
             }
+
+            console.time('asd');
+            await asd(refresh_token);
+            console.timeEnd('asd');
 
             console.time('total_fetch_datas');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas(access_token, loggedUser.spotifyFavArtists);
