@@ -18,7 +18,7 @@ async function asd(refresh_token) {
             refresh_token: refresh_token,
         });
 
-        const req = axios.post("https://accounts.spotify.com/api/token", 
+        const req = await axios.post("https://accounts.spotify.com/api/token", 
         {
             
         }, 
@@ -29,7 +29,9 @@ async function asd(refresh_token) {
                 'Content-Length': Buffer.byteLength(refreshBody),
             },
         }
-        )
+        );
+
+        console.log(req);
     } catch(err) {
         throw err;
     }

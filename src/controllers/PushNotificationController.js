@@ -5,7 +5,7 @@ class PushNotificationController {
     async send({title, body, fcmToken, data, channel_id, notification_type}) {
         if (!body || !fcmToken || !notification_type) return;
         try {
-            axios.post('https://fcm.googleapis.com/fcm/send',
+            await axios.post('https://fcm.googleapis.com/fcm/send',
                 {
                     to: fcmToken,
                     notification: {
