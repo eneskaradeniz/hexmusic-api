@@ -1372,18 +1372,6 @@ async function getMyProfile(loggedId) {
         const promises = await Promise.all([lastTracks, favTracks, favArtists, spotifyFavTracks, spotifyFavArtists]);
         console.timeEnd('spotify_me');
 
-        /*
-            console.time('spotify_me');
-            var allTrackIds = [...new Set([...user.lastTracks, ...user.favTracks, ...user.spotifyFavTracks])];
-            var allArtistIds = [...new Set([...user.favArtists, ...user.spotifyFavArtists])];
-
-            var allTracks = Spotify.getTracks(access_token, allTrackIds);
-            var allArtists = Spotify.getArtists(access_token, allArtistIds);
-
-            const promises = await Promise.all([allTracks, allArtists]);
-            console.timeEnd('spotify_me');
-        */
-
         return {
             user: {
                 _id: user._id,

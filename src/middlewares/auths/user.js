@@ -6,6 +6,7 @@ const User = require('../../models/UserModel');
 const Error = require('../../controllers/ErrorController');
 
 module.exports = async (req, res, next) => {
+    console.time('middleware.user.js');
     try {
         const authHeader = req.headers.authorization;
 
@@ -48,6 +49,7 @@ module.exports = async (req, res, next) => {
             // BÖYLE BİR KULLANICININ OLUP OLMADIĞINI KONTROL ET.
             const id = decoded._id;
 
+            console.time('userExists');
             const userExists = await User.countDocuments({ _id: id });
             if (userExists <= 0) {
                 return res.status(401).json({
@@ -55,6 +57,7 @@ module.exports = async (req, res, next) => {
                     error: 'NOT_FOUND_USER'
                 });
             }
+            console.timeEnd('userExists');
 
             req.bearerToken = token;
             req.tokenInfo = decoded;
@@ -73,5 +76,7 @@ module.exports = async (req, res, next) => {
         return res.status(401).json({
             success: false
         });
+    } finally {
+        console.timeEnd('middleware.user.js');
     }
 }
