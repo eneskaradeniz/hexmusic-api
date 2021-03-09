@@ -3,6 +3,15 @@ const { isEmail } = require('validator');
 
 const UserSchema = mongoose.Schema({
 
+    /*current_play: {
+        track_id: { type: String, default: null },
+        artist_id: { type: String, default: null },
+        is_podcast: { type: Boolean, default: false },
+
+        is_playing: { type: Boolean, default: false },
+        timestamp: { type: Number, default: null },
+    },*/
+
     listen: {
         trackId: { type: String, default: null },
         artistId: { type: String, default: null },

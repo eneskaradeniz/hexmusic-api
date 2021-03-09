@@ -1347,8 +1347,11 @@ async function updateSpotifyRefreshToken(loggedId, refresh_token) {
 
 async function getMyProfile(loggedId) {
     try {
+        console.time('fetch_user');
         const user = await User.findById(loggedId).select('email name photos isVerifed birthday city bio gender socialAccounts lastTracks favTracks favArtists permissions notifications filtering product spotifyFavTracks spotifyFavArtists spotifyRefreshToken');
-    
+        console.timeEnd('fetch_user');
+
+        console.time('refresh_token');
         const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
         if(!access_token) {
             return res.status(401).json({
@@ -1356,7 +1359,9 @@ async function getMyProfile(loggedId) {
                 error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
             });
         }
+        console.timeEnd('fetch_refresh_tokenuser');
 
+        console.time('spotify_me');
         const lastTracks = Spotify.getTracks(access_token, user.lastTracks);
         const favTracks = Spotify.getTracks(access_token, user.favTracks);
         const favArtists = Spotify.getArtists(access_token, user.favArtists);
@@ -1364,7 +1369,6 @@ async function getMyProfile(loggedId) {
         const spotifyFavTracks = Spotify.getTracks(access_token, user.spotifyFavTracks);
         const spotifyFavArtists = Spotify.getArtists(access_token, user.spotifyFavArtists);
 
-        console.time('spotify_me');
         const promises = await Promise.all([lastTracks, favTracks, favArtists, spotifyFavTracks, spotifyFavArtists]);
         console.timeEnd('spotify_me');
 

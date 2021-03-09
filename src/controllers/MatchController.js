@@ -152,6 +152,53 @@ class MatchController {
                 });
             }
 
+            /*
+
+            // EĞER ŞARKI DİNLEMİYORSA BOŞ GÖNDER
+
+            // EĞER DİNLEDİĞİ ŞARKI PODCAST İSE
+            allListeners = await User.find({ 
+                $and: [
+                    { _id: { $ne: loggedId } },
+                    { "permissions.show_live": true },
+                    { "current_play.is_playing": true },
+
+                    { "current_play.track_id": { $eq: loggedUser.current_play.track_id } },
+                    { "current_play.artist_id": { $eq: loggedUser.current_play.artist_id } },
+                    { "current_play.is_podcast": { $eq: loggedUser.current_play.is_podcast } },
+                ],
+            }).select('name photos isVerifed birthday gender listen permissions');
+
+            // EĞER DİNLEDİĞİ ŞARKI TRACK İSE
+
+            // EĞER ARTIST FILTRELEMESİ SEÇİLİ İSE
+            allListeners = await User.find({ 
+                $and: [
+                    { _id: { $ne: loggedId } },
+                    { "permissions.showLive": true },
+                    { "current_play.is_playing": true },
+
+                    { "current_play.track_id": { $ne: null } },
+                    { "current_play.artist_id": { $eq: loggedUser.current_play.artist_id } },
+                    { "current_play.is_podcast": { $eq: false } },
+                ],
+            }).select('name photos isVerifed birthday gender listen permissions');
+
+            // EĞER TRACK FILTRELEMESİ SEÇİLİ İSE
+            allListeners = await User.find({ 
+                $and: [
+                    { _id: { $ne: loggedId } },
+                    { "permissions.show_live": true },
+                    { "current_play.is_playing": true },
+
+                    { "current_play.track_id": { $eq: loggedUser.current_play.track_id } },
+                    { "current_play.artist_id": { $eq: loggedUser.current_play.artist_id } },
+                    { "current_play.is_podcast": { $eq: loggedUser.current_play.is_podcast } },
+                ],
+            }).select('name photos isVerifed birthday gender listen permissions');
+
+            */
+
             // BU MÜZİĞİ DİNLEYEN KULLANICILARI GETİR.
             var allListeners = [];
             if(loggedUser.filtering.artist) {
@@ -212,14 +259,6 @@ class MatchController {
             const loggedId = req._id;
             const loggedUser = await User.findById(loggedId).select('filtering listen spotifyRefreshToken');
 
-            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-            if(!access_token) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-
             // KULLANICIYI BEĞENEN 10 KİŞİYİ ÇEK
             const likes = await Like.find({ to: loggedId }).limit(10);
 
@@ -253,7 +292,7 @@ class MatchController {
             const result = likedUsers.concat(findUsers);
 
             // LİSTEYİ FİLTRLEYECEK
-            const filterResult = await loggedFilter(access_token, loggedUser, result, 'explore');
+            const filterResult = await loggedFilter(null, loggedUser, result, 'explore');
 
             // LİSTEYİ KARIŞTIRACAK
             const shuffleResult = shuffle(filterResult);
@@ -988,7 +1027,9 @@ async function loggedFilter(access_token, loggedUser, users, matchType) {
         if(matchType === 'live') {
             if(loggedUser.filtering.artist) {
                 var trackIds = [];
-                users.forEach(user => trackIds.push(user.listen.trackId));
+                users.forEach(user => {
+                    if(!trackIds.includes(user.listen.trackId)) trackIds.push(user.listen.trackId);
+                });
                 tracks = await Spotify.getTracks(access_token, trackIds);
             } else {
                 let track = await Spotify.getTrack(access_token, loggedUser.listen.trackId);
