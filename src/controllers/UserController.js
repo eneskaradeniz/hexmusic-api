@@ -1357,12 +1357,14 @@ async function getMyProfile(loggedId) {
             });
         }
 
-        const lastTracks = await Spotify.getTracks(access_token, user.lastTracks);
-        const favTracks = await Spotify.getTracks(access_token, user.favTracks);
-        const favArtists = await Spotify.getArtists(access_token, user.favArtists);
+        const lastTracks = Spotify.getTracks(access_token, user.lastTracks);
+        const favTracks = Spotify.getTracks(access_token, user.favTracks);
+        const favArtists = Spotify.getArtists(access_token, user.favArtists);
 
-        const spotifyFavTracks = await Spotify.getTracks(access_token, user.spotifyFavTracks);
-        const spotifyFavArtists = await Spotify.getArtists(access_token, user.spotifyFavArtists);
+        const spotifyFavTracks = Spotify.getTracks(access_token, user.spotifyFavTracks);
+        const spotifyFavArtists = Spotify.getArtists(access_token, user.spotifyFavArtists);
+
+        var promises = await new Promise.all([lastTracks, favTracks, favArtists, spotifyFavTracks, spotifyFavArtists]);
 
         return {
             user: {
@@ -1381,12 +1383,12 @@ async function getMyProfile(loggedId) {
             bio: user.bio,
             socialAccounts: user.socialAccounts,
         
-            lastTracks: lastTracks,
-            favTracks: favTracks,
-            favArtists: favArtists,
+            lastTracks: promises[0],
+            favTracks: promises[1],
+            favArtists: promises[2],
         
-            spotifyFavTracks: spotifyFavTracks,
-            spotifyFavArtists: spotifyFavArtists,
+            spotifyFavTracks: promises[3],
+            spotifyFavArtists: promises[4],
 
             permissions: user.permissions,
             notifications: user.notifications,
