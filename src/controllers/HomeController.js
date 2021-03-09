@@ -57,7 +57,7 @@ class HomeController {
             }
 
             console.time('asd');
-            await asd(refresh_token);
+            await asd(loggedUser.spotifyRefreshToken);
             console.timeEnd('asd');
 
             console.time('total_fetch_datas');

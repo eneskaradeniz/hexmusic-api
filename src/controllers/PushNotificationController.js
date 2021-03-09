@@ -27,7 +27,7 @@ class PushNotificationController {
                         'Authorization': `key=${process.env.FCM_SERVER_TOKEN}`,
                     }
                 }
-            )
+            );W
         } catch (err) {
             throw err;
         }
