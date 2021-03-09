@@ -141,7 +141,7 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         var popularTracks;
         var popularArtists;
 
-        const _trend_artist = await User.aggregate([
+        const _trend_artist = User.aggregate([
             {
                 $match: { 
                     $and: [
