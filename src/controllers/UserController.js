@@ -1346,6 +1346,7 @@ async function updateSpotifyRefreshToken(loggedId, refresh_token) {
 }
 
 async function getMyProfile(loggedId) {
+    console.time('getMyProfile');
     try {
         console.time('fetch_user');
         const user = await User.findById(loggedId).select('email name photos isVerifed birthday city bio gender socialAccounts lastTracks favTracks favArtists permissions notifications filtering product spotifyFavTracks spotifyFavArtists spotifyRefreshToken');
@@ -1406,6 +1407,8 @@ async function getMyProfile(loggedId) {
        
     } catch(err) {
         throw err;
+    } finally {
+        console.timeEnd('getMyProfile');
     }
 }
 
