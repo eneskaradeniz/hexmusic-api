@@ -1359,7 +1359,7 @@ async function getMyProfile(loggedId) {
                 error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
             });
         }
-        console.timeEnd('fetch_refresh_tokenuser');
+        console.timeEnd('refresh_token');
 
         console.time('spotify_me');
         const lastTracks = Spotify.getTracks(access_token, user.lastTracks);
