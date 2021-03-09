@@ -1,10 +1,9 @@
 const User = require('../models/UserModel');
 
 const Spotify = require('../utils/Spotify');
-
 const Error = require('./ErrorController');
 
-const axios = require('axios').default;
+/*const axios = require('axios').default;
 const querystring = require('querystring');
 require('dotenv').config();
 
@@ -36,7 +35,7 @@ async function asd(refresh_token) {
         console.log('HATA');
         console.log(err);
     }
-}
+}*/
 
 class HomeController {
 
@@ -59,18 +58,10 @@ class HomeController {
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
                 });
             }
-
-            console.time('asd');
-            await asd(loggedUser.spotifyRefreshToken);
-            console.timeEnd('asd');
-
+            
             console.time('total_fetch_datas');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas(access_token, loggedUser.spotifyFavArtists);
             console.timeEnd('total_fetch_datas');
-
-            /*console.time('total_test');
-            const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await test(access_token, loggedUser.spotifyFavArtists);
-            console.timeEnd('total_test');*/
 
             return res.status(200).json({
                 success: true,
