@@ -13,6 +13,7 @@ var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
 
 async function asd(refresh_token) {
     try {
+        console.log('refresh_token:', refresh_token);
         const refreshBody = querystring.stringify({
             grant_type: 'refresh_token',
             refresh_token: refresh_token,
@@ -33,7 +34,7 @@ async function asd(refresh_token) {
 
         console.log(req);
     } catch(err) {
-        throw err;
+        console.log(err);
     }
 }
 
