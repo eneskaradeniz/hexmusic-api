@@ -1364,7 +1364,9 @@ async function getMyProfile(loggedId) {
         const spotifyFavTracks = Spotify.getTracks(access_token, user.spotifyFavTracks);
         const spotifyFavArtists = Spotify.getArtists(access_token, user.spotifyFavArtists);
 
+        console.time('spotify_me');
         const promises = await Promise.all([lastTracks, favTracks, favArtists, spotifyFavTracks, spotifyFavArtists]);
+        console.timeEnd('spotify_me');
 
         return {
             user: {
