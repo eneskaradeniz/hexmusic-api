@@ -14,11 +14,6 @@ var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
 async function asd(refresh_token) {
     try {
         console.log('refresh_token:', refresh_token);
-        const refreshBody = querystring.stringify({
-            grant_type: 'refresh_token',
-            refresh_token: refresh_token,
-        });
-
         const req = await axios.post("https://accounts.spotify.com/api/token", 
         {
             
@@ -27,13 +22,18 @@ async function asd(refresh_token) {
             headers: {
                 'Authorization': authorizationHeaderString,
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(refreshBody),
             },
+            params: {
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token,
+            }
         }
         );
 
+        console.log('RESULT');
         console.log(req);
     } catch(err) {
+        console.log('HATA');
         console.log(err);
     }
 }

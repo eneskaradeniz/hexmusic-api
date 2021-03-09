@@ -31,6 +31,7 @@ class Spotify {
         try {
             spotifyApi.setRefreshToken(refresh_token);
             const data = await spotifyApi.refreshAccessToken();
+            console.log(data);
             return data.body['access_token'];   
         } catch(err) {
             if(err.body.error === 'invalid_grant') return null;
