@@ -5,6 +5,7 @@ const Spotify = require('../utils/Spotify');
 const Error = require('./ErrorController');
 
 const axios = require('axios').default;
+const querystring = require('querystring');
 require('dotenv').config();
 
 var encodedData = Buffer.from(process.env.CLIENT_ID + ':' + process.env.CLIENT_SECRET).toString('base64');
@@ -12,7 +13,7 @@ var authorizationHeaderString = 'Authorization: Basic ' + encodedData;
 
 async function asd(refresh_token) {
     try {
-        const refreshBody = JSON.stringify({
+        const refreshBody = querystring.stringify({
             grant_type: 'refresh_token',
             refresh_token: refresh_token,
         });
