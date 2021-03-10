@@ -10,8 +10,12 @@ class HomeController {
     async home(req, res) {
         try {
             const loggedId = req._id;
-            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
 
+            console.time('fetch_user_data');
+            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
+            console.timeEnd('fetch_user_data');
+    
+            console.time('fetch_access_token');
             const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
             if(!access_token) {
                 return res.status(401).json({
@@ -19,8 +23,11 @@ class HomeController {
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
                 });
             }
+            console.timeEnd('fetch_access_token');
             
+            console.time('fetch_datas');
             const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas(access_token, loggedUser.spotifyFavArtists);
+            console.timeEnd('fetch_datas');
 
             return res.status(200).json({
                 success: true,

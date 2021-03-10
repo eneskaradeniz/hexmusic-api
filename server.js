@@ -4,12 +4,15 @@ const cors = require('cors');
 const mongoDB = require('./src/databases/mongodb/index');
 const socketIO = require('socket.io');
 const compression = require("compression");
+const bodyParser = require('body-parser');
+
+/*const os = require('os');
+const cluster = require('cluster');
+const numCpu = os.cpus().length;
+console.log('CPU SAYISI:', numCpu);*/
 
 const shared = require('./src/shared');
-
 const Error = require('./src/controllers/ErrorController');
-
-const bodyParser = require('body-parser');
 
 const path = require('path');
 const crypto = require('crypto');

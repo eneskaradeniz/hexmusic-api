@@ -13,6 +13,13 @@ const middlewares = { user: userMiddleware };
 
 module.exports = (upload) => {
 
+    router.get('/test', (req, res, next) => {
+        res.status(200).json({
+            success: true,
+            message: ('Ok...', process.pid),
+        });
+    });
+
     // AUTH
     router.get('/callback', UserController.callback);
     router.post('/', upload.array('photos', 3), UserController.register);
