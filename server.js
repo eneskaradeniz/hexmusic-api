@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoDB = require('./src/databases/mongodb/index');
 const socketIO = require('socket.io');
+const compression = require("compression");
+
 const shared = require('./src/shared');
 
 const Error = require('./src/controllers/ErrorController');
@@ -15,6 +17,8 @@ const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
 
 const app = express();
+
+app.use(compression);
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
