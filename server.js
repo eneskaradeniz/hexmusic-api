@@ -18,7 +18,7 @@ const GridFsStorage = require('multer-gridfs-storage');
 
 const app = express();
 
-app.use(compression);
+app.use(compression());
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
