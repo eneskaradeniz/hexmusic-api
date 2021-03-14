@@ -34,7 +34,6 @@ const io = socketIO(server);
 server.listen(PORT, async () => {
     console.log("Listening on port", PORT);
     await mongoDB.connect();
-    await test();
 });
 
 //SOCKET.IO CONFIGURATION
