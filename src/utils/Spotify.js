@@ -193,7 +193,7 @@ class Spotify {
                     var artists = [];
                     track.artists.forEach(artist => artists.push(artist.name));
     
-                    spotifyFavTracks.push({
+                    spotify_fav_tracks.push({
                         _id: track.id,
                         name: track.name,
                         artist: track.artists[0].id,
@@ -228,9 +228,9 @@ class Spotify {
 
             if(topArtists.length > 0) {
                 topArtists.forEach(artist => {
-                    spotifyFavArtistIds.push(artist.id);
+                    spotify_fav_artist_ids.push(artist.id);
     
-                    spotifyFavArtists.push({
+                    spotify_fav_artists.push({
                         _id: artist.id,
                         name: artist.name,
                         images: artist.images,
