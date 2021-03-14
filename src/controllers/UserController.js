@@ -184,10 +184,20 @@ class UserController {
             });
 
             const results = await Promise.all([track_promises, artist_promises]);
-            console.log(results[0]);
 
-            const difference_tracks = results[0];
-            const difference_artists = results[1];
+            var difference_tracks = [];
+            results[0].forEach((e) => {
+                difference_tracks = difference_tracks.concat(e);
+            });
+            console.log(difference_tracks);
+
+            console.log('==============');
+
+            var difference_artists = [];
+            results[0].forEach((e) => {
+                difference_artists = difference_artists.concat(e);
+            });
+            console.log(difference_artists);
 
             // FINISH
 
