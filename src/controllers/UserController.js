@@ -166,6 +166,7 @@ class UserController {
             tracks.forEach(e => track_ids.push(e._id));
 
             const difference_track_ids = all_tracks.filter(x => !track_ids.includes(x));
+            console.log(difference_track_ids);
 
             const track_chunks = _.chunk(difference_track_ids, 50);
             const track_promises = await Promise.all(track_chunks.map((ids) => {
@@ -183,6 +184,7 @@ class UserController {
             artists.forEach(e => artist_ids.push(e._id));
 
             const difference_artist_ids = all_artists.filter(x => !artist_ids.includes(x));
+            console.log(difference_artist_ids);
 
             const artist_chunks = _.chunk(difference_artist_ids, 50);
             const artist_promises = await Promise.all(artist_chunks.map((ids) => {
