@@ -450,7 +450,7 @@ class UserController {
                 avatars = user.avatars;
 
                 // USER I SİL
-                await User.deleteOne(logged_id).session(session);
+                await User.deleteOne({ _id: logged_id }).session(session);
 
                 // ENGELLEDİKLERİNİ SİL
                 await BlockedUser.deleteMany({
