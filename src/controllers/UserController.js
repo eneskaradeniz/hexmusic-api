@@ -166,8 +166,11 @@ class UserController {
 
             const track_chunks = _.chunk(difference_track_ids, 50);
             const track_promises = await Promise.all(track_chunks.map((ids) => {
+                console.log(ids);
                 return Spotify.getTracks(access_token, ids);
             }));
+
+            console.log(track_promises);
 
             // ARTISTS
 
@@ -182,8 +185,6 @@ class UserController {
             const artist_promises = await Promise.all(artist_chunks.map((ids) => {
                 return Spotify.getArtists(access_token, ids);
             }));
-
-            console.log(track_promises);
 
             // FINISH
 
