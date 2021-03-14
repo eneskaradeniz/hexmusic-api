@@ -165,9 +165,9 @@ class UserController {
             const difference_track_ids = all_tracks.filter(x => !track_ids.includes(x));
 
             const track_chunks = _.chunk(difference_track_ids, 50);
-            const track_promises = track_chunks.map((ids) => {
+            const track_promises = await Promise.all(track_chunks.map((ids) => {
                 return Spotify.getTracks(access_token, ids);
-            });
+            }));
 
             // ARTISTS
 
@@ -179,25 +179,11 @@ class UserController {
             const difference_artist_ids = all_artists.filter(x => !artist_ids.includes(x));
 
             const artist_chunks = _.chunk(difference_artist_ids, 50);
-            const artist_promises = artist_chunks.map((ids) => {
+            const artist_promises = await Promise.all(artist_chunks.map((ids) => {
                 return Spotify.getArtists(access_token, ids);
-            });
+            }));
 
-            const results = await Promise.all([track_promises, artist_promises]);
-
-            var difference_tracks = [];
-            results[0].forEach((e) => {
-                difference_tracks = difference_tracks.concat(e);
-            });
-            console.log(difference_tracks);
-
-            console.log('==============');
-
-            var difference_artists = [];
-            results[0].forEach((e) => {
-                difference_artists = difference_artists.concat(e);
-            });
-            console.log(difference_artists);
+            console.log(track_promises);
 
             // FINISH
 
