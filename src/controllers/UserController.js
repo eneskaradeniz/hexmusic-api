@@ -155,6 +155,9 @@ class UserController {
             const all_tracks = [...spotify_fav_tracks, ...fav_tracks];
             const all_artists = [...spotify_fav_artists, ...fav_artists];
 
+            console.log('all_tracks:', all_tracks.length);
+            console.log('all_artists:', all_artists.length);
+
             // TRACKS
 
             const tracks = await Track.find({ _id: { $in: all_tracks }}).select('_id').lean();
