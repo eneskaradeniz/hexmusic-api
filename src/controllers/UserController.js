@@ -135,8 +135,8 @@ class UserController {
                 });
             }
             
-            const userExists = await User.countDocuments({ spotify_id: spotify_id });
-            if (userExists > 0) {
+            const user_exists = await User.countDocuments({ spotify_id: spotify_id });
+            if (user_exists > 0) {
                 FileController.deleteImages(avatars);
                 return res.status(200).json({
                     success: false,
@@ -174,7 +174,10 @@ class UserController {
             }));
 
             var difference_tracks = [];
-            track_promises.forEach((e) => { difference_tracks.concat(e); });
+            track_promises.forEach((e) => {
+                console.log(e);
+                difference_tracks.concat(e);
+            });
             console.log(difference_tracks);
 
             console.log('==============');
@@ -195,7 +198,10 @@ class UserController {
             }));
 
             var difference_artists = [];
-            artist_promises.forEach((e) => { difference_artists.concat(e); });
+            artist_promises.forEach((e) => { 
+                console.log(e);
+                difference_artists.concat(e); 
+            });
             console.log(difference_artists);
 
             // FINISH
