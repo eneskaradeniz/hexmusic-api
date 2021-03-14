@@ -152,8 +152,8 @@ class UserController {
                 });
             }
 
-            const all_tracks = [...spotify_fav_tracks, ...fav_tracks];
-            const all_artists = [...spotify_fav_artists, ...fav_artists];
+            const all_tracks = [...new Set(...spotify_fav_tracks, ...fav_tracks)];
+            const all_artists = [...new Set(...spotify_fav_artists, ...fav_artists)];
 
             console.log('all_tracks:', all_tracks.length);
             console.log('all_artists:', all_artists.length);
