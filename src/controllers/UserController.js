@@ -175,12 +175,8 @@ class UserController {
 
             var difference_tracks = [];
             track_promises.forEach((e) => {
-                console.log(e);
-                difference_tracks.concat(e);
+                difference_tracks.push.apply(difference_tracks, e);
             });
-            console.log(difference_tracks);
-
-            console.log('==============');
 
             // ARTISTS
 
@@ -199,10 +195,8 @@ class UserController {
 
             var difference_artists = [];
             artist_promises.forEach((e) => { 
-                console.log(e);
-                difference_artists.concat(e); 
+                difference_artists.push.apply(difference_artists, e);
             });
-            console.log(difference_artists);
 
             // FINISH
 
