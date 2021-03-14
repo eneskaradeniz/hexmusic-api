@@ -184,6 +184,7 @@ class UserController {
             });
 
             const results = await Promise.all([track_promises, artist_promises]);
+            console.log(results[0]);
 
             const difference_tracks = results[0];
             const difference_artists = results[1];
