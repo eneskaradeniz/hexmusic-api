@@ -1,51 +1,55 @@
 const mongoose = require('mongoose');
 
 const MatchSchema = mongoose.Schema({
-    chatId: {
+    chat_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Chat',
         required: true,
     },
     
-    lowerId: {
+    lower_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    higherId: {
+    higher_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
 
-    lowerMatchType: {
+    lower_match_type: {
         type: String,
-        enum : ['live', 'explore', 'likesMe'],
+        enum : ['live', 'explore', 'likes_me'],
+        required: true,
     },
-    higherMatchType: {
+    higher_match_type: {
         type: String,
-        enum : ['live', 'explore', 'likesMe'],
-    },
-
-    lowerLikeType: {
-        type: String,
-        enum : ['like', 'megaLike'],
-    },
-    higherLikeType: {
-        type: String,
-        enum : ['like', 'megaLike'],
+        enum : ['live', 'explore', 'likes_me'],
+        required: true,
     },
 
-    lowerTrackId: {
+    lower_like_type: {
         type: String,
-        default: undefined,
+        enum : ['like', 'mega_like'],
+        required: true,
     },
-    higherTrackId: {
+    higher_like_type: {
         type: String,
-        default: undefined,
+        enum : ['like', 'mega_like'],
+        required: true,
     },
 
-    createdAt: {
+    lower_track: {
+        type: String,
+        ref: 'Track',
+    },
+    higher_track: {
+        type: String,
+        ref: 'Track',
+    },
+
+    created_at: {
         type: Number,
         default: Date.now
     }

@@ -16,78 +16,97 @@ const Language = require('../utils/Language');
 
 const Error = require('./ErrorController');
 
-class MatchController {
+const Track = require('../models/TrackModel');
+const Artist = require('../models/ArtistModel');
 
-    // MATCH
+class MatchController {
 
     async start_music(req, res) {
         const session = await db.startSession();
 
         try {
-            const loggedId = req._id;
-            const { trackId, artistId } = req.body;
-            if(!trackId || !artistId) {
+            const logged_id = req._id;
+            const { id, is_podcast } = req.body;
+            if(id === null || is_podcast === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            var user;
             var track;
-      
-            const transactionResults = await session.withTransaction(async () => {
-               
-                user = await User.findById(loggedId).select('listen lastTracks permissions spotifyRefreshToken').session(session);
+            var artist;
 
-                // GELEN MÜZİĞİN BİLGİLERİNİ ÇEK.
-                const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
-                if(!access_token) return;
-
-                track = await Spotify.getTrack(access_token, trackId);
-
-                // DİNLEDİĞİ MÜZİĞİ GÜNCELLE
-                user.listen = {
-                    trackId: trackId,
-                    artistId: artistId,
-
-                    isListen: true,
-                    timestamp: Date.now(),
+            const find_track = await Track.findById(id).lean();
+            if(find_track) {
+                if(find_track.is_podcast !== is_podcast) {
+                    return res.status(200).json({
+                        success: false,
+                        error: 'INVALID_TRACK',
+                    });
                 }
 
-                // SON DİNLEDİKLERİME EKLE
-                if(user.lastTracks.length > 0) {
-                    if(user.lastTracks[0] !== trackId) {
-                        // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
-                        if(user.lastTracks.length >= 10) user.lastTracks.pop();
-                        user.lastTracks.unshift(trackId);
-                    }
-                } else {
-                    // LİSTEDE HİÇ ELEMAN YOK EKLE
-                    user.lastTracks.unshift(trackId);
-                }
-
-                // KAYDET
-                await user.save();
-            });
-
-            if(transactionResults) {
-                // BU MÜZİĞİ DİNLEYEN KULLANICILARI BUL UYGUN OLANLARA GÖNDER (EĞER KULLANICI SHOWLIVE KAPATTI İSE GÖNDERME)
-                if(user.permissions.showLive) findListenersForTarget(loggedId, track);
-
-                console.log('müzik dinliyor:', loggedId, 'trackname:', track.name, 'trackid:', track.id);
-
-                return res.status(200).json({
-                    success: true,
-                    track,
-                });                
+                track = find_track;
             } else {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                const logged_user = await User.findById(logged_id).select('spotify_refresh_token').lean();
+                const access_token = await Spotify.refreshAccessToken(logged_user.spotify_refresh_token);
+                if(!access_token) {
+                    return res.status(401).json({
+                        success: false,
+                        error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                    });
+                }
+
+                track = is_podcast ? await Spotify.getPodcast(access_token, id) : await Spotify.getTrack(access_token, id);
+
+                if(!is_podcast) {
+                    const find_artist = await Artist.countDocuments({ _id: track.artist });
+                    if(!find_artist) {
+                        artist = await Spotify.getArtist(access_token, track.artist);
+                    }
+                }
+
+                await session.withTransaction(async () => {
+                    const trackExits = await Track.countDocuments({ _id: track._id }).session(session);
+                    if(trackExits == 0) {
+                        await Track.create([{
+                            _id: track._id,
+                            name: track.name,
+                            artist: track.artist,
+                            artists: track.artists,
+                            album_name: track.album_name,
+                            album_images: track.album_images,
+                            is_podcast: track.is_podcast,
+                        }], { session: session });
+                    }
+                    
+                    if(artist) {
+                        const artistExits = await Artist.countDocuments({ _id: artist._id }).session(session);
+                        if(artistExits == 0) {
+                            await Artist.create([{
+                                _id: artist._id,
+                                name: artist.name,
+                                images: artist.images,
+                            }], { session: session });
+                        }
+                    }
                 });
             }
-        } catch (err) {
+
+            await updateCurrentPlay(logged_id, {
+                track: track._id,
+                artist: track.artist,
+                is_playing: true,
+                timestamp: Date.now(),
+            });
+
+            findListenersForTarget(logged_id, track);
+
+            return res.status(200).json({
+                success: true,
+                track: track,
+            }); 
+        } catch(err) {
             Error({
                 file: 'MatchController.js',
                 method: 'start_music',
@@ -105,24 +124,18 @@ class MatchController {
     }
 
     async stop_music(req, res) {
-        const session = await db.startSession();
-
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
 
-            await session.withTransaction(async () => {
-                await User.findByIdAndUpdate(loggedId, {
-                    "listen.isListen": false,
-                    "listen.timestamp": Date.now(),
-                }).session(session);
+            await updateCurrentPlay(logged_id, {
+                is_playing: false,
+                timestamp: Date.now(),
             });
-
-            console.log("müzik dinlemiyor:", loggedId);
 
             return res.status(200).json({
                 success: true
             });
-        } catch (err) {
+        } catch(err) {
             Error({
                 file: 'MatchController.js',
                 method: 'stop_music',
@@ -134,105 +147,49 @@ class MatchController {
             return res.status(400).json({
                 success: false
             });
-        } finally {
-            session.endSession();
         }
     }
 
     async live(req, res) {
         try {
-            const loggedId = req._id;
-            const loggedUser = await User.findById(loggedId).select('filtering listen spotifyRefreshToken');
+            const logged_id = req._id;
+            const logged_user = await User.findById(logged_id).select('filtering current_play').populate('current_play.track').lean();
 
-            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-            if(!access_token) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
+            var users = [];
+
+            if(logged_user.filtering.artist) {
+                users = await User.find({
+                    $and: [
+                        { _id: { $ne: logged_id } },
+                        { "permissions.show_live": true },
+                        { "current_play.is_playing": true },
+                        { "current_play.artist": logged_user.current_play.artist },
+                    ]
+                })
+                .select('display_name avatars verified birthday gender permissions current_play')
+                .populate('current_play.track')
+                .lean();
+            } else {
+                users = await User.find({
+                    $and: [
+                        { _id: { $ne: logged_id } },
+                        { "permissions.show_live": true },
+                        { "current_play.is_playing": true },
+                        { "current_play.track": logged_user.current_play.track },
+                    ]
+                })
+                .select('display_name avatars verified birthday gender permissions current_play')
+                .lean();
             }
 
-            /*
-
-            // EĞER ŞARKI DİNLEMİYORSA BOŞ GÖNDER
-
-            // EĞER DİNLEDİĞİ ŞARKI PODCAST İSE
-            allListeners = await User.find({ 
-                $and: [
-                    { _id: { $ne: loggedId } },
-                    { "permissions.show_live": true },
-                    { "current_play.is_playing": true },
-
-                    { "current_play.track_id": { $eq: loggedUser.current_play.track_id } },
-                    { "current_play.artist_id": { $eq: loggedUser.current_play.artist_id } },
-                    { "current_play.is_podcast": { $eq: loggedUser.current_play.is_podcast } },
-                ],
-            }).select('name photos isVerifed birthday gender listen permissions');
-
-            // EĞER DİNLEDİĞİ ŞARKI TRACK İSE
-
-            // EĞER ARTIST FILTRELEMESİ SEÇİLİ İSE
-            allListeners = await User.find({ 
-                $and: [
-                    { _id: { $ne: loggedId } },
-                    { "permissions.showLive": true },
-                    { "current_play.is_playing": true },
-
-                    { "current_play.track_id": { $ne: null } },
-                    { "current_play.artist_id": { $eq: loggedUser.current_play.artist_id } },
-                    { "current_play.is_podcast": { $eq: false } },
-                ],
-            }).select('name photos isVerifed birthday gender listen permissions');
-
-            // EĞER TRACK FILTRELEMESİ SEÇİLİ İSE
-            allListeners = await User.find({ 
-                $and: [
-                    { _id: { $ne: loggedId } },
-                    { "permissions.show_live": true },
-                    { "current_play.is_playing": true },
-
-                    { "current_play.track_id": { $eq: loggedUser.current_play.track_id } },
-                    { "current_play.artist_id": { $eq: loggedUser.current_play.artist_id } },
-                    { "current_play.is_podcast": { $eq: loggedUser.current_play.is_podcast } },
-                ],
-            }).select('name photos isVerifed birthday gender listen permissions');
-
-            */
-
-            // BU MÜZİĞİ DİNLEYEN KULLANICILARI GETİR.
-            var allListeners = [];
-            if(loggedUser.filtering.artist) {
-                allListeners = await User.find({ 
-                    $and: [
-                        { "permissions.showLive": true },
-                        { "listen.isListen": true },
-                        { "listen.artistId": { $eq: loggedUser.listen.artistId } },
-                        { _id: { $ne: loggedId } },
-                    ],
-                }).select('name photos isVerifed birthday gender listen permissions');
-            } else {
-                allListeners = await User.find({ 
-                    $and: [
-                        { "permissions.showLive": true },
-                        { "listen.isListen": true },
-                        { "listen.trackId": { $eq: loggedUser.listen.trackId } },
-                        { _id: { $ne: loggedId } },
-                    ],
-                }).select('name photos isVerifed birthday gender listen permissions');
-            } 
-
-            // LOGGED A UYGUN FİLTRELEMEYİ YAP VE O KULLANICILARI GÖNDER.
-            const users = await loggedFilter(access_token, loggedUser, allListeners, 'live');
-
-            // BU KULLANICILAR İÇERİSİNDE PREMİUM PLUS OLANDAN OLMAYANLARA DOĞRU SIRALA
-            const sortResult = sortByPremiumPlus(users);
+            const filter = await loggedFilter(logged_user, users, 'live');
+            const sortResult = sortByPremiumPlus(filter);
 
             return res.status(200).json({
                 success: true,
                 users: sortResult,
             });
-
-        } catch (err) {
+        } catch(err) {
             Error({
                 file: 'MatchController.js',
                 method: 'live',
@@ -247,85 +204,12 @@ class MatchController {
         }
     }
 
-    async explore(req, res) {
-        
-        // KULLANICIYI BEĞENEN MAX 10 KULLANICI ÇEK (PERMISSON.SHOWEXPLORE TRUE OLANLARI ÇEK)
-        // 50 - GELEN KULLANICI KADAR DB DEN KULLANICI ÇEK (PERMISSON.SHOWEXPLORE TRUE OLANLARI ÇEK)
-        // LOGGED A UYGUN OLACAK ŞEKİLDE FİLTRELE PREMIUM ISE PREMIUM A GÖRE FİLTRELE (BU İŞLEMLERİ YAPARKEN MÜZİK ZEVK ORANLARINI DA HESAPLA)
-        // LİSTEYİ KARIŞTIR
-        // BU LİSTEYİ PREMİUM KULLANICILARDAN FREEYE DOĞRU SIRALA
-
-        try {
-            const loggedId = req._id;
-            const loggedUser = await User.findById(loggedId).select('filtering listen spotifyRefreshToken');
-
-            // KULLANICIYI BEĞENEN 10 KİŞİYİ ÇEK
-            const likes = await Like.find({ to: loggedId }).limit(10);
-
-            var likedUsers = [];
-            var likedUserIds = [];
-
-            // EĞER KULLANICIYI BEĞENEN VARSA O KULLANICILARIN BİLGİLERİNİ ÇEKİP LİSTEYE AKTAR
-            if(likes.length > 0) {
-                likedUsers = await User.find({
-                    $and: [
-                        { "permissions.showExplore": true },
-                        { _id: { $in: likes } },
-                    ],  
-                }).select('name photos isVerifed birthday gender listen permissions');
-
-                likedUsers.forEach(user => {
-                    likedUserIds.push(user._id);
-                });
-            }
-
-            // ŞİMDİ KEŞFET İÇİN KULLANICI BUL
-            const findUsers = await User.find({
-                $and: [
-                    { "permissions.showExplore": true },
-                    { _id: { $ne: loggedId } },
-                    { _id: { $nin: likedUserIds }},
-                ],  
-            }).limit(50 - likedUsers.length).select('name photos isVerifed birthday gender listen permissions');
-
-            // İKİ LİSTEYİ BİRLEŞTİR
-            const result = likedUsers.concat(findUsers);
-
-            // LİSTEYİ FİLTRLEYECEK
-            const filterResult = await loggedFilter(null, loggedUser, result, 'explore');
-
-            // LİSTEYİ KARIŞTIRACAK
-            const shuffleResult = shuffle(filterResult);
-
-            // LİSTEYİ PREMİUM PLUSDAN FREE YE DOĞRU SIRALAYACAK
-            const sortResult = sortByPremiumPlus(shuffleResult);
-
-            return res.status(200).json({
-                success: true,
-                users: sortResult,
-            });
-
-        } catch (err) {
-            Error({
-                file: 'MatchController.js',
-                method: 'explore',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
     async likes_me(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
 
             // KULLANICININ PREMIUM_PLUS OLUP OLMADIĞINI KONTROL ET
-            const loggedUser = await User.findById(loggedId).select('product spotifyRefreshToken');
+            const loggedUser = await User.findById(logged_id).select('product spotifyRefreshToken');
             if(loggedUser.product !== 'premium_plus') {
                 return res.status(200).json({
                     success: false,
@@ -336,7 +220,7 @@ class MatchController {
             var users = [];
 
             // KULLANICIYI BEĞENEN KULLANICILARI GETİR
-            const beniBegenenler = await Like.find({ to: loggedId }).populate('from', 'name photos isVerifed birthday permissions');
+            const beniBegenenler = await Like.find({ to: logged_id }).populate('from', 'name photos isVerifed birthday permissions');
             if(beniBegenenler.length === 0) {
                 return res.status(200).json({
                     success: true,
@@ -345,14 +229,14 @@ class MatchController {
             }
     
             // KULLANICIYI BEĞENENLERİN IDLERINI LİSTEYE AKTAR
-            var userIds = [];
+            var user_ids = [];
 
             beniBegenenler.forEach(like => {
-                userIds.push(like.from._id);
+                user_ids.push(like.from._id);
             });
 
             // KULLANICIYI BEĞENENLERDE DİSLİKE ATTIĞIM VARSA ÇIKAR LİSTEDEN.
-            const dislikeAttiklarim = await Dislike.find({ from: loggedId, to: { $in: userIds } });
+            const dislikeAttiklarim = await Dislike.find({ from: logged_id, to: { $in: user_ids } });
             var result = beniBegenenler;
 
             if(dislikeAttiklarim.length > 0) {
@@ -361,29 +245,11 @@ class MatchController {
            
             // HEPSİNİ SIRAYLA TARA MATCH TYPE I LIVE OLANLARIN SPOTİFYDAN MÜZİK BİLGİLERİNİ ÇEK VE LİSTEYE EKLE
             if(result.length > 0) {
-
-                const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-                if(!access_token) {
-                    return res.status(401).json({
-                        success: false,
-                        error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                    });
-                }
-
-                var trackIds = [];
-
-                result.forEach(like => {
-                    if(like.trackId != null) trackIds.push(like.trackId);
-                });
-
-                var tracks = await Spotify.getTracks(access_token, trackIds);
             
                 for(const like of result) {
                     let track;
                     if(like.trackId != null) track = tracks.find(x => x.id === like.trackId);
 
-                    const percentage = await calculatePercentage(loggedId, like.from._id);
-                    
                     users.push({
                         user: {
                             _id: like.from._id,
@@ -393,7 +259,7 @@ class MatchController {
                         },
                         birthday: like.from.permissions.showAge ? like.from.birthday : null,
                         track: track,
-                        percentage: percentage,
+                        percentage: 0,
                     });
                 }
             }
@@ -420,22 +286,22 @@ class MatchController {
 
     async like(req, res) {
         try {
-            const loggedId = req._id;
-            const targetId = req.params.userId;
-            const { likeType, matchType, trackId } = req.body;
-            if(!targetId || !likeType || !matchType) {
+            const logged_id = req._id;
+            const target_id = req.params.user_id;
+            const { like_type, match_type, track_id } = req.body;
+            if(target_id === null || like_type === null || match_type === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
-            if(matchType == 'live' && !trackId) {
+            if(match_type == 'live' && track_id === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
-            if(loggedId.toString() == targetId.toString()) {
+            if(logged_id.toString() == target_id.toString()) {
                 return res.status(200).json({
                     success: false,
                     error: 'SAME_USER',
@@ -443,18 +309,18 @@ class MatchController {
             }
 
             // LIKE HAKKINI KONTROL ET
-            const { isNotFree, canLike, updateCounts } = await canSendLike(loggedId, likeType);
+            const { is_not_free, can_like, update_counts } = await canSendLike(logged_id, like_type);
 
-            if(canLike) {
+            if(can_like) {
                 // İŞLEMLERİ BAŞLAT
                 _like({
-                    loggedId,
-                    targetId,
-                    likeType,
-                    matchType,
-                    trackId,
-                    isNotFree,
-                    updateCounts,
+                    logged_id,
+                    target_id,
+                    like_type,
+                    match_type,
+                    track_id,
+                    is_not_free,
+                    update_counts,
                 });
 
                 return res.status(200).json({
@@ -463,8 +329,8 @@ class MatchController {
             } else {
                 return res.status(200).json({
                     success: false,
-                    adsCount: updateCounts.ads,
-                    error: likeType === 'like' ? 'NOT_ENOUGH_LIKE' : 'NOT_ENOUGH_MEGALIKE'
+                    ad_count: update_counts.ad,
+                    error: like_type === 'like' ? 'NOT_ENOUGH_LIKE' : 'NOT_ENOUGH_MEGALIKE'
                 });
             }
         } catch (err) {
@@ -485,7 +351,7 @@ class MatchController {
     async dislike(req, res) {
         try {
             const loggedId = req._id;
-            const targetId = req.params.userId;
+            const targetId = req.params.user_id;
             if(!targetId) {
                 return res.status(200).json({
                     success: false,
@@ -527,7 +393,7 @@ class MatchController {
 
         try {
             const loggedId = req._id;
-            const targetId = req.params.userId;
+            const targetId = req.params.user_id;
             const { type } = req.body;
             if(!targetId || !type) {
                 return res.status(200).json({
@@ -636,7 +502,7 @@ module.exports = new MatchController();
 
 // NEWS
 
-async function _like({ loggedId, targetId, likeType, matchType, trackId, isNotFree, updateCounts }) {
+async function _like({ logged_id, target_id, like_type, match_type, track_id, is_not_free, update_counts }) {
 
     // KULLANICININ BEĞENİ HAKKININ OLUP OLMADIĞINI KONTROL ET
     // EĞER YOKSA UYARI VER.
@@ -663,170 +529,154 @@ async function _like({ loggedId, targetId, likeType, matchType, trackId, isNotFr
     const session = await db.startSession();
 
     try {
-        // ACCESS_TOKEN I GETİR VE KONTROL ET
-        const loggedUser = await User.findById(loggedId).select('spotifyRefreshToken');
-        const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-        if(!access_token) return;
+        const lower_id = logged_id < target_id ? logged_id : target_id;
+        const higher_id = logged_id > target_id ? logged_id : target_id;
 
-        const lowerId = loggedId < targetId ? loggedId : targetId;
-        const higherId = loggedId > targetId ? loggedId : targetId;
-
-        const isLower = loggedId === lowerId;
+        const is_lower = logged_id === lower_id;
 
         // KONTROLLER YAPILACAK
-        const result = await doChecks({ loggedId, targetId, isLower });
+        const result = await doChecks({ logged_id, target_id, is_lower });
         if(!result) return;
 
-        var targetLike;
+        var target_like;
         var chat;
         var match;
 
         await session.withTransaction(async () => {
 
             // TARGET IN LIKE ATIP ATMADIĞINI KONTROL ET
-            targetLike = await Like.findOne({ from: targetId, to: loggedId }).session(session);
+            target_like = await Like.findOne({ from: target_id, to: logged_id }).session(session);
 
-            if(targetLike) {
+            if(target_like) {
             
                 // İKİ KULLANICIYI EŞLEŞTİR
 
-                var chatId = ObjectId();
-                var matchId = ObjectId();
+                var chat_id = ObjectId();
+                var match_id = ObjectId();
     
                 // CHATI OLUŞTUR
                 await Chat.create([{
-                    _id: chatId,
-                    matchId,
-                    lowerId,
-                    higherId,
+                    _id: chat_id,
+                    match_id,
+                    lower_id,
+                    higher_id,
                 }], { session: session });
     
                 // CHATI GETIR
-                const newChat = await Chat.findById(chatId)
-                    .populate('lowerId', 'name photos isVerifed')
-                    .populate('higherId', 'name photos isVerifed')
+                const new_chat = await Chat.findById(chat_id)
+                    .populate('lower_id', 'display_name avatars verified')
+                    .populate('higher_id', 'display_name avatars verified')
                     .session(session);
     
                 // LOWER VE HIGHER İÇİN CHATLERI OLUŞTUR
-                chat = generateChats(newChat);
+                chat = generateChats(new_chat);
     
                 // MATCHI OLUŞTUR
-                const lowerLikeType = isLower ? likeType : targetLike.likeType;
-                const higherLikeType = isLower ? targetLike.likeType : likeType;
+                const lower_like_type = is_lower ? like_type : target_like.like_type;
+                const higher_like_type = is_lower ? target_like.like_type : like_type;
 
-                const lowerMatchType = isLower ? matchType : targetLike.matchType;
-                const higherMatchType = isLower ? targetLike.matchType : matchType;
+                const lower_match_type = is_lower ? match_type : target_like.match_type;
+                const higher_match_type = is_lower ? target_like.match_type : match_type;
 
-                const lowerTrackId = isLower ? trackId : targetLike.trackId;
-                const higherTrackId = isLower ? targetLike.trackId : trackId;
+                const lower_track = is_lower ? track_id : target_like.track;
+                const higher_track = is_lower ? target_like.track : track_id;
 
                 await Match.create([{
-                    _id: matchId,
-                    chatId,
-                    lowerId,
-                    higherId,
-                    lowerLikeType,
-                    higherLikeType,
-                    lowerMatchType,
-                    higherMatchType,
-                    lowerTrackId,
-                    higherTrackId,
+                    _id: match_id,
+                    chat_id,
+                    lower_id,
+                    higher_id,
+                    lower_like_type,
+                    higher_like_type,
+                    lower_match_type,
+                    higher_match_type,
+                    lower_track,
+                    higher_track,
                 }], { session: session });
     
                 // MATCHI GETIR
-                const newMatch = await Match.findById(matchId)
-                    .populate('lowerId', 'name photos isVerifed')
-                    .populate('higherId', 'name photos isVerifed')
+                const new_match = await Match.findById(match_id)
+                    .populate('lower_id', 'display_name avatars verified')
+                    .populate('higher_id', 'display_name avatars verified')
+                    .populate('lower_track')
+                    .populate('higher_track')
                     .session(session);
     
-                // MATCHDE TRACKLAR VARSA ONLARIN BILGILERINI ÇEK
-                if(newMatch.lowerTrackId) 
-                    newMatch.lowerTrackId = await Spotify.getTrack(access_token, newMatch.lowerTrackId);
-
-                if(newMatch.higherTrackId) 
-                    newMatch.higherTrackId = await Spotify.getTrack(access_token, newMatch.higherTrackId);
-    
                 // LOWER VE HIGHER IÇIN MATCHLARI OLUŞTUR
-                match = generateMatchs(newMatch, chatId);
+                match = generateMatchs(new_match, chat_id);
     
                 // LOGGEDIN LIKE HAKKINI GÜNCELLE
-                switch(likeType) {
+                switch(like_type) {
                     case 'like':
-                        if(!isNotFree) {
-                            // LIKE HAKKINDAN BİR EKSİLT
-                            await User.findByIdAndUpdate(loggedId, { 'counts.like': updateCounts.like }).session(session); 
-                        }
+                        if(!is_not_free) 
+                            await User.updateOne({ _id: logged_id }, { 'counts.like': update_counts.like }).session(session); 
                         break;
                     case 'megaLike':
-                        // MEGA LIKE HAKKINDAN BİR EKSİLT
-                        await User.findByIdAndUpdate(loggedId, { 'counts.megaLike': updateCounts.megaLike }).session(session); 
+                        await User.updateOne({ _id: logged_id }, { 'counts.mega_like': update_counts.mega_like }).session(session); 
                         break;
                 }
                 
                 // TARGETIN LIKE'INI SIL
-                await Like.findOneAndDelete({ from: targetId, to: loggedId }).session(session);
+                await Like.deleteOne({ from: target_id, to: logged_id }).session(session);
 
             } else {
 
                 // LIKE AT
                 await Like.create([{
-                    from: loggedId,
-                    to: targetId,
-                    likeType: likeType,
-                    matchType: matchType,
-                    trackId: trackId,
+                    from: logged_id,
+                    to: target_id,
+                    like_type: like_type,
+                    match_type: match_type,
+                    track: track_id,
                 }], { session: session });
 
                 // LOGGEDIN LIKE HAKKINI GÜNCELLE
-                switch(likeType) {
+                switch(like_type) {
                     case 'like':
-                        if(!isNotFree) {
-                            // LIKE HAKKINDAN BİR EKSİLT
-                            await User.findByIdAndUpdate(loggedId, { 'counts.like': updateCounts.like }).session(session); 
-                        }
+                        if(!is_not_free) 
+                            await User.updateOne({ _id: logged_id }, { 'counts.like': update_counts.like }).session(session); 
                         break;
                     case 'megaLike':
-                        // MEGA LIKE HAKKINDAN BİR EKSİLT
-                        await User.findByIdAndUpdate(loggedId, { 'counts.megaLike': updateCounts.megaLike }).session(session); 
+                        await User.updateOne({ _id: logged_id }, { 'counts.mega_like': update_counts.mega_like }).session(session); 
                         break;
                 }
             }
         });
 
-        if(targetLike) {
+        if(target_like) {
             // SOCKETLERE GEREKLI BILGILERI GÖNDER
-            const findLowerUser = shared.users.find(x => x.userId === lowerId);
-            if(findLowerUser) {
-                findLowerUser.socket.emit('new_match', {
-                    chat: chat.lowerChat,
-                    newMatch: match.lowerMatch,
+            const find_lower_user = shared.users.find(x => x.user_id === lower_id);
+            if(find_lower_user) {
+                find_lower_user.socket.emit('new_match', {
+                    chat: chat.lower_chat,
+                    new_match: match.lower_match,
                 });
             }
 
-            const findHigherUser = shared.users.find(x => x.userId === higherId);
+            const findHigherUser = shared.users.find(x => x.user_id === higher_id);
             if(findHigherUser) {
                 findHigherUser.socket.emit('new_match', {
-                    chat: chat.higherChat,
-                    newMatch: match.higherMatch,
+                    chat: chat.higher_chat,
+                    new_match: match.higher_match,
                 });
             }
 
             // IKI TARAFADA BILDIRIM GÖNDER
-            pushMatchNotification({ lowerId: lowerId, higherId: higherId });
+            pushMatchNotification({ lowerId: lower_id, higherId: higher_id });
         } else {
 
             // TARGET A BİLDİRİM GÖNDER
-            switch(likeType) {
+            switch(like_type) {
                 case 'like':
                     pushLikeNotification({
-                        from: loggedId,
-                        to: targetId,
+                        from: logged_id,
+                        to: target_id,
                     });
                     break;
-                case 'megaLike':
+                case 'mega_like':
                     pushMegaLikeNotification({
-                        from: loggedId,
-                        to: targetId,
+                        from: logged_id,
+                        to: target_id,
                     });
                     break;
             }
@@ -876,27 +726,58 @@ async function _dislike({ loggedId, targetId }) {
 
 // UTILS
 
-function shuffle(array) {
-    var currentIndex = array.length, temporaryValue, randomIndex;
-  
-    // While there remain elements to shuffle...
-    while (0 !== currentIndex) {
-  
-      // Pick a remaining element...
-      randomIndex = Math.floor(Math.random() * currentIndex);
-      currentIndex -= 1;
-  
-      // And swap it with the current element.
-      temporaryValue = array[currentIndex];
-      array[currentIndex] = array[randomIndex];
-      array[randomIndex] = temporaryValue;
-    }
-  
-    return array;
+function generateChats(chat) {
+    const lower_chat = {
+        _id: chat._id,
+        user: chat.higher_id,
+
+        last_message: chat.last_message,
+
+        read: chat.lower_read,
+        created_at: chat.created_at,
+    };
+
+    const higher_chat = {
+        _id: chat._id,
+        user: chat.lower_id,
+
+        last_message: chat.last_message,
+
+        read: chat.higher_read,
+        created_at: chat.created_at,
+    };
+    
+    return { lower_chat, higher_chat };
 }
 
-function sortByPremiumPlus(array) {
-    return array.sort((a, b) => (a.product === "premium_plus" && b.product === "premium_plus") ? 0 : a.product === "premium_plus" ? -1 : 1);
+function generateMatchs(match, chat_id) {
+    const lower_chat_screen = {
+        chat_id: chat_id,
+        to: match.lower_id._id,
+        user: match.higher_id,
+    };
+
+    const higher_chat_screen = {
+        chatId: chat_id,
+        to: match.higher_id._id,
+        user: match.lower_id,
+    };
+
+    const lower_match = {
+        user: match.higher_id,
+        chat_screen: lower_chat_screen,
+        logged_like_type: match.lower_like_type,
+        target_like_type: match.higher_like_type,
+    };
+
+    const higher_match = {
+        user: match.lower_id,
+        chat_screen: higher_chat_screen,
+        logged_like_type: match.higher_like_type,
+        target_like_type: match.lower_like_type,
+    };
+    
+    return { lower_match, higher_match };
 }
 
 function calculateAge(timestamp) {
@@ -906,278 +787,104 @@ function calculateAge(timestamp) {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
-function generateChats(chat) {
-    const lowerChat = {
-        _id: chat._id,
-        user: chat.higherId,
-
-        lastMessage: chat.lastMessage,
-
-        read: chat.lowerRead,
-        createdAt: chat.createdAt,
-    };
-
-    const higherChat = {
-        _id:  chat._id,
-        user: chat.lowerId,
-
-        lastMessage: chat.lastMessage,
-
-        read: chat.higherRead,
-        createdAt: chat.createdAt,
-    };
-    
-    return { lowerChat, higherChat };
+function sortByPremiumPlus(array) {
+    return array.sort((a, b) => (a.product === "premium_plus" && b.product === "premium_plus") ? 0 : a.product === "premium_plus" ? -1 : 1);
 }
 
-function generateMatchs(match, chatId) {
-    const lowerChatScreen = {
-        chatId: chatId,
-        to: match.lowerId._id,
-        user: match.higherId,
-    };
+async function updateCurrentPlay(logged_id, current_play) {
+    const session = db.startSession();
 
-    const higherChatScreen = {
-        chatId: chatId,
-        to: match.higherId._id,
-        user: match.lowerId,
-    };
-
-    const lowerMatch = {
-        user: match.higherId,
-        chatScreen: lowerChatScreen,
-        loggedLikeType: match.lowerLikeType,
-        targetLikeType: match.higherLikeType,
-    };
-
-    const higherMatch = {
-        user: match.lowerId,
-        chatScreen: higherChatScreen,
-        loggedLikeType: match.higherLikeType,
-        targetLikeType: match.lowerLikeType,
-    };
-    
-    return { lowerMatch, higherMatch };
-}
-
-async function canSendLike(loggedId, likeType) {
     try {
-        const loggedUser = await User.findById(loggedId).select('counts product');
-
-        const isNotFree = loggedUser.product !== 'free' ? true : false;
-        var updateCounts = loggedUser.counts;
-        var canLike;
-        
-        switch(likeType) {
-            case 'like':
-                if(isNotFree) canLike = true;
-                else {
-                    canLike = updateCounts.like > 0;
-                    if(canLike) updateCounts.like--;
-                }
-                break;
-            case 'megaLike':
-                canLike = updateCounts.megaLike > 0;
-                if(canLike) updateCounts.megaLike--;
-                break;
-        }
-
-        return { isNotFree, canLike, updateCounts };
-    
-    } catch (err) {
-        throw err;
-    }
-}
-
-async function doChecks({ loggedId, targetId, isLower }) {
-    try {
-        let loggedLike = await Like.countDocuments({ from: loggedId, to: targetId });
-        if(loggedLike > 0) return false;
-
-        let loggedDislike = await Dislike.countDocuments({ from: loggedId, to: targetId });
-        if(loggedDislike > 0) return false;
-
-        let findMatch = await Match.countDocuments({$and: [{lowerId: isLower ? loggedId : targetId }, {higherId: isLower ? targetId : loggedId}]});
-        if(findMatch > 0) return false;
-
-        return true;
-    } catch (err) {
-        throw err;
-    }
-}
-
-async function getMatch({ loggedId, targetId }) {
-    try {
-        const lowerId = loggedId < targetId ? loggedId : targetId;
-        const higherId = loggedId > targetId ? loggedId : targetId;
-
-        const findMatch = await Match.countDocuments({ lowerId, higherId });
-        return findMatch > 0 ? true : false;
-    } catch (e){
-        throw e;
-    }
-}
-
-async function loggedFilter(access_token, loggedUser, users, matchType) {
-    try {
-        var filterUsers = [];
-        if(users.length === 0) return filterUsers;
-    
-        var tracks = [];
-        if(matchType === 'live') {
-            if(loggedUser.filtering.artist) {
-                var trackIds = [];
-                users.forEach(user => {
-                    if(!trackIds.includes(user.listen.trackId)) trackIds.push(user.listen.trackId);
-                });
-                tracks = await Spotify.getTracks(access_token, trackIds);
-            } else {
-                let track = await Spotify.getTrack(access_token, loggedUser.listen.trackId);
-                tracks.push(track);
-            }
-        }
-    
-        for(const targetUser of users) {
-            try {
-                // ZORUNLU FİLTRELEMELER
-                
-                if(loggedUser._id.toString() === targetUser._id.toString()) continue;
-    
-                let targetCheckBlock = await BlockedUser.countDocuments({ from: targetUser._id, to: loggedUser._id });
-                if(targetCheckBlock > 0) continue;
-    
-                let loggedCheckBlock = await BlockedUser.countDocuments({ from: loggedUser._id, to: targetUser._id });
-                if(loggedCheckBlock > 0) continue;
-        
-                let loggedCheckLike = await Like.countDocuments({ from: loggedUser._id, to: targetUser._id });
-                if(loggedCheckLike > 0) continue;
-        
-                let loggedCheckDislike = await Dislike.countDocuments({ from: loggedUser._id, to: targetUser._id });
-                if(loggedCheckDislike > 0) continue;
-            
-                let findMatch = await getMatch({ loggedId: loggedUser._id, targetId: targetUser._id});
-                if(findMatch) continue;
-            
-                // LOGGED PREMIUM FILTRELEMELERI
-        
-                var targetAge = calculateAge(targetUser.birthday);
-        
-                if(!((loggedUser.filtering.minAge <= targetAge) && ( targetAge <= loggedUser.filtering.maxAge))) continue;
-                if(loggedUser.filtering.genderPreference !== 'all' && targetUser.gender !== loggedUser.filtering.genderPreference) continue;
-    
-                // LİSTEYE EKLEME İŞLEMİNİ YAP
-    
-                var birthday;
-                if(targetUser.permissions.showAge) birthday = targetUser.birthday;
-                
-                var track;
-                if(matchType === 'live') track = tracks.find(x => x.id === targetUser.listen.trackId);
-    
-                const percentage = await calculatePercentage(loggedUser._id, targetUser._id);
-                
-                filterUsers.push({
-                    user: {
-                        _id: targetUser._id,
-                        name: targetUser.name,
-                        photos: targetUser.photos,
-                        isVerifed: targetUser.isVerifed,
-                    },
-                    birthday: birthday,
-                    track: track,
-                    percentage: percentage,
-                });
-            } catch (err) {
-                Error({
-                    file: 'MatchController.js',
-                    method: 'loggedFilter',
-                    title: err.toString(),
-                    info: err,
-                    type: 'critical',
-                });
-    
-                continue;
-            }
-        }
-    
-        return filterUsers;
+        await session.withTransaction(async () => {
+            await User.updateOne({ _id: logged_id }, { current_play }).session(session);
+        });
     } catch(err) {
-        throw err;
+        Error({
+            file: 'MatchController.js',
+            method: 'updateCurrentPlay',
+            title: err.toString(),
+            info: err,
+            type: 'critical',
+        });
+    } finally {
+        session.endSession();
     }
 }
 
-async function findListenersForTarget(loggedId, track) {
+async function findListenersForTarget(logged_id, track) {
     try {
         // LOGGED IN USER KARTINI OLUŞTUR
-        const loggedUser = await User.findById(loggedId).select('name photos isVerifed birthday permissions');
+        const logged_user = await User.findById(logged_id).select('display_name avatars verified birthday permissions current_play').lean();
+        if(current_play.track !== track._id) return;
         
         var birthday = null;
-        if(loggedUser.permissions.showAge) birthday = loggedUser.birthday;
+        if(logged_user.permissions.show_age) birthday = logged_user.birthday;
 
-        const loggedCard = {
+        const logged_card = {
             user: {
-                _id: loggedUser._id,
-                name: loggedUser.name,
-                photos: loggedUser.photos,
-                isVerifed: loggedUser.isVerifed,
+                _id: logged_user._id,
+                display_name: logged_user.display_name,
+                avatars: logged_user.avatars,
+                verified: logged_user.verified,
             },
             birthday: birthday,
             track: track,
             percentage: 0,
         };
 
-        // BU MÜZİĞİ DİNLEYEN KULLANICILARI ÇEK
+        // BU MÜZİĞİ DİNLEYEN KULLANICILARI BİLGİLERİYLE ÇEK
         const users = await User.find({ 
             $and: [
-                { "permissions.showLive": true },
-                { "listen.isListen": true },
-                { "listen.artistId": { $eq: track.artistId } },
-                { _id: { $ne: loggedId } },
+                { _id: { $ne: logged_id } },
+                { "permissions.show_live": true },
+                { "current_play.is_playing": true },
+                { "current_play.artist": logged_user.current_play.artist },
             ],
-        }).select('filtering listen');
+        }).select('filtering current_play').lean();
 
-        // MÜZİĞİ DİNLEYEN KULLANICILARIN UYGUN OLANLARIN SOKETİNE LOGGED I GÖNDER
-        for(const targetUser of users) {
+        for (let i = 0; i < users.length; i++) {
             try {
-                // MÜZİK TERCİHİNİ KONTROL ET
-                const isArtist = targetUser.filtering.artist;
-                if(!isArtist && targetUser.listen.trackId !== loggedCard.track.id) continue;
+                const target_user = users[i];
 
-                // ZORUNLU FİLTRELEMELER
+                // AYNI KULLANICI MI
+                if(logged_user._id.toString() === target_user._id.toString()) continue;
+    
+                // MÜZİK TERCİHİNİ UYGUN MU
+                if(target_user.filtering.artist && target_user.current_play.track !== track._id) continue;
+    
+                // TARGETIN YAŞ ARALIĞINA UYGUN MU
+                var logged_age = calculateAge(logged_user.birthday);
+                if(!((target_user.filtering.min_age <= logged_age) && ( logged_age <= target_user.filtering.max_age))) continue;
+    
+                // TARGETIN CİNSİYET TERCİHİNE UYGUN MU
+                if(target_user.filtering.gender_preference !== 'all' && logged_user.gender !== target_user.filtering.gender_preference) continue;
+    
+                const results = await Promise.all([
+                    // LOGGED BLOCKLAMIŞ MI
+                    BlockedUser.countDocuments({ from: logged_user._id, to: target_user._id }),
+                    // TARGET BLOCKALMIŞ MI
+                    BlockedUser.countDocuments({ from: target_user._id, to: logged_user._id }),
+                    // TARGET LIKE ATMIŞ MI
+                    Like.countDocuments({ from: target_user._id, to: logged_user._id }),
+                    // TARGET DISLIKE ATMIŞ MI
+                    Dislike.countDocuments({ from: target_user._id, to: logged_user._id }),
+                    // EŞLEŞMİŞLER Mİ
+                    findMatch({ logged_id: logged_user._id, target_id: target_user._id}),
+                ]);
 
-                if(loggedUser._id.toString() === targetUser._id.toString()) continue;
+                var is_contiune = true;
+                results.forEach(result => { 
+                    if(result > 0) {
+                        is_contiune = false;
+                        return;
+                    }
+                });
+                if(!is_contiune) continue;
 
-                let loggedCheckBlock = await BlockedUser.countDocuments({ from: loggedUser._id, to: targetUser._id });
-                if(loggedCheckBlock > 0) continue;
-   
-                let targetCheckBlock = await BlockedUser.countDocuments({ from: targetUser._id, to: loggedUser._id });
-                if(targetCheckBlock > 0) continue;
-        
-                let targetCheckLike = await Like.countDocuments({ from: targetUser._id, to: loggedUser._id });
-                if(targetCheckLike > 0) continue;
-        
-                let targetCheckDislike = await Dislike.countDocuments({ from: targetUser._id, to: loggedUser._id });
-                if(targetCheckDislike > 0) continue;
-            
-                let checkMatch = await getMatch({ loggedId: loggedUser._id, targetId: targetUser._id});
-                if(checkMatch) continue;
-            
-                //TARGET PREMIUM FILTRELEMELERI
-        
-                var loggedAge = calculateAge(loggedUser.birthday);
-        
-                if(!((targetUser.filtering.minAge <= loggedAge) && ( loggedAge <= targetUser.filtering.maxAge))) continue;
-                if(targetUser.filtering.genderPreference !== 'all' && loggedUser.gender !== targetUser.filtering.genderPreference) continue;
-
-                const percentage = await calculatePercentage(loggedUser._id, targetUser._id);
-                loggedCard.percentage = percentage;
-
-                const findUser = shared.users.find(x => x.userId === targetUser._id.toString());
-                if(findUser) {
-                    findUser.socket.emit('get_card', {
-                        user: loggedCard,
-                    });
-                }
-            } catch (err) {
+                // FİLTRELEME BAŞARILI İSE SOCKETINI BUL VE GÖNDER
+                const find_user = shared.users.find(x => x.user_id === to);
+                if(find_user) find_user.socket.emit('get_card', { user: logged_card });  
+            } catch(err) {
                 Error({
                     file: 'MatchController.js',
                     method: 'findListenersForTarget',
@@ -1200,45 +907,186 @@ async function findListenersForTarget(loggedId, track) {
     }
 }
 
-async function calculatePercentage(loggedId, targetId) {
+async function loggedFilter(logged_user, users, match_type) {
     try {
-        const loggedUser = await User.findById(loggedId).select('spotifyFavArtists');
-        const targetUser = await User.findById(targetId).select('spotifyFavArtists');
+        var filter_users = [];
+        if(users.length === 0) return filter_users;
 
-        const commonFavArtists = loggedUser.spotifyFavArtists.filter(x => targetUser.spotifyFavArtists.includes(x));
-        if(commonFavArtists.length > 0) {
-            const loggedPercentage = Math.trunc((100 / (loggedUser.spotifyFavArtists.length / commonFavArtists.length)));
-            const targetPercentage = Math.trunc((100 / (targetUser.spotifyFavArtists.length / commonFavArtists.length)));
+        for (let i = 0; i < users.length; i++) {
+            try {
+                const target_user = users[i];
 
-            return loggedPercentage >= targetPercentage ? loggedPercentage : targetPercentage;
+                // AYNI KULLANICI MI
+                if(logged_user._id.toString() === target_user._id.toString()) continue;
+
+                // LOGGEDIN YAŞ ARALIĞINA UYGUN MU
+                var target_age = calculateAge(target_user.birthday);
+                if(!((logged_user.filtering.min_age <= target_age) && ( target_age <= logged_user.filtering.max_age))) continue;
+    
+                // LOGGEDIN CİNSİYET TERCİHİNE UYGUN MU
+                if(logged_user.filtering.gender_preference !== 'all' && target_user.gender !== logged_user.filtering.gender_preference) continue;
+
+                const results = await Promise.all([
+                    // TARGET BLOCKLAMIŞ MI
+                    BlockedUser.countDocuments({ from: target_user._id, to: logged_user._id }),
+                    // LOGGED BLOCKALMIŞ MI
+                    BlockedUser.countDocuments({ from: logged_user._id, to: target_user._id }),
+                    // LOGGED LIKE ATMIŞ MI
+                    Like.countDocuments({ from: logged_user._id, to: target_user._id }),
+                    // LOGGED DISLIKE ATMIŞ MI
+                    Dislike.countDocuments({ from: logged_user._id, to: target_user._id }),
+                    // EŞLEŞMİŞLER Mİ
+                    findMatch({ logged_id: logged_user._id, target_id: target_user._id}),
+                ]);
+    
+                var is_contiune = true;
+                results.forEach(result => { 
+                    if(result > 0) {
+                        is_contiune = false;
+                        return;
+                    }
+                });
+                if(!is_contiune) continue;
+
+                // LİSTEYE EKLE
+    
+                var birthday;
+                if(target_user.permissions.show_age) birthday = target_user.birthday;
+
+                var track;
+                if(match_type === 'live')
+                    if(logged_user.filtering.artist) track = target_user.current_play.track;
+                    else track = logged_user.current_play.track;
+                
+                filter_users.push({
+                    user: {
+                        _id: target_user._id,
+                        display_name: target_user.display_name,
+                        avatars: target_user.avatars,
+                        verified: target_user.verified,
+                    },
+                    birthday: birthday,
+                    track: track,
+                    percentage: 0,
+                });
+
+            } catch(err) {
+                Error({
+                    file: 'MatchController.js',
+                    method: 'loggedFilter',
+                    title: err.toString(),
+                    info: err,
+                    type: 'critical',
+                });
+
+                continue;
+            }
+        }
+    
+        return filter_users;
+    } catch(err) {
+        throw err;
+    }
+}
+
+async function findMatch({ logged_id, target_id }) {
+    try {
+        const lower_id = logged_id < target_id ? logged_id : target_id;
+        const higher_id = logged_id > target_id ? logged_id : target_id;
+
+        return await Match.countDocuments({ lower_id, higher_id });
+    } catch (e){
+        throw e;
+    }
+}
+
+async function canSendLike(logged_id, like_type) {
+    try {
+        const logged_user = await User.findById(logged_id).select('counts product').lean();
+
+        const is_not_free = logged_user.product !== 'free' ? true : false;
+        var update_counts = logged_user.counts;
+        var can_like;
+        
+        switch(like_type) {
+            case 'like':
+                if(is_not_free) can_like = true;
+                else {
+                    can_like = update_counts.like > 0;
+                    if(can_like) update_counts.like--;
+                }
+                break;
+            case 'mega_like':
+                can_like = update_counts.mega_like > 0;
+                if(can_like) update_counts.mega_like--;
+                break;
         }
 
-        return 0;
+        return { is_not_free, can_like, update_counts };
+    
     } catch (err) {
         throw err;
     }
 }
 
-async function pushMatchNotification({ lowerId, higherId }) {
+async function doChecks({ logged_id, target_id, is_lower }) {
     try {
-        const lowerUserInfo = await User.findById(lowerId).select('name fcmToken notifications language');
-        const higherUserInfo = await User.findById(higherId).select('name fcmToken notifications language');
+        const results = await Promise.all([
+            Like.countDocuments({ from: logged_id, to: target_id }),
+            Dislike.countDocuments({ from: logged_id, to: target_id }),
+            Match.countDocuments({$and: [{ lower_id: is_lower ? logged_id : target_id }, { higher_id: is_lower ? target_id : logged_id }]}),
+        ]);
 
-        if(lowerUserInfo && higherUserInfo) {
+        var test = true;
+        results.forEach(result => { if(result > 0) test = false; });
+
+        if(test) return true;
+        else return false;
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function pushMatchNotification({ lower_id, higher_id }) {
+    try {
+        const results = await Promise.all([
+            User.findById(lower_id).select('display_name fcm_token notifications language').lean(),
+            User.findById(higher_id).select('display_name fcm_token notifications language').lean()
+        ]);
+
+        const lower_user = results[0];
+        const higher_user = results[1];
+
+        if(lower_user && higher_user) {
+
             // LOWER A BİLDİRİM GÖNDER
-            if(lowerUserInfo.notifications.newMatches) {
-                const title = await Language.translate({ key: 'new_match_title', lang: lowerUserInfo.language });
-                const translate = await Language.translate({ key: 'new_match_body', lang: lowerUserInfo.language });
-                const body = translate.replace('%name', higherUserInfo.name);
-                await PushNotification.send({ title: title, body: body, fcmToken: lowerUserInfo.fcmToken.token, channel_id: 'match', notification_type: 'NEW_MATCH' });
+            if(lower_user.notifications.new_matches) {
+                const title = Language.translate({ key: 'new_match_title', lang: lower_user.language });
+                const translate = Language.translate({ key: 'new_match_body', lang: lower_user.language });
+                const body = translate.replace('%name', higher_user.display_name);
+
+                await PushNotification.send({ 
+                    title: title, 
+                    body: body, 
+                    fcm_token: lower_user.fcm_token.token, 
+                    channel_id: 'match', 
+                    notification_type: 'NEW_MATCH' 
+                });
             }
            
             // TARGET A BİLDİRİM GÖNDER
-            if(higherUserInfo.notifications.newMatches) {
-                const title = await Language.translate({ key: 'new_match_title', lang: higherUserInfo.language });
-                const translate = await Language.translate({ key: 'new_match_body', lang: higherUserInfo.language });
-                const body = translate.replace('%name', lowerUserInfo.name);
-                await PushNotification.send({ title: title, body: body, fcmToken: higherUserInfo.fcmToken.token, channel_id: 'match', notification_type: 'NEW_MATCH' });
+            if(higher_user.notifications.new_matches) {
+                const title = Language.translate({ key: 'new_match_title', lang: higher_user.language });
+                const translate = Language.translate({ key: 'new_match_body', lang: higher_user.language });
+                const body = translate.replace('%name', lower_user.display_name);
+
+                await PushNotification.send({ 
+                    title: title, 
+                    body: body, 
+                    fcm_token: higher_user.fcm_token.token, 
+                    channel_id: 'match', 
+                    notification_type: 'NEW_MATCH' 
+                });
             }
         }
     } catch (err) {
@@ -1254,21 +1102,30 @@ async function pushMatchNotification({ lowerId, higherId }) {
 
 async function pushLikeNotification({ from, to }) {
     try {
-        const fromUserInfo = await User.findById(from).select('name');
-        const toUserInfo = await User.findById(to).select('fcmToken product notifications language');
+        const results = await Promise.all([
+            User.findById(from).select('display_name').lean(),
+            User.findById(to).select('fcm_token product notifications language').lean()
+        ]);
 
-        if (fromUserInfo && toUserInfo) {
+        const from_user = results[0];
+        const to_user = results[1];
 
-            if(toUserInfo.notifications.likes) {
+        if (from_user && to_user) {
+            if(to_user.notifications.likes) {
                 var body;
-                if(toUserInfo.product === 'premium_plus') {
-                    const translate = await Language.translate({ key: 'premium_like_body', lang: toUserInfo.language }); 
-                    body = translate.replace('%name', fromUserInfo.name);
+                if(to_user.product === 'premium_plus') {
+                    const translate = Language.translate({ key: 'premium_like_body', lang: to_user.language }); 
+                    body = translate.replace('%name', from_user.display_name);
                 } else {
-                    body = await Language.translate({ key: 'free_like_body', lang: toUserInfo.language });
+                    body = Language.translate({ key: 'free_like_body', lang: to_user.language });
                 }
 
-                await PushNotification.send({ body: body, fcmToken: toUserInfo.fcmToken.token, channel_id: 'match', notification_type: 'LIKE' });
+                await PushNotification.send({ 
+                    body: body, 
+                    fcm_token: to_user.fcm_token.token, 
+                    channel_id: 'match', 
+                    notification_type: 'LIKE' 
+                });
             }        
         }
     } catch (err) {
@@ -1284,21 +1141,31 @@ async function pushLikeNotification({ from, to }) {
 
 async function pushMegaLikeNotification({ from, to }) {
     try {
-        const fromUserInfo = await User.findById(from).select('name');
-        const toUserInfo = await User.findById(to).select('fcmToken product notifications language');
+        const results = await Promise.all([
+            User.findById(from).select('display_name').lean(),
+            User.findById(to).select('fcm_token product notifications language').lean()
+        ]);
 
-        if (fromUserInfo && toUserInfo) {
+        const from_user = results[0];
+        const to_user = results[1];
 
-            if(toUserInfo.notifications.megaLikes) {
+        if (from_user && to_user) {
+
+            if(to_user.notifications.mega_likes) {
                 var body;
-                if(toUserInfo.product === 'premium_plus') {
-                    const translate = await Language.translate({ key: 'premium_mega_like_body', lang: toUserInfo.language }); 
-                    body = translate.replace('%name', fromUserInfo.name);
+                if(to_user.product === 'premium_plus') {
+                    const translate = Language.translate({ key: 'premium_mega_like_body', lang: to_user.language }); 
+                    body = translate.replace('%name', from_user.display_name);
                 } else {
-                    body = await Language.translate({ key: 'free_mega_like_body', lang: toUserInfo.language });
+                    body = Language.translate({ key: 'free_mega_like_body', lang: to_user.language });
                 }
 
-                await PushNotification.send({ body: body, fcmToken: toUserInfo.fcmToken.token, channel_id: 'match', notification_type: 'LIKE' });
+                await PushNotification.send({ 
+                    body: body, 
+                    fcm_token: to_user.fcm_token.token, 
+                    channel_id: 'match', 
+                    notification_type: 'LIKE' 
+                });
             }        
         }
     } catch (err) {

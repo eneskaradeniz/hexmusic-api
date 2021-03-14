@@ -19,7 +19,7 @@ class FileController {
 
     async getImageById(req, res) {
         try {
-            const imageId = req.params.imageId;
+            const imageId = req.params.image_id;
 
             if(!imageId) {
                 return res.status(400).json({

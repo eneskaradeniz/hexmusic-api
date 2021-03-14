@@ -3,40 +3,31 @@ const { isEmail } = require('validator');
 
 const UserSchema = mongoose.Schema({
 
-    /*current_play: {
-        track_id: { type: String, default: null },
-        artist_id: { type: String, default: null },
-        is_podcast: { type: Boolean, default: false },
+    current_play: {
+        track: { type: String, ref: 'Track', default: null },
+        artist: { type: String, ref: 'Artist', default: null },
 
         is_playing: { type: Boolean, default: false },
         timestamp: { type: Number, default: null },
-    },*/
-
-    listen: {
-        trackId: { type: String, default: null },
-        artistId: { type: String, default: null },
-
-        isListen: { type: Boolean, default: false },
-        timestamp: { type: Number, default: null },
     },
 
-    fcmToken: {
+    fcm_token: {
         token: { type: String },
         platform: { type: String },
-        createdAt: { type: Number },
+        created_at: { type: Number },
     },
 
-    spotifyId: {
+    spotify_id: {
         type: String,
         unique: true,
         required: true,
     },
-    spotifyRefreshToken: {
+    spotify_refresh_token: {
         type: String,
         required: true,
     },
 
-    isVerifed: {
+    verified: {
         type: Boolean,
         required: true,
         default: false
@@ -49,11 +40,11 @@ const UserSchema = mongoose.Schema({
         validate: isEmail,
     },
 
-    name: {
+    display_name: {
         type: String,
         required: true
     },
-    photos: [{type: String}],
+    avatars: [{type: String}],
     birthday: {
         type: Number,
         required: true,
@@ -72,55 +63,55 @@ const UserSchema = mongoose.Schema({
         default: null
     },
 
-    socialAccounts: {
+    social_accounts: {
         instagram: { type: String, default: null },
         facebook: { type: String, default: null },
         twitter: { type: String, default: null },
         spotify: { type: String, default: null },
     },
 
-    lastTracks: [{type: String}],
-    favTracks: [{type: String}],
-    favArtists: [{type: String}],
+    last_tracks: [{ type: String, ref: 'Track' }],
+    fav_tracks: [{ type: String, ref: 'Track' }],
+    fav_artists: [{ type: String, ref: 'Artist' }],
 
-    spotifyFavTracks: [{type: String}],
-    spotifyFavArtists: [{type: String}],
+    spotify_fav_tracks: [{ type: String, ref: 'Track' }],
+    spotify_fav_artists: [{ type: String, ref: 'Artist' }],
 
     filtering: {
         artist: { type: Boolean, default: false },
-        minAge: { type: Number, default: 18 },
-        maxAge: { type: Number, default: 100 },
-        genderPreference: { type : String, enum: ['all','male','female'], default: 'all' },
+        min_age: { type: Number, default: 18 },
+        max_age: { type: Number, default: 100 },
+        gender_preference: { type : String, enum: ['all','male','female'], default: 'all' },
     },
 
     permissions: {
-        showLive: {type: Boolean, default: true},
-        showExplore: {type: Boolean, default: true},
-        showAge: {type: Boolean, default: true},
-        showAction: {type: Boolean, default: true},
-        showLastTracks: {type: Boolean, default: true},
-        showOnlineStatus: {type: Boolean, default: true},
+        show_live: { type: Boolean, default: true },
+        show_explore: { type: Boolean, default: true },
+        show_age: { type: Boolean, default: true },
+        show_action: { type: Boolean, default: true },
+        show_last_tracks: { type: Boolean, default: true },
+        show_online_status: { type: Boolean, default: true },
     },
 
     notifications: {
-        renewLikes: {type: Boolean, default: true},
-        newMatches: {type: Boolean, default: true},
-        likes: {type: Boolean, default: true},
-        megaLikes: {type: Boolean, default: true},
+        renew_likes: { type: Boolean, default: true },
+        new_matches: { type: Boolean, default: true },
+        likes: { type: Boolean, default: true },
+        mega_likes: { type: Boolean, default: true },
 
-        textMessages: {type: Boolean, default: true},
-        likeMessages: {type: Boolean, default: true},
-        trackMessages: {type: Boolean, default: true},
-        voiceMessages: {type: Boolean, default: true},
-        gifMessages: {type: Boolean, default: true},
+        text_messages: { type: Boolean, default: true },
+        like_messages: { type: Boolean, default: true },
+        music_messages: { type: Boolean, default: true },
+        voice_messages: { type: Boolean, default: true },
+        gif_messages: { type: Boolean, default: true },
 
-        team: {type: Boolean, default: true},
+        team: { type: Boolean, default: true },
     },
 
     counts: {
-        like: {type: Number, default: 30},
-        megaLike: {type: Number, default: 1},
-        ads: {type: Number, default: 5},
+        like: { type: Number, default: 30 },
+        mega_like: { type: Number, default: 1 },
+        ad: { type: Number, default: 5 },
     },
 
     product: {
@@ -137,7 +128,7 @@ const UserSchema = mongoose.Schema({
         required: true
     },
 
-    createdAt: {
+    registration_date: {
         type: Number,
         default: Date.now
     }

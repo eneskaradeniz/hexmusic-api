@@ -6,10 +6,10 @@ class ReportController {
 
     async report_user(req, res) {
         try {
-            const loggedId = req._id;
-            const targetId = req.params.userId;
+            const logged_id = req._id;
+            const target_id = req.params.user_id;
             const { reason, description } = req.body;
-            if(!targetId || !reason) {
+            if(!target_id || !reason) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -17,8 +17,8 @@ class ReportController {
             }
 
             await Report.create({
-                from: loggedId,
-                to: targetId,
+                from: logged_id,
+                to: target_id,
                 reason: reason,
                 description: description,
             });

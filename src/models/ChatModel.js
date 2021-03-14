@@ -1,41 +1,41 @@
 const mongoose = require('mongoose');
 
 const ChatSchema = mongoose.Schema({
-    matchId: {
+    match_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Match',
         required: true,
     },
 
-    lowerId: {
+    lower_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    higherId: {
+    higher_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
 
-    lastMessage: {
+    last_message: {
         _id: { type: mongoose.Schema.Types.ObjectId },
         message: { type: String },
         type: { type: String, enum: ['text','track','artist','podcast','voice','gif','like']},
         from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        createdAt: { type: Number }
+        created_at: { type: Number }
     },
 
-    lowerRead: {
+    lower_read: {
         type: Boolean,
         default: false,
     },
-    higherRead: {
+    higher_read: {
         type: Boolean,
         default: false,
     },
 
-    createdAt: {
+    created_at: {
         type: Number,
         default: Date.now
     }

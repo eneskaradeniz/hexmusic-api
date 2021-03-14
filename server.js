@@ -34,24 +34,23 @@ const io = socketIO(server);
 server.listen(PORT, async () => {
     console.log("Listening on port", PORT);
     await mongoDB.connect();
+    await test();
 });
 
 //SOCKET.IO CONFIGURATION
-
-shared.users = [];
 
 const User = require('./src/models/UserModel');
 
 function initUser(socket, data) {
   try {
-    const { userId } = data;
-    console.log('INIT YAPILACAK USERID:', userId);
+    const { user_id } = data;
+    console.log('INIT YAPILACAK USERID:', user_id);
 
     // BAŞKA SOCKET VARMI KONTROL ET
-    const findUsers = shared.users.filter(x => x.userId === userId);
-    if(findUsers.length > 0) {
+    const find_users = shared.users.filter(x => x.user_id === user_id);
+    if(find_users.length > 0) {
       console.log('BU IDLI BAŞKA SOKET VAR LOGOUT YAPTIRACAK');
-      findUsers.forEach(findUser => {
+      find_users.forEach(findUser => {
         console.log('LOGOUT:', findUser.socket.id);
         findUser.socket.emit('logout');
         findUser.socket.disconnect();
@@ -59,10 +58,10 @@ function initUser(socket, data) {
     }
 
     // SOCKET KAYDI YAP
-    shared.users.push({ userId, socket });
+    shared.users.push({ user_id, socket });
     socket.emit('init_user');
 
-    console.log(`(${shared.users.length})`, "CONNECT SOCKETID/USERID: " + socket.id + "/" + userId);
+    console.log(`(${shared.users.length})`, "CONNECT SOCKETID/USERID: " + socket.id + "/" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',
@@ -77,16 +76,16 @@ function initUser(socket, data) {
 async function leftUser(socket) {
   try {
     // SOKETİ BUL
-    const findUser = shared.users.find(x => x.socket.id === socket.id);
-    if(!findUser) return;
+    const find_user = shared.users.find(x => x.socket.id === socket.id);
+    if(!find_user) return;
 
     // DINLEDIĞI MÜZİK VARSA SİL
-    await stopMusic(findUser.userId);
+    await stopMusic(find_user.user_id);
 
     // LİSTEDEN KULLANICIYI KALDIR
-    shared.users = shared.users.filter(x => x.socket.id !== findUser.socket.id);
+    shared.users = shared.users.filter(x => x.socket.id !== find_user.socket.id);
 
-    console.log(`(${shared.users.length})`, "DISCONNECT SOCKETID/USERID: " + findUser.socket.id + "/" + findUser.userId);
+    console.log(`(${shared.users.length})`, "DISCONNECT SOCKETID/USERID: " + find_user.socket.id + "/" + find_user.user_id);
   } catch(err) {
     Error({
       file: 'server.js',
@@ -105,20 +104,20 @@ function startTyping(socket, data) {
     if(!findUser) return;
 
     const { to } = data;
-    const userId = findUser.userId;
+    const user_id = findUser.user_id;
 
-    const findTargetUser = shared.users.find(x => x.userId === to);
+    const findTargetUser = shared.users.find(x => x.user_id === to);
     if(findTargetUser) {
       findTargetUser.socket.emit('typing', {
           isTyping: true,
-          userId: userId,
+          user_id: user_id,
         });
         setTimeout(() => {
-          const findTargetUser = shared.users.find(x => x.userId === to);
+          const findTargetUser = shared.users.find(x => x.user_id === to);
           if(findTargetUser) {
             findTargetUser.socket.emit('typing', {
               isTyping: false,
-              userId: userId,
+              user_id: user_id,
             });
           }
         }, 2000);
@@ -134,22 +133,23 @@ function startTyping(socket, data) {
   }
 }
 
-async function stopMusic(userId) {
-  try {
-    await User.findByIdAndUpdate(userId, {
-      "listen.isListen": false,
-      "listen.timestamp": Date.now(),
-    });
+async function stopMusic(logged_id) {
+  const session = db.startSession();
 
-    console.log('(disconnect) müzik dinlemiyor:', userId);
-  } catch (err) {
-    Error({
-      file: 'server.js',
-      method: 'stopMusic',
-      title: err.toString(),
-      info: err,
-      type: 'critical',
-    });
+  try {
+      await session.withTransaction(async () => {
+          await User.updateOne({ _id: logged_id }, { current_play: { timestamp: Date.now(), is_playing: false } }).session(session);
+      });
+  } catch(err) {
+      Error({
+          file: 'server.js',
+          method: 'stopMusic',
+          title: err.toString(),
+          info: err,
+          type: 'critical',
+      });
+  } finally {
+      session.endSession();
   }
 }
 
@@ -199,7 +199,7 @@ app.use('/', routes(upload));
 
 // EVERY DAY RENEW LIKES AND ADS
 
-const schedule = require('node-schedule');
+/*const schedule = require('node-schedule');
 const Language = require('./src/utils/Language');
 
 const _ = require("lodash");
@@ -280,3 +280,4 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     });
   }
 });
+*/

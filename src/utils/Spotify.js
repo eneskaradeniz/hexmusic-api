@@ -46,7 +46,31 @@ class Spotify {
         }
     }
 
-    // TRACKS AND ARTISTS
+    // TRACK/ARTIST/PODCAST
+
+    static async getPodcast(access_token, id) {
+        try {
+            spotifyApi.setAccessToken(access_token);
+    
+            const data = await spotifyApi.getEpisode(id);
+            const podcast = data.body;
+
+            var artists = [];
+            artists.push(podcast.show.publisher);
+
+            return {
+                _id: podcast.id,
+                name: podcast.name,
+                artist: podcast.show.id,
+                artists: artists,
+                album_name: podcast.show.name,
+                album_images: podcast.images,
+                is_podcast: true,
+            };
+        } catch (err) {
+            throw err;
+        }
+    }
     
     static async getTrack(access_token, id) {
         try {
@@ -56,17 +80,16 @@ class Spotify {
             const track = data.body;
 
             var artists = [];
-
-            track.artists.forEach(artist => {
-                artists.push(artist.name);
-            });
+            track.artists.forEach(artist => artists.push(artist.name));
 
             return {
-                id: track.id,
-                artistId: track.artists[0].id,
+                _id: track.id,
                 name: track.name,
+                artist: track.artists[0].id,
                 artists: artists,
-                imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
+                album_name: track.album.name,
+                album_images: track.album.images,
+                is_podcast: false,
             };
         } catch (err) {
             throw err;
@@ -81,43 +104,40 @@ class Spotify {
             const artist = data.body;
 
             return {
-                id: artist.id,
+                _id: artist.id,
                 name: artist.name,
-                imageURL: artist.images[0] != null ? artist.images[0].url : null,
+                images: artist.images,
             };
         } catch (err) {
             throw err;
         }
     }
 
-    static async getTracks(access_token, trackIds) {
+    static async getTracks(access_token, ids) {
         try {
-            if(trackIds.length == 0) return [];
+            if(ids.length == 0) return [];
 
             spotifyApi.setAccessToken(access_token);
     
-            const data = await spotifyApi.getTracks(trackIds);
+            const data = await spotifyApi.getTracks(ids);
             const tracks = data.body.tracks;
         
             var results = [];
         
-            if(tracks.length > 0) {
-                tracks.forEach(track => {
-                    var artists = [];
+            tracks.forEach(track => {
+                var artists = [];
+                track.artists.forEach(artist => artists.push(artist.name));
 
-                    track.artists.forEach(artist => {
-                        artists.push(artist.name);
-                    });
-
-                    results.push({
-                        id: track.id,
-                        artistId: track.artists[0].id,
-                        name: track.name,
-                        artists: artists,
-                        imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
-                    });
-                }); 
-            }
+                results.push({
+                    _id: track.id,
+                    name: track.name,
+                    artist: track.artists[0].id,
+                    artists: artists,
+                    album_name: track.album.name,
+                    album_images: track.album.images,
+                    is_podcast: false,
+                });
+            }); 
             
             return results;
         } catch (err) {
@@ -125,26 +145,24 @@ class Spotify {
         }
     }
     
-    static async getArtists(access_token, artistIds) {
+    static async getArtists(access_token, ids) {
         try {
-            if(artistIds.length == 0) return [];
+            if(ids.length == 0) return [];
 
             spotifyApi.setAccessToken(access_token);
     
-            const data = await spotifyApi.getArtists(artistIds);
+            const data = await spotifyApi.getArtists(ids);
             const artists = data.body.artists;
         
             var results = [];
         
-            if(artists.length > 0) {
-                artists.forEach(artist => {
-                    results.push({
-                        id: artist.id,
-                        name: artist.name,
-                        imageURL: artist.images[0] != null ? artist.images[0].url : null,
-                    });
-                });    
-            }
+            artists.forEach(artist => {
+                results.push({
+                    _id: artist.id,
+                    name: artist.name,
+                    images: artist.images,
+                });
+            });   
         
             return results;
         } catch(err) {
@@ -153,16 +171,56 @@ class Spotify {
     }
 
     // MY TOPS
+    
+    static async getMyTopTracks(access_token) {
+        try {
+            var spotify_fav_track_ids = [];
+            var spotify_fav_tracks = [];
+
+            spotifyApi.setAccessToken(access_token);
+            
+            const data = await spotifyApi.getMyTopTracks({
+                limit: 50,
+                time_range: 'medium_term',
+            });
+
+            const topTracks = data.body.items;
+
+            if(topTracks.length > 0) {
+                topTracks.forEach(track => {
+                    spotify_fav_track_ids.push(track.id);
+
+                    var artists = [];
+                    track.artists.forEach(artist => artists.push(artist.name));
+    
+                    spotifyFavTracks.push({
+                        _id: track.id,
+                        name: track.name,
+                        artist: track.artists[0].id,
+                        artists: artists,
+                        album_name: track.album.name,
+                        album_images: track.album.images,
+                        is_podcast: false,
+                    });
+                });
+            }
+
+            return { spotify_fav_track_ids, spotify_fav_tracks };
+
+        } catch (err) {
+            throw err;
+        }     
+    }
 
     static async getMyTopArtists(access_token) {
         try {
-            var spotifyFavArtistIds = [];
-            var spotifyFavArtists = [];
+            var spotify_fav_artist_ids = [];
+            var spotify_fav_artists = [];
             
             spotifyApi.setAccessToken(access_token);
 
             const data = await spotifyApi.getMyTopArtists({
-                limit: 1000,
+                limit: 50,
                 time_range: 'medium_term',
             });
 
@@ -173,181 +231,51 @@ class Spotify {
                     spotifyFavArtistIds.push(artist.id);
     
                     spotifyFavArtists.push({
-                        id: artist.id,
+                        _id: artist.id,
                         name: artist.name,
-                        imageURL: artist.images[0] != null ? artist.images[0].url : null,
+                        images: artist.images,
                     });
                 });
             }
 
-            return { spotifyFavArtistIds, spotifyFavArtists };
+            return { spotify_fav_artist_ids, spotify_fav_artists };
 
         } catch (err) {
             throw err;
         }     
-    }
-
-    static async getMyTopTracks(access_token) {
-        try {
-            var spotifyFavTrackIds = [];
-            var spotifyFavTracks = [];
-
-            spotifyApi.setAccessToken(access_token);
-            
-            const data = await spotifyApi.getMyTopTracks({
-                limit: 1000,
-                time_range: 'medium_term',
-            });
-
-            const topTracks = data.body.items;
-
-            if(topTracks.length > 0) {
-                topTracks.forEach(track => {
-                    spotifyFavTrackIds.push(track.id);
-
-                    var artists = [];
-
-                    track.artists.forEach(artist => {
-                        artists.push(artist.name);
-                    });
-    
-                    spotifyFavTracks.push({
-                        id: track.id,
-                        artistId: track.artists[0].id,
-                        name: track.name,
-                        artists: artists,
-                        imageURL: track.album.images[0] ? track.album.images[0].url : null,
-                    });
-                });
-            }
-
-            return { spotifyFavTrackIds, spotifyFavTracks };
-
-        } catch (err) {
-            throw err;
-        }     
-    }
-
-    // LISTEN ITEMS
-
-    static async getTracksWithCount(access_token, trackIds, _tracks, _trend_artist_id) {
-        try {
-            if(trackIds.length == 0) return { results: [], trend_tracks: null };
-
-            spotifyApi.setAccessToken(access_token);
-    
-            const data = await spotifyApi.getTracks(trackIds);
-            const tracks = data.body.tracks;
-        
-            var results = [];
-
-            var trend_tracks = [];
-        
-            if(tracks.length > 0) {
-                tracks.forEach(track => {
-                    let obj = _tracks.find(o => o._id === track.id);
-
-                    var artists = [];
-                    track.artists.forEach(artist => artists.push(artist.name));
-
-                    var model = {
-                        track: {
-                            id: track.id,
-                            artistId: track.artists[0].id,
-                            name: track.name,
-                            artists: artists,
-                            imageURL: track.album.images[0] ? track.album.images[0].url : null,
-                        },
-                        count: obj.count
-                    };
-
-                    if(model.track.artistId === _trend_artist_id) trend_tracks.push(model);
-            
-                    results.push(model);
-                }); 
-            }
-            
-            return { results, trend_tracks };
-        } catch (err) {
-            throw err;
-        }
-    }
-
-    static async getArtistsWithCount(access_token, artistIds, _artists, _trend_artist_id) {
-        try {
-            if(artistIds.length == 0) return { results: [], trend_artist: null };
-
-            spotifyApi.setAccessToken(access_token);
-    
-            const data = await spotifyApi.getArtists(artistIds);
-            const artists = data.body.artists;
-        
-            var results = [];
-            var trend_artist;
-        
-            if(artists.length > 0) {
-                artists.forEach(artist => {
-                    let obj = _artists.find(o => o._id === artist.id);
-
-                    var model = {
-                        artist: {
-                            id: artist.id,
-                            name: artist.name,
-                            imageURL: artist.images[0] != null ? artist.images[0].url : null,
-                        },
-                        count: obj.count
-                    };
-
-                    if(model.artist.id === _trend_artist_id) trend_artist = model;
-            
-                    results.push(model);
-                }); 
-            }
-            
-            return { results, trend_artist };
-        } catch (err) {
-            throw err;
-        }
     }
 
     // SEARCH ITEMS
 
-    static async searchTracks(refresh_token, searchField) {
+    static async searchTracks(refresh_token, query) {
         try {
             const access_token = await this.refreshAccessToken(refresh_token);
             if(!access_token) return null;
 
             spotifyApi.setAccessToken(access_token);
 
-            const data = await spotifyApi.searchTracks(searchField, {
-                market: 'TR',
-                limit: 10
-            });
-    
+            const data = await spotifyApi.searchTracks(query, { limit: 10 });
             const tracks = data.body.tracks.items;
     
             var results = [];
             
-            if(tracks.length > 0) {
-                tracks.forEach(track => {
+            tracks.forEach(track => {
 
-                    var artists = [];
+                var artists = [];
+                track.artists.forEach(artist => artists.push(artist.name));
 
-                    track.artists.forEach(artist => {
-                        artists.push(artist.name);
+                if(track.name.toLowerCase().includes(query)) {
+                    results.push({
+                        _id: track.id,
+                        name: track.name,
+                        artist: track.artists[0].id,
+                        artists: artists,
+                        album_name: track.album.name,
+                        album_images: track.album.images,
+                        is_podcast: false,
                     });
-
-                    if(track.name.toLowerCase().includes(searchField)) {
-                        results.push({
-                            id: track.id,
-                            artistId: track.artists[0].id,
-                            name: track.name,
-                            artists: artists,
-                            imageURL: track.album.images[0] != null ? track.album.images[0].url : null,
-                        });
-                    }
-                }); 
-            }
+                }
+            }); 
 
             return results;
         } catch (err) {
@@ -362,26 +290,20 @@ class Spotify {
 
             spotifyApi.setAccessToken(access_token);
 
-            const data = await spotifyApi.searchArtists(searchField, {
-                market: 'TR',
-                limit: 10
-            });
-
+            const data = await spotifyApi.searchArtists(searchField, { limit: 10 });
             const artists = data.body.artists.items;
     
             var results = [];
             
-            if(artists.length > 0) {
-                artists.forEach(artist => {
-                    if(artist.name.toLowerCase().includes(searchField)) {
-                        results.push({
-                            id: artist.id,
-                            name: artist.name,
-                            imageURL: artist.images[0] != null ? artist.images[0].url : null,
-                        });
-                    }
-                }); 
-            }
+            artists.forEach(artist => {
+                if(artist.name.toLowerCase().includes(searchField)) {
+                    results.push({
+                        _id: artist.id,
+                        name: artist.name,
+                        images: artist.images,
+                    });
+                }
+            }); 
 
             return results;
         } catch (err) {

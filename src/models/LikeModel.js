@@ -12,21 +12,22 @@ const LikeSchema = mongoose.Schema({
         required: true,
     },
 
-    likeType: {
+    like_type: {
         type: String,
-        enum: ['like', 'megaLike'],
+        enum: ['like', 'mega_like'],
         required: true,
     },
-    matchType: {
+    match_type: {
         type: String,
-        enum: ['live', 'explore', 'likesMe'],
+        enum: ['live', 'explore', 'likes_me'],
         required: true,
     },
-    trackId: {
+    track: {
         type: String,
+        ref: 'Track',
     },
     
-    sendAt: {
+    created_at: {
         type: Number,
         default: Date.now
     }

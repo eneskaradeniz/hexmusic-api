@@ -17,12 +17,11 @@ const ReportSchema = mongoose.Schema({
         enum: ['swearing','harassment','racist','other'],
         required: true,
     },
-
     description: {
         type: String
     },
     
-    sendAt: {
+    created_at: {
         type: Number,
         default: Date.now
     }

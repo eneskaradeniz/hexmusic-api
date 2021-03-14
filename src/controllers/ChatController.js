@@ -8,7 +8,6 @@ const User = require('../models/UserModel');
 const PushNotification = require('../controllers/PushNotificationController');
 const shared = require('../shared/index');
 
-const Spotify = require('../utils/Spotify');
 const Language = require('../utils/Language');
 
 const Error = require('./ErrorController');
@@ -19,27 +18,28 @@ class ChatController {
 
     async chat_list(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
 
             // KULLANICININ TÜM CHATLERİNİ ÇEK.
             const result = await Chat.find({
-                $or: [{ lowerId: loggedId }, { higherId: loggedId }],
+                $or: [{ lower_id: logged_id }, { higher_id: logged_id }],
             }) 
-            .populate('lowerId', 'name photos isVerifed')
-            .populate('higherId', 'name photos isVerifed');
+            .populate('lower_id', 'display_name avatars verified')
+            .populate('higher_id', 'display_name avatars verified')
+            .lean();
 
             var chats = [];
 
             // FRONTENDIN OKUYACAĞI ŞEKİLDE CHATLERİ OLUŞTUR.
             result.forEach(chat => {
-                let isLower = loggedId.toString() === chat.lowerId._id.toString();
+                let is_lower = logged_id.toString() === chat.lower_id._id.toString();
 
                 chats.push({
                     _id: chat._id,
-                    user: isLower ? chat.higherId : chat.lowerId,
-                    lastMessage: chat.lastMessage,
-                    read: isLower ? chat.lowerRead : chat.higherRead,
-                    createdAt: chat.createdAt
+                    user: is_lower ? chat.higher_id : chat.lower_id,
+                    last_message: chat.last_message,
+                    read: is_lower ? chat.lower_read : chat.higher_read,
+                    created_at: chat.created_at
                 });
             });
 
@@ -64,8 +64,8 @@ class ChatController {
 
     async message_list(req, res) {
         try {
-            const chatId = req.params.chatId;
-            if(!chatId) {
+            const chat_id = req.params.chat_id;
+            if(!chat_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -73,7 +73,7 @@ class ChatController {
             }
 
             // CHATIN DOĞRULUĞUNU KONTROL ET.
-            const result = await findChat({ chatId });
+            const result = await findChat({ chat_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -82,7 +82,7 @@ class ChatController {
             }
 
             // TÜM MESAJLARIN LİSTESİNİ ÇEK.
-            const messages = await Message.find({ chatId }).populate('reply', 'from message type').sort({ createdAt: -1 });
+            const messages = await Message.find({ chat_id }).populate('reply', 'from message type').sort({ created_at: -1 }).lean();
 
             return res.status(200).json({
                 success: true,
@@ -107,10 +107,10 @@ class ChatController {
         const session = await db.startSession();
 
         try {
-            const chatId = req.params.chatId;
+            const chat_id = req.params.chat_id;
             const from = req._id;
-            const { message, type, to, replyId } = req.body;
-            if(!chatId || !from || !message || !type || !to) {
+            const { message, type, to, reply_id } = req.body;
+            if(chat_id === null || from === null || message === null || type === null || to === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -118,12 +118,12 @@ class ChatController {
             }
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
-            const lowerId = from < to ? from : to;
-            const higherId = from > to ? from : to;
+            const lower_id = from < to ? from : to;
+            const higher_id = from > to ? from : to;
 
-            const isLower = lowerId === from;
+            const is_lower = lower_id === from;
 
-            const result = await findChat({ chatId, lowerId, higherId });
+            const result = await findChat({ chat_id, lower_id, higher_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -134,38 +134,18 @@ class ChatController {
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _message;
 
-            var findUser;
-            var access_token;
-
             switch(type) {
                 case 'text':
                     _message = message;
                     break;
                 case 'track':
-                    findUser = await User.findById(from).select('spotifyRefreshToken');
-                    access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
-                    if(!access_token) {
-                        return res.status(401).json({
-                            success: false,
-                            error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                        });
-                    }
-
-                    const track = await Spotify.getTrack(access_token, message);
-                    _message = JSON.stringify(track);
+                    _message = JSON.stringify(message);
                     break;
                 case 'artist':
-                    findUser = await User.findById(from).select('spotifyRefreshToken');
-                    access_token = await Spotify.refreshAccessToken(findUser.spotifyRefreshToken);
-                    if(!access_token) {
-                        return res.status(401).json({
-                            success: false,
-                            error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                        });
-                    }
-
-                    const artist = await Spotify.getArtist(access_token, message);
-                    _message = JSON.stringify(artist);
+                    _message = JSON.stringify(message);
+                    break;
+                case 'podcast':
+                    _message = JSON.stringify(message);
                     break;
                 default:
                     return res.status(200).json({
@@ -175,9 +155,9 @@ class ChatController {
             }
 
             // REPLY VARSA DOĞRULUĞUNU KONTROL ET VE BİLGİLERİNİ AL
-            if(replyId) {
-                const findReplyMessage = await Message.findById(replyId).select('chatId');
-                if(!findReplyMessage) {
+            if(reply_id) {
+                const find_reply_message = await Message.findById(reply_id).select('chat_id').lean();
+                if(!find_reply_message) {
                     return res.status(200).json({
                         success: false,
                         error: 'NOT_FOUND_REPLY_MESSAGE',
@@ -185,7 +165,7 @@ class ChatController {
                 }
 
                 // BU CHATIN MESAJI OLUP OLMADIĞINA BAK.
-                if(findReplyMessage.chatId.toString() !== chatId) {
+                if(find_reply_message.chat_id.toString() !== chat_id) {
                     return res.status(200).json({
                         success: false,
                         error: 'INVALID_REPLY_MESSAGE',
@@ -194,68 +174,69 @@ class ChatController {
             }
 
             // BU BİLGİLERİ KULLANARAK MESAJI GÖNDER.
-            var newMessage;
-            var updateChat;
+            var new_message;
+            var update_chat;
 
             await session.withTransaction(async () => {
 
                 // MESAJI OLUŞTUR
-                const messageId = ObjectId();
+                const message_id = ObjectId();
                 await Message.create([{
-                    _id: messageId,
-                    chatId,
+                    _id: message_id,
+                    chat_id,
                     from,
                     message: _message,
                     type,
-                    reply: replyId,
+                    reply: reply_id,
                 }], { session: session });
 
                 // MESAJI GETİR
-                newMessage = await Message.findById(messageId).populate('reply', 'from message type').session(session);
+                new_message = await Message.findById(message_id).populate('reply', 'from message type').session(session).lean();
 
                 // CHATI GÜNCELLE
-                await Chat.findByIdAndUpdate(chatId, {
-                    lastMessage: {
-                        _id: newMessage._id,
-                        message: newMessage.message,
-                        type: newMessage.type,
-                        from: newMessage.from,
-                        createdAt: newMessage.createdAt,
+                await Chat.updateOne({ _id: chat_id }, {
+                    last_message: {
+                        _id: new_message._id,
+                        message: new_message.message,
+                        type: new_message.type,
+                        from: new_message.from,
+                        created_at: new_message.created_at,
                     },
-                    lowerRead: isLower ? true : false,
-                    higherRead: isLower ? false : true,
+                    lower_read: is_lower ? true : false,
+                    higher_read: is_lower ? false : true,
                 }).session(session);
 
                 // CHATI ÇEK
-                updateChat = await Chat.findById(chatId)
-                    .populate('lowerId', 'name photos isVerifed')
-                    .populate('higherId', 'name photos isVerifed')
-                    .session(session);
+                update_chat = await Chat.findById(chat_id)
+                    .populate('lower_id', 'display_name avatars verified')
+                    .populate('higher_id', 'display_name avatars verified')
+                    .session(session)
+                    .lean();
             });
 
             // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-            const { lowerChat, higherChat } = generateChats(updateChat);
+            const { lower_chat, higher_chat } = generateChats(update_chat);
 
             // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
             emitReceiveMessage({
                 to,
-                message: newMessage,
-                chat: isLower ? higherChat : lowerChat
+                message: new_message,
+                chat: is_lower ? higher_chat : lower_chat
             });
 
             // TARGET A BİLDİRİM GÖNDER
             pushMessageNotification({
                 from,
                 to,
-                chatId,
+                chat_id: chat_id,
                 message: _message,
-                messageType: type
+                message_type: type
             }); 
 
             return res.status(200).json({
                 success: true,
-                message: newMessage,
-                chat: isLower ? lowerChat : higherChat,
+                message: new_message,
+                chat: is_lower ? lower_chat : higher_chat,
             });
         } catch (err) {
             Error({
@@ -279,9 +260,9 @@ class ChatController {
         
         try {
             const from = req._id;
-            const messageId = req.params.messageId;
-            const { chatId, like, to } = req.body;
-            if(!from || !messageId || !chatId || like == null || !to) {
+            const message_id = req.params.message_id;
+            const { chat_id, like, to } = req.body;
+            if(from === null || message_id === null || chat_id === null || like === null || to === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -289,12 +270,12 @@ class ChatController {
             }
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
-            const lowerId = from < to ? from : to;
-            const higherId = from > to ? from : to;
+            const lower_id = from < to ? from : to;
+            const higher_id = from > to ? from : to;
 
-            const isLower = from === lowerId;
+            const is_lower = from === lower_id;
 
-            const result = await findChat({ chatId, lowerId, higherId });
+            const result = await findChat({ chat_id, lower_id, higher_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -302,40 +283,41 @@ class ChatController {
                 });
             }
 
-            var _lowerChat;
-            var _higherChat;
+            var _lower_chat;
+            var _higher_chat;
 
-            var updateMessage;
+            var update_message;
 
             const transactionResults = await session.withTransaction(async () => {
                 // BÖYLE BİR MESAJ VARMI KONTROL ET
-                const findMessage = await Message.countDocuments({ _id: messageId });
-                if(findMessage <= 0) return;
+                const find_message = await Message.countDocuments({ _id: message_id });
+                if(find_message <= 0) return;
 
                 // MESAJI GÜNCELLE
-                updateMessage = await Message.findByIdAndUpdate(messageId, { like: like }, { new: true, upsert: true }).populate('reply', 'from message type').session(session);
+                update_message = await Message.findByIdAndUpdate(message_id, { like: like }, { new: true, upsert: true }).populate('reply', 'from message type').session(session).lean();
         
                 if(like) {
                     // CHATI GÜNCELLE
-                    const updateChat = await Chat.findByIdAndUpdate(updateMessage.chatId, {
-                        lastMessage: {
-                            _id: updateMessage._id,
-                            message: updateMessage.message,
+                    const update_chat = await Chat.findByIdAndUpdate(update_message.chat_id, {
+                        last_message: {
+                            _id: update_message._id,
+                            message: update_message.message,
                             type: 'like',
-                            from: isLower ? lowerId : higherId,
+                            from: is_lower ? lower_id : higher_id,
                             createdAt: Date.now(),
                         },
-                        lowerRead: isLower ? true : false,
-                        higherRead: isLower ? false : true,
+                        lower_read: is_lower ? true : false,
+                        higher_read: is_lower ? false : true,
                     }, { new: true, upsert: true })
-                    .populate('lowerId', 'name photos isVerifed')
-                    .populate('higherId', 'name photos isVerifed')
-                    .session(session);
+                    .populate('lower_id', 'display_name avatars verified')
+                    .populate('higher_id', 'display_name avatars verified')
+                    .session(session)
+                    .lean();
 
                     // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-                    const { lowerChat, higherChat } = generateChats(updateChat);
-                    _lowerChat = lowerChat;
-                    _higherChat = higherChat;
+                    const { lower_chat, higher_chat } = generateChats(update_chat);
+                    _lower_chat = lower_chat;
+                    _higher_chat = higher_chat;
                 }
             });
         
@@ -343,8 +325,8 @@ class ChatController {
                 // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
                 emitLikeMessage({
                     to,
-                    message: updateMessage,
-                    chat: isLower ? _higherChat : _lowerChat
+                    message: update_message,
+                    chat: is_lower ? _higher_chat : _lower_chat
                 });
 
                 // TARGET A BİLDİRİM GÖNDER
@@ -352,14 +334,14 @@ class ChatController {
                     pushLikeNotification({
                         from,
                         to,
-                        chatId
+                        chat_id
                     });
                 }
 
                 return res.status(200).json({
                     success: true,
-                    message: updateMessage,
-                    chat: isLower ? _lowerChat : _higherChat,
+                    message: update_message,
+                    chat: is_lower ? _lower_chat : _higher_chat,
                 });
             } else {
                 return res.status(200).json({
@@ -390,9 +372,9 @@ class ChatController {
 
         try {
             const from = req._id;
-            const chatId = req.params.chatId;
+            const chat_id = req.params.chat_id;
             const { to } = req.body;
-            if(!from || !chatId || !to) {
+            if(from === null || chat_id  === null || to  === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -400,12 +382,12 @@ class ChatController {
             } 
           
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
-            const lowerId = from < to ? from : to;
-            const higherId = from > to ? from : to;
+            const lower_id = from < to ? from : to;
+            const higher_id = from > to ? from : to;
 
-            const isLower = from === lowerId;
+            const is_lower = from === lower_id;
 
-            const result = await findChat({ chatId, lowerId, higherId });
+            const result = await findChat({ chat_id, lower_id, higher_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -416,19 +398,19 @@ class ChatController {
             await session.withTransaction(async () => {
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
                 await Message.updateMany({ 
-                    chatId,
+                    chat_id: chat_id,
                     from: { $ne: from },
                     read: false,
                 }, { $set: { read: true } }).session(session);
 
                 // CHATI GÜNCELLE
-                if(isLower) {
-                    await Chat.findByIdAndUpdate(chatId, {
-                        lowerRead: true,
+                if(is_lower) {
+                    await Chat.updateOne({ _id: chat_id }, {
+                        lower_read: true,
                     }, { session: session });
                 } else {
-                    await Chat.findByIdAndUpdate(chatId, {
-                        higherRead: true,
+                    await Chat.findByIdAndUpdate({ _id: chat_id }, {
+                        higher_read: true,
                     }, { session: session });
                 }
             });
@@ -436,7 +418,7 @@ class ChatController {
             // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE
             emitReadMessages({
                 to,
-                chatId
+                chat_id
             });
 
             return res.status(200).json({
@@ -466,40 +448,40 @@ module.exports = new ChatController();
 
 function generateChats(chat) {
     try {
-        const lowerChat = {
+        const lower_chat = {
             _id: chat._id,
-            user: chat.higherId,
+            user: chat.higher_id,
     
-            lastMessage: chat.lastMessage,
+            last_message: chat.last_message,
     
-            read: chat.lowerRead,
-            createdAt: chat.createdAt,
+            read: chat.lower_read,
+            created_at: chat.created_at,
         };
     
-        const higherChat = {
+        const higher_chat = {
             _id:  chat._id,
-            user: chat.lowerId,
+            user: chat.lower_id,
     
-            lastMessage: chat.lastMessage,
+            last_message: chat.last_message,
     
-            read: chat.higherRead,
-            createdAt: chat.createdAt,
+            read: chat.higher_read,
+            created_at: chat.created_at,
         };
         
-        return { lowerChat, higherChat };
+        return { lower_chat, higher_chat };
     } catch(err) {
         throw err;
     }
 }
 
-async function findChat({ chatId, lowerId, higherId }) {
+async function findChat({ chat_id, lower_id, higher_id }) {
     try {
-        if(lowerId && higherId) {
-            const findChat = await Chat.findOne({ lowerId, higherId }).select('_id');
-            if(!findChat) return false;
-            if(findChat._id.toString() !== chatId.toString()) return false;
-        } else if (chatId) {
-            const chatExists = await Chat.countDocuments({ _id: chatId });
+        if(lower_id && higher_id) {
+            const find_chat = await Chat.findOne({ lower_id: lower_id, higher_id: higher_id }).select('_id').lean();
+            if(!find_chat) return false;
+            if(find_chat._id.toString() !== chat_id.toString()) return false;
+        } else if (chat_id) {
+            const chatExists = await Chat.countDocuments({ _id: chat_id });
             if(chatExists <= 0) return false;
         } else {
             return false;
@@ -513,9 +495,9 @@ async function findChat({ chatId, lowerId, higherId }) {
 
 function emitReceiveMessage({ to, message, chat }) {
     try {
-        const findUser = shared.users.find(x => x.userId === to);
-        if(findUser) {
-            findUser.socket.emit('receive_message', {
+        const find_user = shared.users.find(x => x.user_id === to);
+        if(find_user) {
+            find_user.socket.emit('receive_message', {
                 message: message,
                 chat: chat,
             });
@@ -527,9 +509,9 @@ function emitReceiveMessage({ to, message, chat }) {
 
 function emitLikeMessage({ to, message, chat }) {
     try {
-        const findUser = shared.users.find(x => x.userId === to);
-        if(findUser) {
-            findUser.socket.emit('like_message', {
+        const find_user = shared.users.find(x => x.user_id === to);
+        if(find_user) {
+            find_user.socket.emit('like_message', {
                 message: message,
                 chat: chat,
             });
@@ -539,72 +521,84 @@ function emitLikeMessage({ to, message, chat }) {
     }
 }
 
-function emitReadMessages({ to, chatId }) {
+function emitReadMessages({ to, chat_id }) {
     try {
-        const findUser = shared.users.find(x => x.userId === to);
-        if(findUser) {
-            findUser.socket.emit('read_messages', {
-                chatId
-            });
+        const find_user = shared.users.find(x => x.user_id === to);
+        if(find_user) {
+            find_user.socket.emit('read_messages', { chat_id });
         }
     } catch (err) {
         console.log(err);
     }
 }
 
-async function pushMessageNotification({ from, to, chatId, message, messageType }) {
+async function pushMessageNotification({ from, to, chat_id, message, message_type }) {
     try {
-        const toUser = await User.findById(to).select('fcmToken notifications language');
-        if (toUser && toUser.fcmToken) {
+        const results = await Promise.all([
+            User.findById(to).select('fcm_token notifications language').lean(),
+            User.findById(from).select('display_name avatars verified').lean(),
+        ]);
 
-            // BU KULLANICNIN CHAT BİLDİRİMİ ALIP ALMADIĞINI KONTROL ET.
-            if(toUser.notifications.textMessages) {
-                const fromUser = await User.findById(from).select('name photos isVerifed');
+        const to_user = results[0];
+        const from_user = results[1];
 
-                // MESAJ TİPİNE GÖRE MESAJI AYARLA (KULLANICININ DİLİNE GÖRE ÇEVİRİ YAP)
+        if (to_user && to_user.fcm_token && from_user) {
+            if(to_user.notifications.text_messages) {
+            
                 var body;
                 var translate;
-                switch(messageType) {
+                switch(message_type) {
                     case 'text':
                         body = message;
                         break;
                     case 'track':
                         const track = JSON.parse(message);
-                        translate = await Language.translate({ key: "track_message", lang: toUser.language });
+                        translate = Language.translate({ key: "track_message", lang: to_user.language });
 
                         var mapObj = {
-                            "%name": fromUser.name,
+                            "%name": from_user.display_name,
                             "%artistName": track.artists[0],
                             "%trackName": track.name,
                         };
                         
                         body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
-                        console.log('body:', body);
                         break;
                     case 'artist':
                         const artist = JSON.parse(message);
-                        translate = await Language.translate({ key: "artist_message", lang: toUser.language });
+                        translate = Language.translate({ key: "artist_message", lang: to_user.language });
 
                         var mapObj = {
-                            "%name": fromUser.name,
+                            "%name": from_user.display_name,
                             "%artistName": artist.name,
                         };
                         
                         body = translate.replace(/%name|%artistName/gi, function(matched) { return mapObj[matched]; });
                         break;
+                    case 'podcast':
+                        const podcast = JSON.parse(message);
+                        translate = Language.translate({ key: "track_message", lang: to_user.language });
+
+                        var mapObj = {
+                            "%name": from_user.display_name,
+                            "%artistName": podcast.artists[0],
+                            "%trackName": podcast.name,
+                        };
+                        
+                        body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
+                        break;
                 }
 
                 // VERİYİ GÖNDER
                 const chat = {
-                    chatId: chatId,
-                    to: to,
-                    user: fromUser
+                    chat_id,
+                    to,
+                    user: from_user
                 };
 
                 await PushNotification.send({
-                    title: fromUser.name,
+                    title: from_user.display_name,
                     body: body,
-                    fcmToken: toUser.fcmToken.token,
+                    fcm_token: to_user.fcm_token.token,
                     data: { chat: chat },
                     channel_id: 'chat',
                     notification_type: 'CHAT',
@@ -622,29 +616,32 @@ async function pushMessageNotification({ from, to, chatId, message, messageType 
     }
 } 
 
-async function pushLikeNotification({ from, to, chatId }) {
+async function pushLikeNotification({ from, to, chat_id }) {
     try {
-        const toUser = await User.findById(to).select('fcmToken notifications language');
-        if (toUser && toUser.fcmToken) {
+        const results = await Promise.all([
+            User.findById(to).select('fcm_token notifications language').lean(),
+            User.findById(from).select('display_name avatars verified').lean(),
+        ]);
 
-            // Bu kullanıcının chat bildirimi alıp almadığını kontrol et.
-            if(toUser.notifications.likeMessages) {
-                const fromUser = await User.findById(from).select('name photos isVerifed');
+        const to_user = results[0];
+        const from_user = results[1];
 
+        if (to_user && to_user.fcm_token) {
+            if(to_user.notifications.like_messages) {
                 // VERİYİ GÖNDER
                 const chat = {
-                    chatId: chatId,
+                    chat_id,
                     to: to,
-                    user: fromUser
+                    user: from_user
                 };
 
                 // MESAJI DİLİNE GÖRE ÇEVİR.
-                const body = await Language.translate({ key: 'like_message', lang: toUser.language });
+                const body = Language.translate({ key: 'like_message', lang: to_user.language });
 
                 await PushNotification.send({
-                    title: fromUser.name,
+                    title: from_user.display_name,
                     body: body,
-                    fcmToken: toUser.fcmToken.token,
+                    fcm_token: to_user.fcm_token.token,
                     data: { chat: chat },
                     channel_id: 'chat',
                     notification_type: 'CHAT',

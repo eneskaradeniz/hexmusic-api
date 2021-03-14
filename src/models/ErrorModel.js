@@ -6,7 +6,7 @@ const ErrorSchema = new mongoose.Schema({
     title: String,
     info: mongoose.Schema.Types.Mixed,
     type: String,
-    createdAt: {
+    created_at: {
         type: Number,
         default: Date.now
     }

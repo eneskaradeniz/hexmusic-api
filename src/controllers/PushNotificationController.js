@@ -2,12 +2,12 @@ const axios = require('axios').default;
 
 class PushNotificationController {
 
-    async send({title, body, fcmToken, data, channel_id, notification_type}) {
-        if (!body || !fcmToken || !notification_type) return;
+    async send({title, body, fcm_token, data, channel_id, notification_type}) {
+        if (!body || !fcm_token || !notification_type) return;
         try {
             await axios.post('https://fcm.googleapis.com/fcm/send',
                 {
-                    to: fcmToken,
+                    to: fcm_token,
                     notification: {
                         title,
                         body,

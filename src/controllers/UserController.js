@@ -19,7 +19,10 @@ const shared = require('../shared/index');
 
 const Error = require('./ErrorController');
 
-const generateJwtToken = (userId) => jwt.sign({ _id: userId }, jwtConfig.secret);
+const Track = require('../models/TrackModel');
+const Artist = require('../models/ArtistModel');
+
+const generateJwtToken = (user_id) => jwt.sign({ _id: user_id }, jwtConfig.secret);
 
 class UserController {
 
@@ -35,57 +38,57 @@ class UserController {
                 });
             }
 
-            const codeGrant = await Spotify.getAuthorizationCodeGrant(code);
-            if(!codeGrant) {
+            const code_grant = await Spotify.getAuthorizationCodeGrant(code);
+            if(!code_grant) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_CODE',
                 });
             }
 
-            const { access_token, refresh_token } = codeGrant;
+            const { access_token, refresh_token } = code_grant;
 
-            const spotifyId = await Spotify.getSpotifyId(access_token);
-            if(!spotifyId) {
+            const spotify_id = await Spotify.getSpotifyId(access_token);
+            if(!spotify_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_CODE',
                 });
             }
 
-            const user = await User.findOne({ spotifyId }).select('_id');
+            const user = await User.findOne({ spotify_id: spotify_id }).select('_id').lean();
             if(user) {
                 // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
                 await updateSpotifyRefreshToken(user._id, refresh_token);
 
                 // BÖYLE BİR KULLANICI VAR TOKEN OLUŞTUR VE PROFILI GETİR
                 const token = generateJwtToken(user._id);
-                const myProfile = await getMyProfile(user._id);
+                const my_profile = await getMyProfile(user._id);
 
                 return res.status(200).json({ 
                     success: true,
 
-                    userId: user._id,
+                    user_id: user._id,
                     token: token,
-                    spotifyRefreshToken: refresh_token,
-                    user: myProfile,
+                    spotify_refresh_token: refresh_token,
+                    user: my_profile,
                 }); 
             } else {
                 // BÖYLE BİR KULLANICI YOK KAYIT OL EKRANINA AKTAR
-                const { spotifyFavTrackIds, spotifyFavTracks } = await Spotify.getMyTopTracks(access_token);
-                const { spotifyFavArtistIds, spotifyFavArtists } = await Spotify.getMyTopArtists(access_token);
+                const { spotify_fav_track_ids, spotify_fav_tracks } = await Spotify.getMyTopTracks(access_token);
+                const { spotify_fav_artist_ids, spotify_fav_artists } = await Spotify.getMyTopArtists(access_token);
 
                 return res.status(200).json({
                     success: true,
 
-                    spotifyId: spotifyId,
-                    spotifyRefreshToken: refresh_token,
+                    spotify_id: spotify_id,
+                    spotify_refresh_token: refresh_token,
 
-                    spotifyFavTrackIds: spotifyFavTrackIds,
-                    spotifyFavTracks: spotifyFavTracks,
+                    spotify_fav_track_ids: spotify_fav_track_ids,
+                    spotify_fav_tracks: spotify_fav_tracks,
                     
-                    spotifyFavArtistIds: spotifyFavArtistIds,
-                    spotifyFavArtists: spotifyFavArtists,
+                    spotify_fav_artist_ids: spotify_fav_artist_ids,
+                    spotify_fav_artists: spotify_fav_artists,
                 });            
             }
         } catch(err) {
@@ -104,17 +107,16 @@ class UserController {
     }
 
     async register(req, res) {
-        // GELEN FOTOĞRAFLARI LISTEYE AKTAR
-        var photos = [];
+        var avatars = [];
+
+        const session = await db.startSession();
       
         try {
-            req.files.forEach(file => {
-                photos.push(file.id);
-            });
+            req.files.forEach(file => avatars.push(file.id));
 
-            const { spotifyId, spotifyRefreshToken, spotifyFavArtists, spotifyFavTracks, email, name, birthday, gender, bio, city, favTracks, favArtists, language } = JSON.parse(req.body._body);
-            if(!spotifyId || !spotifyRefreshToken || !spotifyFavArtists || !spotifyFavTracks || !email || !name || !birthday || !gender || !language) {
-                FileController.deleteImages(photos);
+            const { spotify_id, spotify_refresh_token, spotify_fav_artists, spotify_fav_tracks, email, display_name, birthday, gender, bio, city, fav_tracks, fav_artists, language } = JSON.parse(req.body._body);
+            if(!spotify_id || !spotify_refresh_token || !spotify_fav_artists || !spotify_fav_tracks || !email || !display_name || !birthday || !gender || !language) {
+                FileController.deleteImages(avatars);
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -124,54 +126,94 @@ class UserController {
             // ADULT VALIDATOR
             const _isAdult = isAdult(birthday);
             if(!_isAdult) {
-                FileController.deleteImages(photos);
+                FileController.deleteImages(avatars);
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
             
-            const userExists = await User.countDocuments({ spotifyId: spotifyId });
+            const userExists = await User.countDocuments({ spotify_id: spotify_id });
             if (userExists > 0) {
-                FileController.deleteImages(photos);
+                FileController.deleteImages(avatars);
                 return res.status(200).json({
                     success: false,
                     error: 'ALREADY_REGISTER',
                 });
             }
 
-            const userId = ObjectId();
+            const access_token = await Spotify.refreshAccessToken(spotify_refresh_token);
+            if(!access_token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
+
+            const all_tracks = [...spotify_fav_tracks, ...fav_tracks];
+            const all_artists = [...spotify_fav_artists, ...fav_artists];
+
+            // TRACKS
+
+            const tracks = await Track.find({ _id: { $in: all_tracks }}).select('_id').lean();
+            
+            const track_ids = [];
+            tracks.forEach(e => track_ids.push(e._id));
+
+            const difference_track_ids = all_tracks.filter(x => !track_ids.includes(x));
+            const difference_tracks = await Spotify.getTracks(access_token, difference_track_ids);
+
+            // ARTISTS
+
+            const artists = await Artist.find({ _id: { $in: all_artists }}).select('_id').lean();
+            
+            const artist_ids = [];
+            artists.forEach(e => artist_ids.push(e._id));
+
+            const difference_artist_ids = all_artists.filter(x => !artist_ids.includes(x));
+            const difference_artists = await Spotify.getArtists(access_token, difference_artist_ids);
+
+            // FINISH
+
+            await session.withTransaction(async () => {
+                return await Promise.all([
+                    Track.create(difference_tracks, { session: session }),
+                    Artist.create(difference_artists, { session: session }),
+                ]);
+            });
+
+            const user_id = ObjectId();
             await User.create({
-                _id: userId,
-                spotifyId,
-                spotifyRefreshToken,
-                spotifyFavArtists,
-                spotifyFavTracks,
-                photos,
+                _id: user_id,
+                spotify_id: spotify_id,
+                spotify_refresh_token: spotify_refresh_token,
+                spotify_fav_artists: spotify_fav_artists,
+                spotify_fav_tracks: spotify_fav_tracks,
+                avatars,
                 email,
-                name,
+                display_name: display_name,
                 birthday,
                 gender,
                 bio,
                 city,
-                favTracks,
-                favArtists,
+                fav_tracks: fav_tracks,
+                fav_artists: fav_artists,
                 language
             });
 
-            const token = generateJwtToken(userId);
-            const myProfile = await getMyProfile(userId);
+            const token = generateJwtToken(user_id);
+            const my_profile = await getMyProfile(user_id);
 
             return res.status(200).json({
                 success: true,
                 token,
-                userId,
-                spotifyRefreshToken,
-                user: myProfile,
+                user_id: user_id,
+                spotify_refresh_token: spotify_refresh_token,
+                user: my_profile,
             });
 
         } catch (err) {
-            FileController.deleteImages(photos);
+            FileController.deleteImages(avatars);
 
             Error({
                 file: 'UserController.js',
@@ -184,6 +226,8 @@ class UserController {
             return res.status(400).json({
                 success: false
             });
+        } finally {
+            session.endSession();
         }
     }
     
@@ -191,8 +235,8 @@ class UserController {
     
     async me(req, res) {
         try{
-            const loggedId = req._id;
-            const user = await getMyProfile(loggedId);
+            const logged_id = req._id;
+            const user = await getMyProfile(logged_id);
 
             return res.status(200).json({
                 success: true,
@@ -215,9 +259,9 @@ class UserController {
 
     async profile(req, res) {
         try {
-            const loggedId = req._id;
-            const targetId = req.params.userId;
-            if(!targetId) {
+            const logged_id = req._id;
+            const target_id = req.params.user_id;
+            if(!target_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -225,67 +269,59 @@ class UserController {
             }
 
             // GEREKLI BİLGİLERİ ÇEK
-            const loggedProfile = await User.findById(loggedId).select('name photos isVerifed spotifyFavTracks spotifyFavArtists spotifyRefreshToken');
- 
-            const targetProfile = await User.findById(targetId).select('name photos isVerifed birthday city bio socialAccounts lastTracks favTracks favArtists spotifyFavTracks spotifyFavArtists spotifyRefreshToken permissions');
-            if(!targetProfile) {
+            const results = await Promise.all([
+                User.findById(logged_id).select('display_name avatars verified spotify_fav_tracks spotify_fav_artists').lean(),
+
+                User.findById(target_id)
+                .select('display_name avatars verified birthday city bio social_accounts last_tracks fav_tracks fav_artists spotify_fav_tracks spotify_fav_artists permissions')
+                .populate('fav_tracks')
+                .populate('fav_artists')
+                .populate('last_tracks')
+                .populate('spotify_fav_tracks')
+                .populate('spotify_fav_artists')
+                .lean()
+            ]);
+
+            const logged_profile = results[0];
+            const target_profile = results[1];
+            if(!target_profile) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_TARGET_USER',
                 });
             }
 
-            const access_token = await Spotify.refreshAccessToken(loggedProfile.spotifyRefreshToken);
-            if(!access_token) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-
             // PROFILE
-
-            var birthday;
-            if(targetProfile.permissions.showAge) birthday = targetProfile.birthday;
-            
-            var lastTracks;
-            if(targetProfile.permissions.showLastTracks) lastTracks = await Spotify.getTracks(access_token, targetProfile.lastTracks);
-            
-            const favTracks = await Spotify.getTracks(access_token, targetProfile.favTracks);
-            const favArtists = await Spotify.getArtists(access_token, targetProfile.favArtists);
 
             const profile = {
                 user: {
-                    _id: targetId,
-                    name: targetProfile.name,
-                    isVerifed: targetProfile.isVerifed,
-                    photos: targetProfile.photos,
+                    _id: target_profile._id,
+                    display_name: target_profile.display_name,
+                    avatars: target_profile.avatars,
+                    verified: target_profile.verified,
                 },
               
-                birthday: birthday,
-                city: targetProfile.city,
+                birthday: target_profile.permissions.show_age ? target_profile.birthday : null,
+                city: target_profile.city,
 
-                bio: targetProfile.bio,
-                socialAccounts: targetProfile.socialAccounts,
+                bio: target_profile.bio,
+                social_accounts: target_profile.social_accounts,
                 
-                lastTracks: lastTracks,
-                favTracks: favTracks,
-                favArtists: favArtists,
+                last_tracks: target_profile.permissions.show_last_tracks ? target_profile.last_tracks : null,
+                fav_tracks: fav_tracks,
+                fav_artists: fav_artists,
             }
 
             // COMMON
 
-            const commonTrackIds = loggedProfile.spotifyFavTracks.filter(x => targetProfile.spotifyFavTracks.includes(x));
-            const commonArtistIds = loggedProfile.spotifyFavArtists.filter(x => targetProfile.spotifyFavArtists.includes(x));
+            const common_tracks = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
+            const common_artists = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
 
-            const commonTracks = await Spotify.getTracks(access_token, commonTrackIds);
-            const commonArtists = await Spotify.getArtists(access_token, commonArtistIds);
-
-            var percentage = calculatePercentage(commonArtists.length, loggedProfile.spotifyFavArtists.length, targetProfile.spotifyFavArtists.length);
+            var percentage = calculatePercentage(common_artists.length, logged_profile.spotify_fav_artists.length, target_profile.spotify_fav_artists.length);
 
             const common = {
-                commonTracks: commonTracks,
-                commonArtists: commonArtists,
+                common_tracks: common_tracks,
+                common_artists: common_artists,
                 percentage: percentage,
             }
 
@@ -293,55 +329,49 @@ class UserController {
 
             var match;
 
-            const lowerId = loggedId < targetId ? loggedId : targetId;
-            const higherId = loggedId > targetId ? loggedId : targetId;
+            const lower_id = logged_id < target_id ? logged_id : target_id;
+            const higher_id = logged_id > target_id ? logged_id : target_id;
             
-            const findMatch = await Match.findOne({ lowerId: lowerId, higherId: higherId });
+            const find_match = await Match.findOne({ lower_id: lower_id, higher_id: higher_id })
+            .populate('lower_track')
+            .populate('higher_track')
+            .lean();
 
-            if(findMatch) {
-                const isLower = loggedId === lowerId;
+            if(find_match) {
+                const is_lower = logged_id === lower_id;
 
-                const loggedUser = {
-                    _id: loggedProfile._id,
-                    name: loggedProfile.name,
-                    photos: loggedProfile.photos,
-                    isVerifed: loggedProfile.isVerifed,
+                const logged_user = {
+                    _id: logged_profile._id,
+                    display_name: logged_profile.display_name,
+                    avatars: logged_profile.avatars,
+                    verified: logged_profile.verified,
                 };
-                const targetUser = {
-                    _id: targetProfile._id,
-                    name: targetProfile.name,
-                    photos: targetProfile.photos,
-                    isVerifed: targetProfile.isVerifed,
+                const target_user = {
+                    _id: target_profile._id,
+                    display_name: target_profile.display_name,
+                    avatars: target_profile.avatars,
+                    verified: target_profile.verified,
                 };
 
-                const loggedMatchType = isLower ? findMatch.lowerMatchType : findMatch.higherMatchType;
-                const targetMatchType = isLower ? findMatch.higherMatchType : findMatch.lowerMatchType;
+                const logged_match_type = is_lower ? find_match.lower_match_type : find_match.higher_match_type;
+                const target_match_type = is_lower ? find_match.higher_match_type : find_match.lower_match_type;
 
-                const loggedLikeType = isLower ? findMatch.lowerLikeType : findMatch.higherLikeType;
-                const targetLikeType = isLower ? findMatch.higherLikeType : findMatch.lowerLikeType;
+                const logged_like_type = is_lower ? find_match.lower_like_type : find_match.higher_like_type;
+                const target_like_type = is_lower ? find_match.higher_like_type : find_match.lower_like_type;
 
-                const loggedTrackId = isLower ? findMatch.lowerTrackId : findMatch.higherTrackId;
-                const targetTrackId = isLower ? findMatch.higherTrackId : findMatch.lowerTrackId;
-
-                var loggedTrack = {};
-                var targetTrack = {};
-
-                if(loggedTrackId)
-                    loggedTrack = await Spotify.getTrack(access_token, loggedTrackId);
-                
-                if(targetTrackId)
-                    targetTrack = await Spotify.getTrack(access_token, targetTrackId);
+                const logged_track = is_lower ? find_match.lower_track : find_match.higher_track;
+                const target_track = is_lower ? find_match.higher_track : find_match.lower_track;
     
                 match = {
-                    loggedUser,
-                    loggedMatchType,
-                    loggedLikeType,
-                    loggedTrack,
+                    logged_user,
+                    logged_match_type,
+                    logged_like_type,
+                    logged_track,
 
-                    targetUser,
-                    targetMatchType,
-                    targetLikeType,
-                    targetTrack
+                    target_user,
+                    target_match_type,
+                    target_like_type,
+                    target_track
                 };
             }
 
@@ -371,7 +401,7 @@ class UserController {
         const session = await db.startSession();
 
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
 
             // USERMODEL SİLİNECEK
             // TÜM ENGELLEDİKLERİ SİLİNECEK
@@ -391,54 +421,54 @@ class UserController {
             
             await session.withTransaction(async () => {
                 // KULLANICININ FOTOĞRAFLARINI ÇEK
-                const user = await User.findById(loggedId).select('photos');
-                photos = user.photos;
+                const user = await User.findById(logged_id).select('avatars').lean();
+                avatars = user.avatars;
 
                 // USER I SİL
-                await User.findByIdAndDelete(loggedId).session(session);
+                await User.deleteOne(logged_id).session(session);
 
                 // ENGELLEDİKLERİNİ SİL
                 await BlockedUser.deleteMany({
-                    $or: [{ from: loggedId }, { to: loggedId }]
+                    $or: [{ from: logged_id }, { to: logged_id }]
                 }).session(session);
 
                 // LİKELARINI SİL
                 await Like.deleteMany({
-                    $or: [{ from: loggedId }, { to: loggedId }]
+                    $or: [{ from: logged_id }, { to: logged_id }]
                 }).session(session);
 
                 // DİSLİKELARINI SİL
                 await Dislike.deleteMany({
-                    $or: [{ from: loggedId }, { to: loggedId }]
+                    $or: [{ from: logged_id }, { to: logged_id }]
                 }).session(session);
 
                 // KULLANICININ TÜM EŞLEŞTİĞİ KULLANICILARIN IDLERINI GETİR (SOKETLERİNE İLİŞKİ BİTTİĞİNİ SÖYLEYECEK)
                 const matches = await Match.find({
-                    $or: [{ lowerId: loggedId }, { higherId: loggedId }]
-                }).select('chatId higherId lowerId').session(session);
+                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
+                }).select('chat_id higher_id lower_id').session(session).lean();
 
-                var chatIds = [];
+                var chat_ids = [];
                 
                 matches.forEach(match => {
-                    chatIds.push(match.chatId);
+                    chat_ids.push(match.chat_id);
                     
-                    const isLower = match.lowerId.toString() === loggedId;
-                    users.push({ userId: isLower ? match.higherId : match.lowerId, chatId: match.chatId });
+                    const is_lower = match.lowerId.toString() === logged_id;
+                    users.push({ user_id: is_lower ? match.higher_id : match.lower_id, chat_id: match.chat_id });
                 });
 
                 // EŞLEŞMELERİNİ SİL
                 await Match.deleteMany({
-                    $or: [{ lowerId: loggedId }, { higherId: loggedId }]
+                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
                 }).session(session);
 
                 // CHATLERİNİ SİL
                 await Chat.deleteMany({
-                    $or: [{ lowerId: loggedId }, { higherId: loggedId }]
+                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
                 }).session(session);
 
                 // SİLİNEN CHATLERİN MESAJLARINI SİL
                 await Message.deleteMany({
-                    chatId: { $in: chatIds }
+                    chat_id: { $in: chat_ids }
                 }).session(session);
             });
 
@@ -447,11 +477,11 @@ class UserController {
 
             // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
             users.forEach(model => {
-                const findUser = shared.users.find(x => x.userId === model.userId.toString());
-                if(findUser) {
-                    findUser.socket.emit('end_user', {
-                        userId: model.userId,
-                        chatId: model.chatId,
+                const find_user = shared.users.find(x => x.user_id === model.user_id.toString());
+                if(find_user) {
+                    find_user.socket.emit('end_user', {
+                        user_id: model.user_id,
+                        chat_id: model.chat_id,
                     });
                 }   
             });
@@ -480,24 +510,24 @@ class UserController {
 
     async blocked_users(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
 
-            // KULLANICININ TÜM ENGELLEDİĞİ KULLANICILARI ÇEK
-            const blocks = await BlockedUser.find({ from: loggedId }).populate('to', 'name photos isVerifed');
+            const results = await BlockedUser.find({ from: logged_id }).populate('to', 'display_name avatars verified').sort({ created_at: -1 }).lean();
     
-            // FRONTEND İN ANLAYACAĞI ŞEKİLDE GÖNDER
             var users = [];
-            blocks.forEach(block => {
-                users.push({
-                    _id: block._id,
-                    user: block.to,
-                    sendAt: block.sendAt,
-                });
-            });
+            for(let i = 0; i < results.length; i++) {
+                const user = results[i];
 
+                users.push({
+                    _id: user._id,
+                    user: user.to,
+                    created_at: user.created_at,
+                });
+            }
+           
             return res.status(200).json({
                 success: true,
-                users: users,
+                users: users
             });
 
         } catch (err) {
@@ -519,9 +549,9 @@ class UserController {
         const session = await db.startSession();
 
         try {
-            const loggedId = req._id;
-            const targetId = req.params.userId;
-            if(!targetId) {
+            const logged_id = req._id;
+            const target_id = req.params.user_id;
+            if(!target_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -529,15 +559,17 @@ class UserController {
             }
  
             // BÖYLE BİR EŞLEŞMENİN OLUP OLMADIĞINI KONTROL ET.
-            const lowerId = loggedId < targetId ? loggedId : targetId;
-            const higherId = loggedId > targetId ? loggedId : targetId;
+            const lower_id = logged_id < target_id ? logged_id : target_id;
+            const higher_id = logged_id > target_id ? logged_id : target_id;
 
-            const findMatch = await Match.findOne({
-                lowerId: lowerId,
-                higherId: higherId
-            }).select('_id chatId');
+            const find_match = await Match.findOne({
+                lower_id,
+                higher_id
+            })
+            .select('_id chat_id')
+            .lean();
 
-            if(!findMatch) {
+            if(!find_match) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_MATCH',
@@ -546,16 +578,16 @@ class UserController {
    
             await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
-                await Chat.findByIdAndDelete(findMatch.chatId).session(session);
-                await Message.deleteMany({ chatId: findMatch.chatId }).session(session);
-                await Match.findByIdAndDelete(findMatch._id).session(session);
+                await Chat.deleteOne({ _id: find_match.chat_id }).session(session);
+                await Message.deleteMany({ chat_id: find_match.chat_id }).session(session);
+                await Match.deleteOne({ _id: find_match._id }).session(session);
             });
 
-            const findTargetUser = shared.users.find(x => x.userId === targetId);
-            if(findTargetUser) {
-                findTargetUser.socket.emit('end_user', {
-                    userId: loggedId,
-                    chatId: findMatch.chatId,
+            const find_target_user = shared.users.find(x => x.user_id === target_id);
+            if(find_target_user) {
+                find_target_user.socket.emit('end_user', {
+                    user_id: logged_id,
+                    chat_id: find_match.chat_id,
                 });
             }    
             
@@ -583,9 +615,9 @@ class UserController {
         const session = await db.startSession();
 
         try {
-            const loggedId = req._id;
-            const targetId = req.params.userId;
-            if(!targetId) {
+            const logged_id = req._id;
+            const target_id = req.params.user_id;
+            if(!target_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -593,15 +625,17 @@ class UserController {
             }
  
             // BÖYLE BİR EŞLEŞMENİN OLUP OLMADIĞINI KONTROL ET.
-            const lowerId = loggedId < targetId ? loggedId : targetId;
-            const higherId = loggedId > targetId ? loggedId : targetId;
+            const lower_id = logged_id < target_id ? logged_id : target_id;
+            const higher_id = logged_id > target_id ? logged_id : target_id;
 
-            const findMatch = await Match.findOne({
-                lowerId: lowerId,
-                higherId: higherId
-            }).select('_id chatId');
+            const find_match = await Match.findOne({
+                lower_id,
+                higher_id
+            })
+            .select('_id chat_id')
+            .lean();
             
-            if(!findMatch) {
+            if(!find_match) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_MATCH',
@@ -610,19 +644,19 @@ class UserController {
    
             await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
-                await Chat.findByIdAndDelete(findMatch.chatId).session(session);
-                await Message.deleteMany({ chatId: findMatch.chatId }).session(session);
-                await Match.findByIdAndDelete(findMatch._id).session(session);
+                await Chat.deleteOne({ _id: find_match.chat_id }).session(session);
+                await Message.deleteMany({ chatId: find_match.chat_id }).session(session);
+                await Match.deleteOne({ _id: find_match._id }).session(session);
 
                 // KULLANICIYI ENGELLE.
-                await BlockedUser.create([{ from: loggedId, to: targetId }], { session: session });
+                await BlockedUser.create([{ from: logged_id, to: target_id }], { session: session });
             });
 
-            const findTargetUser = shared.users.find(x => x.userId === targetId);
-            if(findTargetUser) {
-                findTargetUser.socket.emit('end_user', {
-                    userId: loggedId,
-                    chatId: findMatch.chatId,
+            const find_target_user = shared.users.find(x => x.user_id === target_id);
+            if(find_target_user) {
+                find_target_user.socket.emit('end_user', {
+                    user_id: logged_id,
+                    chat_id: find_match.chat_id,
                 });
             }    
             
@@ -648,9 +682,9 @@ class UserController {
 
     async unblock_user(req, res) {
         try {
-            const loggedId = req._id;
-            const targetId = req.params.userId;
-            if(!targetId) {
+            const logged_id = req._id;
+            const target_id = req.params.user_id;
+            if(!target_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -658,8 +692,8 @@ class UserController {
             }
 
             // BÖYLE BİR BLOK VARMI KONTROL ET.
-            const findBlockUser = await BlockedUser.findOne({ from: loggedId, to: targetId }).select('_id');
-            if(!findBlockUser) {
+            const find_block_user = await BlockedUser.findOne({ from: logged_id, to: target_id }).select('_id').lean();
+            if(!find_block_user) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_BLOCK_USER',
@@ -667,10 +701,10 @@ class UserController {
             }
 
             // ENGELİ KALDIR.
-            await BlockedUser.findByIdAndDelete(findBlockUser._id);  
+            await BlockedUser.deleteOne({ _id: find_block_user._id });  
 
             return res.status(200).json({
-                success: true,
+                success: true
             });
 
         } catch (err) {
@@ -688,28 +722,28 @@ class UserController {
         }
     }
    
-    // PROFILE IMAGES
+    // AVATARS
 
-    async add_photo(req, res) {
-        const imageId = req.file != null ? req.file.id : null;
+    async add_avatar(req, res) {
+        const image_id = req.file != null ? req.file.id : null;
 
         try {
-            const loggedId = req._id;
-            if(!imageId) {
+            const logged_id = req._id;
+            if(!image_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            const loggedUser = await User.findById(loggedId).select('photos product');
-            if(loggedUser.photos.length >= 6) {
+            const logged_user = await User.findById(logged_id).select('avatars product').lean();
+            if(logged_user.avatars.length >= 6) {
                 return res.status(200).json({
                     success: false,
-                    error: 'MAX_PHOTOS_LIMIT',
+                    error: 'MAX_AVATARS_LIMIT',
                 });
             }
-            if(loggedUser.product === 'free' && loggedUser.photos.length >= 3) {
+            if(logged_user.product === 'free' && logged_user.avatars.length >= 3) {
                 return res.status(200).json({
                     success: false,
                     error: 'NO_PERMISSION',
@@ -717,20 +751,19 @@ class UserController {
             }
 
             // FOTOĞRAFI EKLE
-            await User.findByIdAndUpdate(loggedId, { $push: { photos: imageId } });
+            await User.updateOne({ _id: logged_id }, { $push: { photos: image_id } });
 
             return res.status(200).json({
                 success: true,
-                imageId
+                image_id: image_id
             });
 
         } catch(err) {
-            // İŞLEM BAŞARISIZ GELEN FOTOĞRAF VARSA SİL.
-            FileController.deleteImageById(imageId);
+            FileController.deleteImageById(image_id);
 
             Error({
                 file: 'UserController.js',
-                method: 'add_photo',
+                method: 'add_avatar',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
@@ -742,26 +775,26 @@ class UserController {
         }
     }
 
-    async update_photos(req, res) {
+    async update_avatars(req, res) {
         try {
-            const loggedId = req._id;
-            const { photos } = req.body;
-            if(!photos) {
+            const logged_id = req._id;
+            const { avatars } = req.body;
+            if(!avatars) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, { photos });
-
+            await User.updateOne({ _id: logged_id }, { avatars });
+ 
             return res.status(200).json({
                 success: true,
             });
         } catch(err) {
             Error({
                 file: 'UserController.js',
-                method: 'update_photos',
+                method: 'update_avatars',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
@@ -773,18 +806,18 @@ class UserController {
         }
     }
 
-    async delete_photo(req, res) {
+    async delete_avatar(req, res) {
         try {
-            const loggedId = req._id;
-            const imageId = req.params.imageId;
-            if(!imageId) {
+            const logged_id = req._id;
+            const image_id = req.params.image_id;
+            if(!image_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            const result = await FileController.deleteImageById(imageId);
+            const result = await FileController.deleteImageById(image_id);
             if(!result) {
                 return res.status(400).json({
                     success: false,
@@ -792,9 +825,7 @@ class UserController {
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, {
-                $pull: { photos: imageId }
-            });
+            await User.updateOne({ _id: logged_id }, { $pull: { avatars: image_id } });
 
             return res.status(200).json({
                 success: true,
@@ -803,7 +834,7 @@ class UserController {
         } catch(err) {
             Error({
                 file: 'UserController.js',
-                method: 'delete_photo',
+                method: 'delete_avatar',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
@@ -819,9 +850,9 @@ class UserController {
 
     async update_profile(req, res) {
         try {
-            const loggedId = req._id;
-            const { email, name, birthday, gender, city, bio, socialAccounts } = req.body;
-            if(!email || !name || !birthday || !gender || !socialAccounts) {
+            const logged_id = req._id;
+            const { email, display_name, birthday, gender, city, bio, social_accounts } = req.body;
+            if(!email || !display_name || !birthday || !gender || !social_accounts) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -837,14 +868,14 @@ class UserController {
                 });
             }
             
-            await User.findByIdAndUpdate(loggedId, {
+            await User.updateOne({ _id: logged_id }, {
                 email: email,
-                name: name,
+                display_name: display_name,
                 birthday: birthday,
                 gender: gender,
                 city: city,
                 bio: bio,
-                socialAccounts: socialAccounts,
+                social_accounts: social_accounts,
             });
 
             return res.status(200).json({
@@ -867,17 +898,17 @@ class UserController {
 
     async update_firebase(req, res) {
         try {
-            const loggedId = req._id;
-            const { fcmToken } = req.body;
-            if(!fcmToken) {
+            const logged_id = req._id;
+            const { fcm_token } = req.body;
+            if(!fcm_token) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            fcmToken.createdAt = Date.now();
-            await User.findByIdAndUpdate(loggedId, { fcmToken: fcmToken });
+            fcm_token.created_at = Date.now();
+            await User.updateOne({ _id: logged_id }, { fcm_token: fcm_token });
 
             return res.status(200).json({
                 success: true
@@ -900,7 +931,7 @@ class UserController {
 
     async update_language(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
             const { language } = req.body;
             if(!language) {
                 return res.status(200).json({
@@ -909,7 +940,7 @@ class UserController {
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, { language: language });
+            await User.updateOne({ _id: logged_id }, { language: language });
 
             return res.status(200).json({
                 success: true
@@ -932,16 +963,16 @@ class UserController {
 
     async update_fav_tracks(req, res) {
         try {
-            const loggedId = req._id;
-            const { favTracks } = req.body;
-            if(!favTracks) {
+            const logged_id = req._id;
+            const { fav_tracks } = req.body;
+            if(!fav_tracks) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, { favTracks });
+            await User.updateOne({ _id: logged_id }, { fav_tracks: fav_tracks });
 
             return res.status(200).json({
                 success: true,
@@ -963,16 +994,16 @@ class UserController {
 
     async update_fav_artists(req, res) {
         try {
-            const loggedId = req._id;
-            const { favArtists } = req.body;
-            if(!favArtists) {
+            const logged_id = req._id;
+            const { fav_artists } = req.body;
+            if(!fav_artists) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, { favArtists });
+            await User.updateOne({ _id: logged_id }, { fav_artists });
 
             return res.status(200).json({
                 success: true,
@@ -994,10 +1025,10 @@ class UserController {
 
     async update_spotify_favorites(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
 
-            const user = await User.findById(loggedId).select('spotifyRefreshToken');
-            const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
+            const user = await User.findById(logged_id).select('spotify_refresh_token').lean();
+            const access_token = await Spotify.refreshAccessToken(user.spotify_refresh_token);
             if(!access_token) {
                 return res.status(401).json({
                     success: false,
@@ -1005,18 +1036,18 @@ class UserController {
                 });
             }
 
-            const myTopTracks = await Spotify.getMyTopTracks(access_token);
-            const myTopArtists = await Spotify.getMyTopArtists(access_token);
+            const my_top_tracks = await Spotify.getMyTopTracks(access_token);
+            const my_top_artists = await Spotify.getMyTopArtists(access_token);
 
-            await User.findByIdAndUpdate(loggedId, {
-                spotifyFavTracks: myTopTracks.spotifyFavTrackIds,
-                spotifyFavArtists: myTopArtists.spotifyFavArtistIds,
+            await User.updateOne({ _id: logged_id }, {
+                spotify_fav_tracks: my_top_tracks.spotify_fav_track_ids,
+                spotify_fav_artists: my_top_artists.spotify_fav_artist_ids,
             });
 
             return res.status(200).json({
                 success: true,
-                spotifyFavTracks: myTopTracks.spotifyFavTracks,
-                spotifyFavArtists: myTopArtists.spotifyFavArtists,
+                spotify_fav_tracks: my_top_tracks.spotify_fav_tracks,
+                spotify_fav_artists: my_top_artists.spotify_fav_artists,
             });
 
         } catch (err) {
@@ -1036,7 +1067,7 @@ class UserController {
 
     async update_permissions(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
             const { permissions } = req.body;
             if(!permissions) {
                 return res.status(200).json({
@@ -1045,7 +1076,7 @@ class UserController {
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, { permissions });
+            await User.updateOne({ _id: logged_id }, { permissions });
 
             return res.status(200).json({
                 success: true,
@@ -1067,7 +1098,7 @@ class UserController {
 
     async update_notifications(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
             const { notifications } = req.body;
             if(!notifications) {
                 return res.status(200).json({
@@ -1076,7 +1107,7 @@ class UserController {
                 });
             }
 
-            await User.findByIdAndUpdate(loggedId, { notifications });
+            await User.updateOne({ _id: logged_id }, { notifications });
 
             return res.status(200).json({
                 success: true,
@@ -1098,7 +1129,7 @@ class UserController {
 
     async update_filtering(req, res) {
         try {
-            const loggedId = req._id;
+            const logged_id = req._id;
             const { filtering } = req.body;
             if(!filtering) {
                 return res.status(200).json({
@@ -1107,9 +1138,9 @@ class UserController {
                 });
             }
 
-            const user = await User.findById(loggedId).select('product');
+            const user = await User.findById(logged_id).select('product').lean();
             if(user.product !== 'free') {
-                await User.findByIdAndUpdate(loggedId, { filtering });
+                await User.updateOne({ _id: logged_id }, { filtering });
             } else {
                 return res.status(200).json({
                     success: false,
@@ -1139,16 +1170,16 @@ class UserController {
 
     async search_tracks(req, res) {
         try {
-            const searchField = req.params.search;
+            const query = req.params.q;
             const { refresh_token } = req.body;
-            if(!searchField || !refresh_token) {
+            if(!query || !refresh_token) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            const tracks = await Spotify.searchTracks(refresh_token, searchField);
+            const tracks = await Spotify.searchTracks(refresh_token, query);
             if(!tracks) {
                 return res.status(401).json({
                     success: false,
@@ -1178,16 +1209,16 @@ class UserController {
 
     async search_artists(req, res) {
         try {
-            const searchField = req.params.search;
+            const query = req.params.q;
             const { refresh_token } = req.body;
-            if(!searchField || !refresh_token) {
+            if(!query || !refresh_token) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            const artists = await Spotify.searchArtists(refresh_token, searchField);
+            const artists = await Spotify.searchArtists(refresh_token, query);
             if(!artists) {
                 return res.status(401).json({
                     success: false,
@@ -1219,59 +1250,47 @@ class UserController {
 
     async action(req, res) {
         try {
-            const loggedId = req._id;
-
-            // LOGGEDIN ACCESS TOKENI GETİR
-            const loggedUser = await User.findById(loggedId).select('spotifyRefreshToken');
-
-            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-            if(!access_token) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
+            const logged_id = req._id;
 
             // KULLANICININ EŞLEŞTİĞİ İNSANLARI ÇEK
-            const matches = await Match.find({
-                $or: [{ lowerId: loggedId }, { higherId: loggedId }]
-            }).select('lowerId higherId');
+            const matches = await Match.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }]})
+            .select('lower_id higher_id')
+            .lean();
 
             // EŞLEŞTİĞİ KULLANICILARIN IDLERINI BİR LİSTEYE AKTAR
-            var userIds = [];
+            var user_ids = [];
             matches.forEach(match => {
-                const isLower = match.lowerId.toString() === loggedId;
-                userIds.push(isLower ? match.higherId : match.lowerId);
+                const is_lower = match.lower_id.toString() === logged_id;
+                user_ids.push(is_lower ? match.higher_id : match.lower_id);
             });
 
-            // EŞLEŞTİĞİ İNSANLARIN EĞER PERMISSON.showAction OLANLARIN DİNLEDİĞİ MÜZİKLERİ GETİR.
-            const result = await User.find({ 
-                _id: { $in: userIds },
-                "listen.trackId": { $ne: null },
-                "permissions.showAction": true,
-            }).select('name photos isVerifed listen');
+            // EŞLEŞTİĞİ İNSANLARIN EĞER PERMISSON.SHOW_ACTION OLANLARIN DİNLEDİĞİ MÜZİKLERİ GETİR.
+            const results = await User.find({ 
+                $and: [
+                    { _id: { $in: user_ids }},
+                    { "current_play.track": { $ne: null }},
+                    { "permissions.show_action": true },
+                ]
+            })
+            .select('display_name avatars verified current_play')
+            .populate('current_play.track');
 
             // BU LİSTENİN İÇİNDEKİ MÜZİKLERİ ÇEK
-
             var users = [];
 
-            var trackIds = [];
-            result.forEach(user => trackIds.push(user.listen.trackId));
-            var tracks = await Spotify.getTracks(access_token, trackIds);
+            for(let i = 0; i < results.length; i++) {
+                const user = results[i];
 
-            for(const user of result) {
-                const track = tracks.find(x => x.id === user.listen.trackId);
                 users.push({
                     user: {
                         _id: user._id,
-                        name: user.name,
-                        photos: user.photos,
-                        isVerifed: user.isVerifed,
+                        display_name: user.display_name,
+                        avatars: user.avatars,
+                        verified: user.verified,
                     },
-
-                    track: track,
-                    isListen: user.listen.isListen,
-                    timestamp: user.listen.timestamp,
+                    track: user.current_play.track,
+                    is_playing: user.current_play.is_playing,
+                    timestamp: user.current_play.timestamp,
                 });
             }
 
@@ -1294,31 +1313,20 @@ class UserController {
         }
     }
 
-    async get_last_tracks(req, res) {
+    async user_last_tracks(req, res) {
         try {
-            const loggedId = req._id;
-
-            const user = await User.findById(loggedId).select('spotifyRefreshToken lastTracks');
-
-            const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
-            if(!access_token) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-
-            const lastTracks = await Spotify.getTracks(access_token, user.lastTracks);
+            const logged_id = req._id;
+            const user = await User.findById(logged_id).select('last_tracks').populate('last_tracks').lean();
 
             return res.status(200).json({
                 success: true,
-                tracks: lastTracks,
+                tracks: user.last_tracks,
             }); 
 
         } catch(err) {
             Error({
                 file: 'UserController.js',
-                method: 'get_last_tracks',
+                method: 'user_last_tracks',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
@@ -1335,50 +1343,34 @@ module.exports = new UserController();
 
 // UTILS
 
-async function updateSpotifyRefreshToken(loggedId, refresh_token) {
+async function updateSpotifyRefreshToken(logged_id, refresh_token) {
     try {
-        await User.findByIdAndUpdate(loggedId, {
-            spotifyRefreshToken: refresh_token
-        });
+        await User.updateOne({ _id: logged_id }, { spotify_refresh_token: refresh_token });
     } catch(err) {
         throw err;
     }
 }
 
-async function getMyProfile(loggedId) {
+async function getMyProfile(logged_id) {
     console.time('getMyProfile');
     try {
         console.time('fetch_user');
-        const user = await User.findById(loggedId).select('email name photos isVerifed birthday city bio gender socialAccounts lastTracks favTracks favArtists permissions notifications filtering product spotifyFavTracks spotifyFavArtists spotifyRefreshToken');
+        const user = await User.findById(logged_id)
+        .select('email display_name avatars verified birthday city bio gender social_accounts last_tracks fav_tracks fav_artists permissions notifications filtering product spotify_fav_tracks spotify_fav_artists')
+        .populate('last_tracks')
+        .populate('fav_tracks')
+        .populate('fav_artists')
+        .populate('spotify_fav_tracks')
+        .populate('spotify_fav_artists')
+        .lean();
         console.timeEnd('fetch_user');
-
-        console.time('refresh_token');
-        const access_token = await Spotify.refreshAccessToken(user.spotifyRefreshToken);
-        if(!access_token) {
-            return res.status(401).json({
-                success: false,
-                error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-            });
-        }
-        console.timeEnd('refresh_token');
-
-        console.time('spotify_me');
-        const lastTracks = Spotify.getTracks(access_token, user.lastTracks);
-        const favTracks = Spotify.getTracks(access_token, user.favTracks);
-        const favArtists = Spotify.getArtists(access_token, user.favArtists);
-
-        const spotifyFavTracks = Spotify.getTracks(access_token, user.spotifyFavTracks);
-        const spotifyFavArtists = Spotify.getArtists(access_token, user.spotifyFavArtists);
-
-        const promises = await Promise.all([lastTracks, favTracks, favArtists, spotifyFavTracks, spotifyFavArtists]);
-        console.timeEnd('spotify_me');
 
         return {
             user: {
                 _id: user._id,
-                name: user.name,
-                isVerifed: user.isVerifed,
-                photos: user.photos,
+                display_name: user.display_name,
+                avatars: user.avatars,
+                verified: user.verified,
             },
 
             email: user.email,
@@ -1388,20 +1380,19 @@ async function getMyProfile(loggedId) {
             gender: user.gender,
 
             bio: user.bio,
-            socialAccounts: user.socialAccounts,
+            social_accounts: user.social_accounts,
         
-            lastTracks: promises[0],
-            favTracks: promises[1],
-            favArtists: promises[2],
+            last_tracks: user.last_tracks,
+            fav_tracks: user.fav_tracks,
+            fav_artists: user.fav_artists,
         
-            spotifyFavTracks: promises[3],
-            spotifyFavArtists: promises[4],
+            spotify_fav_tracks: user.spotify_fav_tracks,
+            spotify_fav_artists: user.spotify_fav_artists,
 
             permissions: user.permissions,
             notifications: user.notifications,
 
             filtering: user.filtering,
-
             product: user.product,
         };
        
@@ -1426,12 +1417,12 @@ function isAdult(timestamp) {
     }
 }
 
-function calculatePercentage(commonArtistsLength, loggedSpotifyFavArtistsLength, targetSpotifyFavArtistsLength) {
-    if(commonArtistsLength > 0) {
-        const loggedPercentage = Math.trunc((100 / (loggedSpotifyFavArtistsLength / commonArtistsLength)));
-        const targetPercentage = Math.trunc((100 / (targetSpotifyFavArtistsLength / commonArtistsLength)));
+function calculatePercentage(common_artists_length, logged_spotify_fav_artists_length, target_spotify_fav_artists_length) {
+    if(common_artists_length > 0) {
+        const logged_percentage = Math.trunc((100 / (logged_spotify_fav_artists_length / common_artists_length)));
+        const target_percentage = Math.trunc((100 / (target_spotify_fav_artists_length / common_artists_length)));
 
-        return loggedPercentage >= targetPercentage ? loggedPercentage : targetPercentage;
+        return logged_percentage >= target_percentage ? logged_percentage : target_percentage;
     }
 
     return 0;

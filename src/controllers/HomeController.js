@@ -1,7 +1,10 @@
 const User = require('../models/UserModel');
 
-const Spotify = require('../utils/Spotify');
 const Error = require('./ErrorController');
+
+const Track = require('../models/TrackModel');
+const Artist = require('../models/ArtistModel');
+const shared = require('../shared');
 
 class HomeController {
 
@@ -12,30 +15,20 @@ class HomeController {
             const loggedId = req._id;
 
             console.time('fetch_user_data');
-            const loggedUser = await User.findById(loggedId).select('spotifyFavArtists spotifyRefreshToken');
+            const loggedUser = await User.findById(loggedId).select('spotify_fav_artists').lean();
             console.timeEnd('fetch_user_data');
-    
-            console.time('fetch_access_token');
-            const access_token = await Spotify.refreshAccessToken(loggedUser.spotifyRefreshToken);
-            if(!access_token) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-            console.timeEnd('fetch_access_token');
             
-            console.time('fetch_datas');
-            const { trendArtist, recommendedTracks, recommendedArtists, popularTracks, popularArtists } = await fetchDatas(access_token, loggedUser.spotifyFavArtists);
-            console.timeEnd('fetch_datas');
+            /*console.time('fetch_datas');
+            const { trend_artist, recommended_tracks, recommended_artists, popular_tracks, popular_artists } = await fetchDatas(loggedUser.spotify_fav_artists);
+            console.timeEnd('fetch_datas');*/
 
             return res.status(200).json({
                 success: true,
-                trendArtist,
-                recommendedTracks,
-                recommendedArtists,
-                popularTracks,
-                popularArtists
+                trend_artist: [],
+                recommended_tracks: [],
+                recommended_artists: [],
+                popular_tracks: [],
+                popular_artists: [],
             });
 
         } catch(err) {
@@ -61,18 +54,16 @@ class HomeController {
                 { 
                     $match: { 
                         $and: [
-                            { "listen.isListen": true },
-                            { "listen.artistId": { $ne: null } },
-                            { "permissions.showLive": true },
+                            { "current_play.is_playing": true },
+                            { "current_play.artist": { $ne: null } },
+                            { "permissions.show_live": true },
                         ]
                     }
                 },
                 { $count: "count" },
             ]);
 
-            aggregate.forEach(element => {
-                if(element) count = element.count;
-            });
+            aggregate.forEach(element => { if(element) count = element.count; });
 
             return res.status(200).json({
                 success: true,
@@ -99,29 +90,33 @@ module.exports = new HomeController();
 
 // UTILS
 
-async function fetchDatas(access_token, spotifyFavArtists) {
+async function fetchDatas(spotify_fav_artists) {
     try {
-        var trendArtist;
+        var trend_artist;
 
-        var recommendedTracks;
-        var recommendedArtists;
+        var recommended_tracks;
+        var recommended_artists;
 
-        var popularTracks;
-        var popularArtists;
+        var popular_tracks;
+        var popular_artists;
+
+        // DB DE EN ÇOK DİNLENEN SANATÇI VE TOP 10 ŞARKISI (SAYISI İLE BİRLİKTE)
+        // DB DE TÜM DİNLENEN ŞARKILAR (SAYISI İLE BİRLİKTE)
+        // DB DE TÜM DİNLENEN SANATÇILAR (SAYISI İLE BİRLİKTE)
 
         const _trend_artist = User.aggregate([
             {
                 $match: { 
                     $and: [
-                        { "listen.isListen": true },
-                        { "listen.artistId": { $ne: null } },
-                        { "permissions.showLive": true },
+                        { "current_play.is_playing": true },
+                        { "current_play.artist": { $ne: null } },
+                        { "permissions.show_live": true },
                     ]
                 }
             },
             {
                 $group: {
-                    _id: "$listen.artistId",
+                    _id: "$current_play.artist",
                     count: { $sum: 1 },
                 }
             },
@@ -137,16 +132,16 @@ async function fetchDatas(access_token, spotifyFavArtists) {
             {
                 $match: { 
                     $and: [
-                        { "listen.isListen": true },
-                        { "listen.trackId": { $ne: null } },
-                        { "listen.artistId": { $ne: null } },
-                        { "permissions.showLive": true },
+                        { "current_play.is_playing": true },
+                        { "current_play.track": { $ne: null } },
+                        { "current_play.artist": { $ne: null } },
+                        { "permissions.show_live": true },
                     ]   
                 }
             },
             {
                 $group: {
-                    _id: "$listen.trackId",
+                    _id: "$current_play.track",
                     count: { $sum: 1 },
                 }
             },
@@ -156,16 +151,16 @@ async function fetchDatas(access_token, spotifyFavArtists) {
             {
                 $match: { 
                     $and: [
-                        { "listen.isListen": true },
-                        { "listen.trackId": { $ne: null } },
-                        { "listen.artistId": { $ne: null } },
-                        { "permissions.showLive": true },
+                        { "current_play.is_playing": true },
+                        { "current_play.track": { $ne: null } },
+                        { "current_play.artist": { $ne: null } },
+                        { "permissions.show_live": true },
                     ]   
                 }
             },
             {
                 $group: {
-                    _id: "$listen.artistId",
+                    _id: "$current_play.artist",
                     count: { $sum: 1 },
                 }
             },
@@ -178,43 +173,25 @@ async function fetchDatas(access_token, spotifyFavArtists) {
         var _trend_artist_id;
         if(values[0].length > 0) _trend_artist_id = values[0][0]._id.toString();
 
-        // SPOTIFY DAN VERILER ÇEKİLECEK
-
-        const all_track_ids = [];
-        values[1].forEach(element => all_track_ids.push(element._id));
-
-        const all_artists_ids = [];
-        values[2].forEach(element => all_artists_ids.push(element._id));
-
-        const spotify_all_tracks = Spotify.getTracksWithCount(access_token, all_track_ids, values[1], _trend_artist_id);
-        const spotify_all_artists = Spotify.getArtistsWithCount(access_token, all_artists_ids, values[2], _trend_artist_id);
-
-        console.time('spotify_fetch_all');
-        const values2 = await Promise.all([spotify_all_tracks, spotify_all_artists]);
-        console.timeEnd('spotify_fetch_all');
-
-        const all_tracks = values2[0].results;
-        const all_artists = values2[1].results;
-
         // FINISH
 
-        trendArtist = {
+        trend_artist = {
             listenArtist: values2[1].trend_artist,
             tracks: values2[0].trend_tracks,
         };
 
-        recommendedTracks = all_tracks.filter(x => spotifyFavArtists.includes(x.track.artistId));
-        popularTracks = all_tracks.filter(x => !spotifyFavArtists.includes(x.track.artistId));
+        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artistId));
+        popular_tracks = all_tracks.filter(x => !spotify_fav_artists.includes(x.track.artistId));
 
-        recommendedArtists = all_artists.filter(x => spotifyFavArtists.includes(x.artist.id));
-        popularArtists = all_artists.filter(x => !spotifyFavArtists.includes(x.artist.id));
+        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist.id));
+        popular_artists = all_artists.filter(x => !spotify_fav_artists.includes(x.artist.id));
 
         return {
-            trendArtist,
-            recommendedTracks,
-            recommendedArtists,
-            popularTracks,
-            popularArtists
+            trend_artist,
+            recommended_tracks,
+            recommended_artists,
+            popular_tracks,
+            popular_artists
         }
     } catch(err) {
         throw err;

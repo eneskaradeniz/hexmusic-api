@@ -2,7 +2,7 @@ const tr = require('../lang/tr.json');
 const en = require('../lang/en.json');
 
 class Language {
-    static async translate({ key, lang }) {
+    static translate({ key, lang }) {
         try {
             var value;
 

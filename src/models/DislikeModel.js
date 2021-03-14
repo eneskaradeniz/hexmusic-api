@@ -12,7 +12,7 @@ const DislikeSchema = mongoose.Schema({
         required: true,
     },
     
-    sendAt: {
+    created_at: {
         type: Number,
         default: Date.now
     }

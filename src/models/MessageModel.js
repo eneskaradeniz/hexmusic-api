@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const MessageSchema = mongoose.Schema({
-    chatId: {
+    chat_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Chat',
         required: true,
@@ -34,7 +34,7 @@ const MessageSchema = mongoose.Schema({
         default: false,
     },
 
-    createdAt: {
+    created_at: {
         type: Number,
         default: Date.now,
     },
