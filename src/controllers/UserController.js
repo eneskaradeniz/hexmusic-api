@@ -441,7 +441,7 @@ class UserController {
 
             // EĞER BU İŞLEMLER BAŞARILI OLURSA KULLANICININ FOTOĞRAFLARI VARSA TÜM FOTOĞRAFLARI SİLİNECEK
 
-            var photos = [];
+            var avatars = [];
             var users = [];
             
             await session.withTransaction(async () => {
@@ -498,7 +498,7 @@ class UserController {
             });
 
             // TÜM FOTOĞRAFLARINI SİL
-            FileController.deleteImages(photos);
+            FileController.deleteImages(avatars);
 
             // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
             users.forEach(model => {
@@ -776,7 +776,7 @@ class UserController {
             }
 
             // FOTOĞRAFI EKLE
-            await User.updateOne({ _id: logged_id }, { $push: { photos: image_id } });
+            await User.updateOne({ _id: logged_id }, { $push: { avatars: image_id } });
 
             return res.status(200).json({
                 success: true,
