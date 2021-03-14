@@ -108,14 +108,14 @@ function startTyping(socket, data) {
     const findTargetUser = shared.users.find(x => x.user_id === to);
     if(findTargetUser) {
       findTargetUser.socket.emit('typing', {
-          isTyping: true,
+          is_typing: true,
           user_id: user_id,
         });
         setTimeout(() => {
           const findTargetUser = shared.users.find(x => x.user_id === to);
           if(findTargetUser) {
             findTargetUser.socket.emit('typing', {
-              isTyping: false,
+              is_typing: false,
               user_id: user_id,
             });
           }
