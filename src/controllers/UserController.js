@@ -169,11 +169,11 @@ class UserController {
 
             const track_chunks = _.chunk(difference_track_ids, 50);
             const track_promises = await Promise.all(track_chunks.map((ids) => {
-                console.log(ids);
                 return Spotify.getTracks(access_token, ids);
             }));
 
-            console.log(track_promises);
+            var difference_tracks = [];
+            track_promises.forEach((e) => { difference_tracks.concat(e); });
 
             // ARTISTS
 
@@ -189,6 +189,9 @@ class UserController {
                 return Spotify.getArtists(access_token, ids);
             }));
 
+            var difference_artists = [];
+            artist_promises.forEach((e) => { difference_artists.concat(e); });
+
             // FINISH
 
             await session.withTransaction(async () => {
@@ -201,19 +204,19 @@ class UserController {
             const user_id = ObjectId();
             await User.create({
                 _id: user_id,
-                spotify_id: spotify_id,
-                spotify_refresh_token: spotify_refresh_token,
-                spotify_fav_artists: spotify_fav_artists,
-                spotify_fav_tracks: spotify_fav_tracks,
+                spotify_id,
+                spotify_refresh_token,
+                spotify_fav_artists,
+                spotify_fav_tracks,
                 avatars,
                 email,
-                display_name: display_name,
+                display_name,
                 birthday,
                 gender,
                 bio,
                 city,
-                fav_tracks: fav_tracks,
-                fav_artists: fav_artists,
+                fav_tracks,
+                fav_artists,
                 language
             });
 
