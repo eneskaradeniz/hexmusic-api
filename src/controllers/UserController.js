@@ -152,8 +152,13 @@ class UserController {
                 });
             }
 
-            const all_tracks = [...new Set(...spotify_fav_tracks, ...fav_tracks)];
-            const all_artists = [...new Set(...spotify_fav_artists, ...fav_artists)];
+            const all_tracks = uniq([...spotify_fav_tracks, ...fav_tracks]);
+            const all_artists = uniq([...spotify_fav_artists, ...fav_artists]);
+
+            var uniqueNames = [];
+            $.each(names, function(i, el){
+                if($.inArray(el, uniqueNames) === -1) uniqueNames.push(el);
+            });
 
             console.log('all_tracks:', all_tracks.length);
             console.log('all_artists:', all_artists.length);
@@ -1442,4 +1447,11 @@ function calculatePercentage(common_artists_length, logged_spotify_fav_artists_l
     }
 
     return 0;
+}
+
+function uniq(a) {
+    var seen = {};
+    return a.filter(function(item) {
+        return seen.hasOwnProperty(item) ? false : (seen[item] = true);
+    });
 }
