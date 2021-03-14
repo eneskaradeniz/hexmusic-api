@@ -22,6 +22,8 @@ const Error = require('./ErrorController');
 const Track = require('../models/TrackModel');
 const Artist = require('../models/ArtistModel');
 
+const _ = require("lodash");
+
 const generateJwtToken = (user_id) => jwt.sign({ _id: user_id }, jwtConfig.secret);
 
 class UserController {
@@ -161,7 +163,11 @@ class UserController {
             tracks.forEach(e => track_ids.push(e._id));
 
             const difference_track_ids = all_tracks.filter(x => !track_ids.includes(x));
-            const difference_tracks = await Spotify.getTracks(access_token, difference_track_ids);
+
+            const track_chunks = _.chunk(difference_track_ids, 50);
+            const track_promises = track_chunks.map((ids) => {
+                return Spotify.getTracks(access_token, ids);
+            });
 
             // ARTISTS
 
@@ -171,7 +177,16 @@ class UserController {
             artists.forEach(e => artist_ids.push(e._id));
 
             const difference_artist_ids = all_artists.filter(x => !artist_ids.includes(x));
-            const difference_artists = await Spotify.getArtists(access_token, difference_artist_ids);
+
+            const artist_chunks = _.chunk(difference_artist_ids, 50);
+            const artist_promises = artist_chunks.map((ids) => {
+                return Spotify.getArtists(access_token, ids);
+            });
+
+            const results = await Promise.all([track_promises, artist_promises]);
+
+            const difference_tracks = results[0];
+            const difference_artists = results[1];
 
             // FINISH
 
