@@ -298,7 +298,8 @@ class UserController {
 
             // GEREKLI BİLGİLERİ ÇEK
             const results = await Promise.all([
-                User.findById(logged_id).select('display_name avatars verified spotify_fav_tracks spotify_fav_artists')
+                User.findById(logged_id)
+                .select('display_name avatars verified spotify_fav_tracks spotify_fav_artists')
                 .populate('spotify_fav_tracks')
                 .populate('spotify_fav_artists')
                 .lean(),
@@ -351,6 +352,9 @@ class UserController {
             }
 
             // COMMON
+
+            console.log(logged_profile.spotify_fav_tracks);
+            console.log(target_profile.spotify_fav_tracks);
 
             const common_tracks = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
             const common_artists = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
