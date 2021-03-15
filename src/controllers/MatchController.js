@@ -800,14 +800,14 @@ async function updateCurrentPlay(logged_id, track) {
     
                 // SON DİNLEDİKLERİME EKLE
                 if(user.last_tracks.length > 0) {
-                    if(user.last_tracks[0] !== trackId) {
+                    if(user.last_tracks[0] !== track._id) {
                         // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
                         if(user.last_tracks.length >= 10) user.last_tracks.pop();
-                        user.last_tracks.unshift(trackId);
+                        user.last_tracks.unshift(track._id);
                     }
                 } else {
                     // LİSTEDE HİÇ ELEMAN YOK EKLE
-                    user.last_tracks.unshift(trackId);
+                    user.last_tracks.unshift(track._id);
                 }
 
                 await user.save();
