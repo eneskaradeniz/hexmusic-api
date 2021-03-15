@@ -349,8 +349,14 @@ class UserController {
 
             // COMMON
 
+            console.log(logged_profile.spotify_fav_tracks);
+            console.log(logged_profile.spotify_fav_artists);
+
             const common_tracks = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
             const common_artists = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
+
+            console.log(common_tracks);
+            console.log(common_artists);
 
             var percentage = calculatePercentage(common_artists.length, logged_profile.spotify_fav_artists.length, target_profile.spotify_fav_artists.length);
 
