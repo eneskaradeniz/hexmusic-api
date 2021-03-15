@@ -39,8 +39,6 @@ class MatchController {
 
             const find_track = await Track.findById(id).lean();
             if(find_track) {
-                console.log(find_track);
-                console.log(is_podcast);
                 if(find_track.is_podcast !== is_podcast) {
                     return res.status(200).json({
                         success: false,
