@@ -815,7 +815,7 @@ async function findListenersForTarget(logged_id, track) {
     try {
         // LOGGED IN USER KARTINI OLUŞTUR
         const logged_user = await User.findById(logged_id).select('display_name avatars verified birthday permissions current_play').lean();
-        if(current_play.track !== track._id) return;
+        if(logged_user.current_play.track !== track._id) return;
         
         var birthday = null;
         if(logged_user.permissions.show_age) birthday = logged_user.birthday;
