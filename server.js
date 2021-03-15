@@ -38,6 +38,7 @@ server.listen(PORT, async () => {
 
 //SOCKET.IO CONFIGURATION
 
+const db = require('mongoose');
 const User = require('./src/models/UserModel');
 
 function initUser(socket, data) {
@@ -133,11 +134,16 @@ function startTyping(socket, data) {
 }
 
 async function stopMusic(logged_id) {
-  const session = db.startSession();
+  const session = await db.startSession();
 
   try {
       await session.withTransaction(async () => {
-          await User.updateOne({ _id: logged_id }, { current_play: { timestamp: Date.now(), is_playing: false } }).session(session);
+        await User.updateOne({ _id: logged_id }, { 
+          current_play: {
+              is_playing: false,
+              timestamp: Date.now(),
+          } 
+        }).session(session);
       });
   } catch(err) {
       Error({
