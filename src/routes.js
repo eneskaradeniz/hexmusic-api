@@ -77,6 +77,7 @@ module.exports = (upload) => {
     // SPOTIFY
     router.post('/search_tracks/:q', UserController.search_tracks);
     router.post('/search_artists/:q', UserController.search_artists);
+    router.post('/search_podcasts/:q', UserController.search_podcasts);
 
     return router;
 }

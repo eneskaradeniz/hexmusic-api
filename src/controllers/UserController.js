@@ -1280,6 +1280,45 @@ class UserController {
         }
     }
 
+    async search_podcasts(req, res) {
+        try {
+            const query = req.params.q;
+            const { refresh_token } = req.body;
+            if(!query || !refresh_token) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'INVALID_FIELDS',
+                });
+            }
+
+            const tracks = await Spotify.searchPodcasts(refresh_token, query);
+            if(!tracks) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
+                });
+            }
+            
+            return res.status(200).json({
+                success: true,
+                tracks
+            })
+
+        } catch (err) {
+            Error({
+                file: 'UserController.js',
+                method: 'search_tracks',
+                title: err.toString(),
+                info: err,
+                type: 'critical',
+            });
+
+            return res.status(400).json({
+                success: false
+            });
+        }
+    }
+
     // OTHER
 
     async action(req, res) {

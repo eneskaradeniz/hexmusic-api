@@ -310,6 +310,42 @@ class Spotify {
             throw err;
         }
     }
+
+    static async searchPodcasts(refresh_token, query) {
+        try {
+            const access_token = await this.refreshAccessToken(refresh_token);
+            if(!access_token) return null;
+
+            spotifyApi.setAccessToken(access_token);
+
+            const data = await spotifyApi.searchPodcasts(query, { limit: 10 });
+            const podcasts = data.body.tracks.items;
+    
+            var results = [];
+            
+            podcasts.forEach(podcast => {
+
+                var artists = [];
+                artists.push(podcast.show.publisher);
+
+                if(podcast.name.toLowerCase().includes(query)) {
+                    results.push({
+                        _id: podcast.id,
+                        name: podcast.name,
+                        artist: podcast.show.id,
+                        artists: artists,
+                        album_name: podcast.show.name,
+                        album_images: podcast.images,
+                        is_podcast: true,
+                    });
+                }
+            }); 
+
+            return results;
+        } catch (err) {
+            throw err;
+        }
+    }
 }
 
 module.exports = Spotify;
