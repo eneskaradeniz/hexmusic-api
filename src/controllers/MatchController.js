@@ -93,12 +93,7 @@ class MatchController {
                 });
             }
 
-            await updateCurrentPlay(logged_id, {
-                track: track._id,
-                artist: track.artist,
-                is_playing: true,
-                timestamp: Date.now(),
-            });
+            await updateCurrentPlay(logged_id, track);
 
             findListenersForTarget(logged_id, track);
 
@@ -127,10 +122,7 @@ class MatchController {
         try {
             const logged_id = req._id;
 
-            await updateCurrentPlay(logged_id, {
-                is_playing: false,
-                timestamp: Date.now(),
-            });
+            await updateCurrentPlay(logged_id, null);
 
             return res.status(200).json({
                 success: true
@@ -791,13 +783,45 @@ function sortByPremiumPlus(array) {
     return array.sort((a, b) => (a.product === "premium_plus" && b.product === "premium_plus") ? 0 : a.product === "premium_plus" ? -1 : 1);
 }
 
-async function updateCurrentPlay(logged_id, current_play) {
+async function updateCurrentPlay(logged_id, track) {
     const session = await db.startSession();
 
     try {
-        await session.withTransaction(async () => {
-            await User.updateOne({ _id: logged_id }, { current_play }).session(session);
-        });
+        if(track) {
+            await session.withTransaction(async () => {
+                const user = await User.findById(logged_id).select('current_play last_tracks');
+    
+                user.current_play = {
+                    track: track._id,
+                    artist: track.artist,
+                    is_playing: true,
+                    timestamp: Date.now(),
+                };
+    
+                // SON DİNLEDİKLERİME EKLE
+                if(user.last_tracks.length > 0) {
+                    if(user.last_tracks[0] !== trackId) {
+                        // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
+                        if(user.last_tracks.length >= 10) user.last_tracks.pop();
+                        user.last_tracks.unshift(trackId);
+                    }
+                } else {
+                    // LİSTEDE HİÇ ELEMAN YOK EKLE
+                    user.last_tracks.unshift(trackId);
+                }
+
+                await user.save();
+            });
+        } else {
+            await session.withTransaction(async () => {
+                await User.updateOne({ _id: logged_id }, { 
+                    current_play: {
+                        is_playing: false,
+                        timestamp: Date.now(),
+                    } 
+                }).session(session);
+            });
+        }
     } catch(err) {
         Error({
             file: 'MatchController.js',
