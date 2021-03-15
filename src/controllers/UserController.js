@@ -1291,8 +1291,8 @@ class UserController {
                 });
             }
 
-            const tracks = await Spotify.searchPodcasts(refresh_token, query);
-            if(!tracks) {
+            const podcasts = await Spotify.searchPodcasts(refresh_token, query);
+            if(!podcasts) {
                 return res.status(401).json({
                     success: false,
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
@@ -1301,13 +1301,13 @@ class UserController {
             
             return res.status(200).json({
                 success: true,
-                tracks
+                podcasts
             })
 
         } catch (err) {
             Error({
                 file: 'UserController.js',
-                method: 'search_tracks',
+                method: 'search_podcasts',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
