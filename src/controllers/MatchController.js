@@ -750,7 +750,7 @@ function generateMatchs(match, chat_id) {
     };
 
     const higher_chat_screen = {
-        chatId: chat_id,
+        chat_id: chat_id,
         to: match.higher_id._id,
         user: match.lower_id,
     };
