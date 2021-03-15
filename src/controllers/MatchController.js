@@ -794,7 +794,7 @@ function sortByPremiumPlus(array) {
 }
 
 async function updateCurrentPlay(logged_id, current_play) {
-    const session = db.startSession();
+    const session = await db.startSession();
 
     try {
         await session.withTransaction(async () => {
