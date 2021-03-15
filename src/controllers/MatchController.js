@@ -906,7 +906,7 @@ async function findListenersForTarget(logged_id, track) {
                 if(!is_contiune) continue;
 
                 // FİLTRELEME BAŞARILI İSE SOCKETINI BUL VE GÖNDER
-                const find_user = shared.users.find(x => x.user_id === to);
+                const find_user = shared.users.find(x => x.user_id === target_user._id.toString());
                 if(find_user) find_user.socket.emit('get_card', { user: logged_card });  
             } catch(err) {
                 Error({
