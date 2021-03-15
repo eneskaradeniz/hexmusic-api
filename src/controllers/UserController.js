@@ -293,6 +293,9 @@ class UserController {
                 });
             }
 
+            const lower_id = logged_id < target_id ? logged_id : target_id;
+            const higher_id = logged_id > target_id ? logged_id : target_id;
+
             // GEREKLI BİLGİLERİ ÇEK
             const results = await Promise.all([
                 User.findById(logged_id).select('display_name avatars verified spotify_fav_tracks spotify_fav_artists').lean(),
@@ -304,11 +307,18 @@ class UserController {
                 .populate('last_tracks')
                 .populate('spotify_fav_tracks')
                 .populate('spotify_fav_artists')
-                .lean()
+                .lean(),
+
+                Match.findOne({ lower_id: lower_id, higher_id: higher_id })
+                .populate('lower_track')
+                .populate('higher_track')
+                .lean(),
             ]);
 
             const logged_profile = results[0];
             const target_profile = results[1];
+            const find_match = results[2];
+
             if(!target_profile) {
                 return res.status(200).json({
                     success: false,
@@ -333,8 +343,8 @@ class UserController {
                 social_accounts: target_profile.social_accounts,
                 
                 last_tracks: target_profile.permissions.show_last_tracks ? target_profile.last_tracks : null,
-                fav_tracks: fav_tracks,
-                fav_artists: fav_artists,
+                fav_tracks: target_profile.fav_tracks,
+                fav_artists: target_profile.fav_artists,
             }
 
             // COMMON
@@ -353,14 +363,6 @@ class UserController {
             // MATCH
 
             var match;
-
-            const lower_id = logged_id < target_id ? logged_id : target_id;
-            const higher_id = logged_id > target_id ? logged_id : target_id;
-            
-            const find_match = await Match.findOne({ lower_id: lower_id, higher_id: higher_id })
-            .populate('lower_track')
-            .populate('higher_track')
-            .lean();
 
             if(find_match) {
                 const is_lower = logged_id === lower_id;
