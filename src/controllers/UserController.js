@@ -298,7 +298,10 @@ class UserController {
 
             // GEREKLI BİLGİLERİ ÇEK
             const results = await Promise.all([
-                User.findById(logged_id).select('display_name avatars verified spotify_fav_tracks spotify_fav_artists').lean(),
+                User.findById(logged_id).select('display_name avatars verified spotify_fav_tracks spotify_fav_artists')
+                .populate('spotify_fav_tracks')
+                .populate('spotify_fav_artists')
+                .lean(),
 
                 User.findById(target_id)
                 .select('display_name avatars verified birthday city bio social_accounts last_tracks fav_tracks fav_artists spotify_fav_tracks spotify_fav_artists permissions')
@@ -349,14 +352,8 @@ class UserController {
 
             // COMMON
 
-            console.log(logged_profile.spotify_fav_tracks);
-            console.log(logged_profile.spotify_fav_artists);
-
             const common_tracks = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
             const common_artists = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
-
-            console.log(common_tracks);
-            console.log(common_artists);
 
             var percentage = calculatePercentage(common_artists.length, logged_profile.spotify_fav_artists.length, target_profile.spotify_fav_artists.length);
 
