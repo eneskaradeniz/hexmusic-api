@@ -318,8 +318,8 @@ class Spotify {
 
             spotifyApi.setAccessToken(access_token);
 
-            const data = await spotifyApi.searchPodcasts(query, { limit: 10 });
-            const podcasts = data.body.tracks.items;
+            const data = await spotifyApi.searchEpisodes(query, { limit: 10 });
+            const podcasts = data.body.episodes.items;
     
             var results = [];
             
