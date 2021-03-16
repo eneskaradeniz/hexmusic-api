@@ -75,7 +75,7 @@ class MatchController {
                             artist: track.artist,
                             artists: track.artists,
                             album_name: track.album_name,
-                            album_images: track.album_images,
+                            album_image: track.album_image,
                             is_podcast: track.is_podcast,
                         }], { session: session });
                     }
@@ -86,7 +86,7 @@ class MatchController {
                             await Artist.create([{
                                 _id: artist._id,
                                 name: artist.name,
-                                images: artist.images,
+                                image: artist.image,
                             }], { session: session });
                         }
                     }
