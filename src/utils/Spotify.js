@@ -320,10 +320,15 @@ class Spotify {
 
             const data = await spotifyApi.searchEpisodes(query, { limit: 10 });
             const podcasts = data.body.episodes.items;
+
+            console.log(podcasts);
     
             var results = [];
+
+            console.log('====');
             
             podcasts.forEach(podcast => {
+                console.log(podcast);
 
                 var artists = [];
                 artists.push(podcast.show.publisher);
