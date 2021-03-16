@@ -225,7 +225,7 @@ class UserController {
                 difference_tracks.push.apply(difference_tracks, all_promises[i]);
             }
 
-            for(let i = track_promises.length; i < all_promises.length - artist_promises.length; i++) {
+            for(let i = track_promises.length; i < all_promises.length; i++) {
                 difference_artists.push.apply(difference_artists, all_promises[i]);
             }
 
