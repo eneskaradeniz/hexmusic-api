@@ -486,7 +486,7 @@ class UserController {
                 matches.forEach(match => {
                     chat_ids.push(match.chat_id);
                     
-                    const is_lower = match.lowerId.toString() === logged_id;
+                    const is_lower = match.lower_id.toString() === logged_id;
                     users.push({ user_id: is_lower ? match.higher_id : match.lower_id, chat_id: match.chat_id });
                 });
 
