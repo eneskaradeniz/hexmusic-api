@@ -60,12 +60,16 @@ class UserController {
 
             const user = await User.findOne({ spotify_id: spotify_id }).select('_id').lean();
             if(user) {
-                // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
-                await updateSpotifyRefreshToken(user._id, refresh_token);
+                
+                let promises = await Promise.all([
+                    // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
+                    updateSpotifyRefreshToken(user._id, refresh_token),
+                    getMyProfile(user._id),
+                ]);
 
                 // BÖYLE BİR KULLANICI VAR TOKEN OLUŞTUR VE PROFILI GETİR
                 const token = generateJwtToken(user._id);
-                const my_profile = await getMyProfile(user._id);
+                const my_profile = promises[1];
 
                 return res.status(200).json({ 
                     success: true,
@@ -77,8 +81,14 @@ class UserController {
                 }); 
             } else {
                 // BÖYLE BİR KULLANICI YOK KAYIT OL EKRANINA AKTAR
-                const { spotify_fav_track_ids, spotify_fav_tracks } = await SpotifyController.getMyTopTracks(access_token);
-                const { spotify_fav_artist_ids, spotify_fav_artists } = await SpotifyController.getMyTopArtists(access_token);
+
+                let promises = await Promise.all([
+                    SpotifyController.getMyTopTracks(access_token),
+                    SpotifyController.getMyTopArtists(access_token),
+                ]);
+
+                const { spotify_fav_track_ids, spotify_fav_tracks } = promises[0];
+                const { spotify_fav_artist_ids, spotify_fav_artists } = promises[1];
 
                 return res.status(200).json({
                     success: true,
@@ -146,6 +156,7 @@ class UserController {
 
             const access_token = await SpotifyController.refreshAccessToken(spotify_refresh_token);
             if(!access_token) {
+                FileController.deleteImages(avatars);
                 return res.status(401).json({
                     success: false,
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
@@ -155,50 +166,48 @@ class UserController {
             const all_tracks = uniq([...spotify_fav_tracks, ...fav_tracks]);
             const all_artists = uniq([...spotify_fav_artists, ...fav_artists]);
 
-            console.log('all_tracks:', all_tracks.length);
-            console.log('all_artists:', all_artists.length);
+            const find_promises = await Promise.all([
+                Track.find({ _id: { $in: all_tracks }}).select('_id').lean(),
+                Artist.find({ _id: { $in: all_artists }}).select('_id').lean(),
+            ]);
+
+            const tracks = find_promises[0];
+            const artists = find_promises[1];
 
             // TRACKS
 
-            const tracks = await Track.find({ _id: { $in: all_tracks }}).select('_id').lean();
-            
             const track_ids = [];
             tracks.forEach(e => track_ids.push(e._id));
 
             const difference_track_ids = all_tracks.filter(x => !track_ids.includes(x));
-            console.log(difference_track_ids);
 
             const track_chunks = _.chunk(difference_track_ids, 50);
-            const track_promises = await Promise.all(track_chunks.map((ids) => {
-                return SpotifyController.getTracks(access_token, ids);
-            }));
-
-            var difference_tracks = [];
-            track_promises.forEach((e) => {
-                difference_tracks.push.apply(difference_tracks, e);
-            });
+            const track_promises = track_chunks.map((ids) => SpotifyController.getTracks(access_token, ids));
 
             // ARTISTS
-
-            const artists = await Artist.find({ _id: { $in: all_artists }}).select('_id').lean();
             
             const artist_ids = [];
             artists.forEach(e => artist_ids.push(e._id));
 
             const difference_artist_ids = all_artists.filter(x => !artist_ids.includes(x));
-            console.log(difference_artist_ids);
 
             const artist_chunks = _.chunk(difference_artist_ids, 50);
-            const artist_promises = await Promise.all(artist_chunks.map((ids) => {
-                return SpotifyController.getArtists(access_token, ids);
-            }));
-
-            var difference_artists = [];
-            artist_promises.forEach((e) => { 
-                difference_artists.push.apply(difference_artists, e);
-            });
+            const artist_promises = artist_chunks.map((ids) => SpotifyController.getArtists(access_token, ids));
 
             // FINISH
+
+            const all_promises = await Promise.all([...track_promises, ...artist_promises]);
+
+            var difference_tracks = [];
+            var difference_artists = [];
+
+            for(let i = 0; i < track_promises.length; i++) {
+                difference_tracks.push.apply(difference_tracks, all_promises[i]);
+            }
+
+            for(let i = track_promises.length; i < all_promises.length - artist_promises.length; i++) {
+                difference_artists.push.apply(difference_artists, all_promises[i]);
+            }
 
             await session.withTransaction(async () => {
                 return await Promise.all([
