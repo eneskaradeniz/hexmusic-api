@@ -40,6 +40,7 @@ class UserController {
                 });
             }
 
+            console.time('getAuthorizationCodeGrant');
             const code_grant = await SpotifyController.getAuthorizationCodeGrant(code);
             if(!code_grant) {
                 return res.status(200).json({
@@ -47,9 +48,11 @@ class UserController {
                     error: 'INVALID_CODE',
                 });
             }
+            console.timeEnd('getAuthorizationCodeGrant');
 
             const { access_token, refresh_token } = code_grant;
 
+            console.time('getSpotifyId');
             const spotify_id = await SpotifyController.getSpotifyId(access_token);
             if(!spotify_id) {
                 return res.status(200).json({
@@ -57,15 +60,21 @@ class UserController {
                     error: 'INVALID_CODE',
                 });
             }
+            console.timeEnd('getSpotifyId');
 
+            console.time('findUser');
             const user = await User.findOne({ spotify_id: spotify_id }).select('_id').lean();
+            console.timeEnd('findUser');
+
             if(user) {
                 
+                console.time('profile_and_update');
                 let promises = await Promise.all([
                     // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
                     updateSpotifyRefreshToken(user._id, refresh_token),
                     getMyProfile(user._id),
                 ]);
+                console.timeEnd('profile_and_update');
 
                 // BÖYLE BİR KULLANICI VAR TOKEN OLUŞTUR VE PROFILI GETİR
                 const token = generateJwtToken(user._id);
@@ -82,10 +91,12 @@ class UserController {
             } else {
                 // BÖYLE BİR KULLANICI YOK KAYIT OL EKRANINA AKTAR
 
+                console.time('my_tops');
                 let promises = await Promise.all([
                     SpotifyController.getMyTopTracks(access_token),
                     SpotifyController.getMyTopArtists(access_token),
                 ]);
+                console.timeEnd('my_tops');
 
                 const { spotify_fav_track_ids, spotify_fav_tracks } = promises[0];
                 const { spotify_fav_artist_ids, spotify_fav_artists } = promises[1];
@@ -119,6 +130,7 @@ class UserController {
     }
 
     async register(req, res) {
+        console.time('REGISTER');
         var avatars = [];
 
         const session = await db.startSession();
@@ -145,6 +157,7 @@ class UserController {
                 });
             }
             
+            console.time('user_exists');
             const user_exists = await User.countDocuments({ spotify_id: spotify_id });
             if (user_exists > 0) {
                 FileController.deleteImages(avatars);
@@ -153,7 +166,9 @@ class UserController {
                     error: 'ALREADY_REGISTER',
                 });
             }
+            console.timeEnd('user_exists');
 
+            console.time('refreshAccessToken');
             const access_token = await SpotifyController.refreshAccessToken(spotify_refresh_token);
             if(!access_token) {
                 FileController.deleteImages(avatars);
@@ -162,14 +177,17 @@ class UserController {
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
                 });
             }
+            console.timeEnd('refreshAccessToken');
 
             const all_tracks = uniq([...spotify_fav_tracks, ...fav_tracks]);
             const all_artists = uniq([...spotify_fav_artists, ...fav_artists]);
 
+            console.time('find_promises');
             const find_promises = await Promise.all([
                 Track.find({ _id: { $in: all_tracks }}).select('_id').lean(),
                 Artist.find({ _id: { $in: all_artists }}).select('_id').lean(),
             ]);
+            console.timeEnd('find_promises');
 
             const tracks = find_promises[0];
             const artists = find_promises[1];
@@ -196,7 +214,9 @@ class UserController {
 
             // FINISH
 
+            console.time('all_promises');
             const all_promises = await Promise.all([...track_promises, ...artist_promises]);
+            console.timeEnd('all_promises');
 
             var difference_tracks = [];
             var difference_artists = [];
@@ -209,14 +229,18 @@ class UserController {
                 difference_artists.push.apply(difference_artists, all_promises[i]);
             }
 
+            console.time('track_and_artist');
             await session.withTransaction(async () => {
                 return await Promise.all([
                     Track.create(difference_tracks, { session: session }),
                     Artist.create(difference_artists, { session: session }),
                 ]);
             });
+            console.timeEnd('track_and_artist');
 
             const user_id = ObjectId();
+
+            console.time('user_create');
             await User.create({
                 _id: user_id,
                 spotify_id,
@@ -234,9 +258,13 @@ class UserController {
                 fav_artists,
                 language
             });
+            console.timeEnd('user_create');
 
             const token = generateJwtToken(user_id);
+
+            console.time('my_profile');
             const my_profile = await getMyProfile(user_id);
+            console.timeEnd('my_profile');
 
             return res.status(200).json({
                 success: true,
@@ -262,6 +290,7 @@ class UserController {
             });
         } finally {
             session.endSession();
+            console.timeEnd('REGISTER');
         }
     }
     
