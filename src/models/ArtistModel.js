@@ -6,7 +6,7 @@ const ArtistSchema = mongoose.Schema({
         type: String,
         required: true,
     },
-    images: [{ type: mongoose.Schema.Types.Mixed }],
+    image: { type: String },
 });
 
 module.exports = mongoose.model('Artist', ArtistSchema);

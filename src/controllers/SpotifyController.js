@@ -7,7 +7,7 @@ const spotifyApi = new SpotifyWebApi({
     redirectUri: process.env.REDIRECT_URI,
 });
 
-class Spotify {
+class SpotifyController {
 
     // AUTH
 
@@ -64,7 +64,7 @@ class Spotify {
                 artist: podcast.show.id,
                 artists: artists,
                 album_name: podcast.show.name,
-                album_images: podcast.images,
+                album_image: podcast.images[0] != null ? podcast.images[0].url : null,
                 is_podcast: true,
             };
         } catch (err) {
@@ -88,7 +88,7 @@ class Spotify {
                 artist: track.artists[0].id,
                 artists: artists,
                 album_name: track.album.name,
-                album_images: track.album.images,
+                album_image: track.album.images[0] != null ? track.album.images[0].url : null,
                 is_podcast: false,
             };
         } catch (err) {
@@ -106,7 +106,7 @@ class Spotify {
             return {
                 _id: artist.id,
                 name: artist.name,
-                images: artist.images,
+                image: artist.images[0] != null ? artist.images[0].url : null,
             };
         } catch (err) {
             throw err;
@@ -134,7 +134,7 @@ class Spotify {
                     artist: track.artists[0].id,
                     artists: artists,
                     album_name: track.album.name,
-                    album_images: track.album.images,
+                    album_image: track.album.images[0] != null ? track.album.images[0].url : null,
                     is_podcast: false,
                 });
             }); 
@@ -160,7 +160,7 @@ class Spotify {
                 results.push({
                     _id: artist.id,
                     name: artist.name,
-                    images: artist.images,
+                    image: artist.images[0] != null ? artist.images[0].url : null,
                 });
             });   
         
@@ -199,7 +199,7 @@ class Spotify {
                         artist: track.artists[0].id,
                         artists: artists,
                         album_name: track.album.name,
-                        album_images: track.album.images,
+                        album_image: track.album.images[0] != null ? track.album.images[0].url : null,
                         is_podcast: false,
                     });
                 });
@@ -233,7 +233,7 @@ class Spotify {
                     spotify_fav_artists.push({
                         _id: artist.id,
                         name: artist.name,
-                        images: artist.images,
+                        image: artist.images[0] != null ? artist.images[0].url : null,
                     });
                 });
             }
@@ -271,7 +271,7 @@ class Spotify {
                         artist: track.artists[0].id,
                         artists: artists,
                         album_name: track.album.name,
-                        album_images: track.album.images,
+                        album_image: track.album.images[0] != null ? track.album.images[0].url : null,
                         is_podcast: false,
                     });
                 }
@@ -300,7 +300,7 @@ class Spotify {
                     results.push({
                         _id: artist.id,
                         name: artist.name,
-                        images: artist.images,
+                        image: artist.images[0] != null ? artist.images[0].url : null,
                     });
                 }
             }); 
@@ -322,10 +322,9 @@ class Spotify {
             const podcasts = data.body.episodes.items;
 
             console.log(podcasts);
-    
-            var results = [];
-
             console.log('====');
+
+            var results = [];
             
             podcasts.forEach(podcast => {
                 console.log(podcast);
@@ -340,7 +339,7 @@ class Spotify {
                         artist: podcast.show.id,
                         artists: artists,
                         album_name: podcast.show.name,
-                        album_images: podcast.images,
+                        album_image: podcast.images[0] != null ? podcast.images[0].url : null,
                         is_podcast: true,
                     });
                 }
@@ -353,4 +352,4 @@ class Spotify {
     }
 }
 
-module.exports = Spotify;
+module.exports = SpotifyController;

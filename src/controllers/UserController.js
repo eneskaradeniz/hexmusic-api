@@ -12,7 +12,7 @@ const Message = require('../models/MessageModel');
 const Like = require('../models/LikeModel');
 const Dislike = require('../models/DislikeModel');
 
-const Spotify = require('../utils/Spotify');
+const SpotifyController = require('./SpotifyController');
 const FileController = require('../controllers/FileController');
 
 const shared = require('../shared/index');
@@ -40,7 +40,7 @@ class UserController {
                 });
             }
 
-            const code_grant = await Spotify.getAuthorizationCodeGrant(code);
+            const code_grant = await SpotifyController.getAuthorizationCodeGrant(code);
             if(!code_grant) {
                 return res.status(200).json({
                     success: false,
@@ -50,7 +50,7 @@ class UserController {
 
             const { access_token, refresh_token } = code_grant;
 
-            const spotify_id = await Spotify.getSpotifyId(access_token);
+            const spotify_id = await SpotifyController.getSpotifyId(access_token);
             if(!spotify_id) {
                 return res.status(200).json({
                     success: false,
@@ -77,8 +77,8 @@ class UserController {
                 }); 
             } else {
                 // BÖYLE BİR KULLANICI YOK KAYIT OL EKRANINA AKTAR
-                const { spotify_fav_track_ids, spotify_fav_tracks } = await Spotify.getMyTopTracks(access_token);
-                const { spotify_fav_artist_ids, spotify_fav_artists } = await Spotify.getMyTopArtists(access_token);
+                const { spotify_fav_track_ids, spotify_fav_tracks } = await SpotifyController.getMyTopTracks(access_token);
+                const { spotify_fav_artist_ids, spotify_fav_artists } = await SpotifyController.getMyTopArtists(access_token);
 
                 return res.status(200).json({
                     success: true,
@@ -144,7 +144,7 @@ class UserController {
                 });
             }
 
-            const access_token = await Spotify.refreshAccessToken(spotify_refresh_token);
+            const access_token = await SpotifyController.refreshAccessToken(spotify_refresh_token);
             if(!access_token) {
                 return res.status(401).json({
                     success: false,
@@ -170,7 +170,7 @@ class UserController {
 
             const track_chunks = _.chunk(difference_track_ids, 50);
             const track_promises = await Promise.all(track_chunks.map((ids) => {
-                return Spotify.getTracks(access_token, ids);
+                return SpotifyController.getTracks(access_token, ids);
             }));
 
             var difference_tracks = [];
@@ -190,7 +190,7 @@ class UserController {
 
             const artist_chunks = _.chunk(difference_artist_ids, 50);
             const artist_promises = await Promise.all(artist_chunks.map((ids) => {
-                return Spotify.getArtists(access_token, ids);
+                return SpotifyController.getArtists(access_token, ids);
             }));
 
             var difference_artists = [];
@@ -1062,7 +1062,7 @@ class UserController {
             const logged_id = req._id;
 
             const user = await User.findById(logged_id).select('spotify_refresh_token').lean();
-            const access_token = await Spotify.refreshAccessToken(user.spotify_refresh_token);
+            const access_token = await SpotifyController.refreshAccessToken(user.spotify_refresh_token);
             if(!access_token) {
                 return res.status(401).json({
                     success: false,
@@ -1070,8 +1070,8 @@ class UserController {
                 });
             }
 
-            const my_top_tracks = await Spotify.getMyTopTracks(access_token);
-            const my_top_artists = await Spotify.getMyTopArtists(access_token);
+            const my_top_tracks = await SpotifyController.getMyTopTracks(access_token);
+            const my_top_artists = await SpotifyController.getMyTopArtists(access_token);
 
             await User.updateOne({ _id: logged_id }, {
                 spotify_fav_tracks: my_top_tracks.spotify_fav_track_ids,
@@ -1213,7 +1213,7 @@ class UserController {
                 });
             }
 
-            const tracks = await Spotify.searchTracks(refresh_token, query);
+            const tracks = await SpotifyController.searchTracks(refresh_token, query);
             if(!tracks) {
                 return res.status(401).json({
                     success: false,
@@ -1252,7 +1252,7 @@ class UserController {
                 });
             }
 
-            const artists = await Spotify.searchArtists(refresh_token, query);
+            const artists = await SpotifyController.searchArtists(refresh_token, query);
             if(!artists) {
                 return res.status(401).json({
                     success: false,
@@ -1291,7 +1291,7 @@ class UserController {
                 });
             }
 
-            const podcasts = await Spotify.searchPodcasts(refresh_token, query);
+            const podcasts = await SpotifyController.searchPodcasts(refresh_token, query);
             if(!podcasts) {
                 return res.status(401).json({
                     success: false,

@@ -11,7 +11,7 @@ const Dislike = require('../models/DislikeModel');
 const PushNotification = require('../controllers/PushNotificationController');
 const shared = require('../shared/index');
 
-const Spotify = require('../utils/Spotify');
+const SpotifyController = require('./SpotifyController');
 const Language = require('../utils/Language');
 
 const Error = require('./ErrorController');
@@ -49,7 +49,7 @@ class MatchController {
                 track = find_track;
             } else {
                 const logged_user = await User.findById(logged_id).select('spotify_refresh_token').lean();
-                const access_token = await Spotify.refreshAccessToken(logged_user.spotify_refresh_token);
+                const access_token = await SpotifyController.refreshAccessToken(logged_user.spotify_refresh_token);
                 if(!access_token) {
                     return res.status(401).json({
                         success: false,
@@ -57,12 +57,12 @@ class MatchController {
                     });
                 }
 
-                track = is_podcast ? await Spotify.getPodcast(access_token, id) : await Spotify.getTrack(access_token, id);
+                track = is_podcast ? await SpotifyController.getPodcast(access_token, id) : await SpotifyController.getTrack(access_token, id);
 
                 if(!is_podcast) {
                     const find_artist = await Artist.countDocuments({ _id: track.artist });
                     if(!find_artist) {
-                        artist = await Spotify.getArtist(access_token, track.artist);
+                        artist = await SpotifyController.getArtist(access_token, track.artist);
                     }
                 }
 

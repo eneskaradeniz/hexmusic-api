@@ -15,7 +15,7 @@ const TrackSchema = mongoose.Schema({
         type: String,
         required: true,
     },
-    album_images: [{ type: mongoose.Schema.Types.Mixed }],
+    album_image: { type: String },
     is_podcast: {
         type: Boolean,
         required: true,
