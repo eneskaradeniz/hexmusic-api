@@ -304,7 +304,7 @@ class ChatController {
                             message: update_message.message,
                             type: 'like',
                             from: is_lower ? lower_id : higher_id,
-                            createdAt: Date.now(),
+                            created_at: Date.now(),
                         },
                         lower_read: is_lower ? true : false,
                         higher_read: is_lower ? false : true,
