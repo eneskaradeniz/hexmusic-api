@@ -139,10 +139,8 @@ async function stopMusic(logged_id) {
   try {
       await session.withTransaction(async () => {
         await User.updateOne({ _id: logged_id }, { 
-          current_play: {
-              is_playing: false,
-              timestamp: Date.now(),
-          } 
+          'current_play.is_playing': false,
+          'current_play.timestamp': Date.now(),
         }).session(session);
       });
   } catch(err) {
