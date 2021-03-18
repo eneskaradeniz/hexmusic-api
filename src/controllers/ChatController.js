@@ -491,9 +491,7 @@ async function findChatWithChatId({ logged_id, chat_id }) {
     try {
         const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
         if(!find_chat) return false;
-        console.log(find_chat);
-        console.log((find_chat.lower_id === logged_id || find_chat.higher_id === logged_id) ? 'true' : 'false');
-        if(find_chat.lower_id === logged_id || find_chat.higher_id === logged_id) return true;
+        if(find_chat.lower_id.toString() === logged_id.toString() || find_chat.higher_id.toString() === logged_id.toString() ) return true;
         else return false;
     } catch (err) {
         throw err;
