@@ -745,13 +745,11 @@ function generateChats(chat) {
 function generateMatchs(match, chat_id) {
     const lower_chat_screen = {
         chat_id: chat_id,
-        to: match.lower_id._id,
         user: match.higher_id,
     };
 
     const higher_chat_screen = {
         chat_id: chat_id,
-        to: match.higher_id._id,
         user: match.lower_id,
     };
 

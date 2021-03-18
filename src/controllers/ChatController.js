@@ -64,6 +64,7 @@ class ChatController {
 
     async message_list(req, res) {
         try {
+            const logged_id = req._id;
             const chat_id = req.params.chat_id;
             if(!chat_id) {
                 return res.status(200).json({
@@ -72,8 +73,8 @@ class ChatController {
                 });
             }
 
-            // CHATIN DOĞRULUĞUNU KONTROL ET.
-            const result = await findChat({ chat_id });
+            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
+            const result = await findChatWithChatId({ logged_id, chat_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -476,18 +477,22 @@ function generateChats(chat) {
 
 async function findChat({ chat_id, lower_id, higher_id }) {
     try {
-        if(lower_id && higher_id) {
-            const find_chat = await Chat.findOne({ lower_id: lower_id, higher_id: higher_id }).select('_id').lean();
-            if(!find_chat) return false;
-            if(find_chat._id.toString() !== chat_id.toString()) return false;
-        } else if (chat_id) {
-            const chatExists = await Chat.countDocuments({ _id: chat_id });
-            if(chatExists <= 0) return false;
-        } else {
-            return false;
-        }
+        const find_chat = await Chat.findOne({ lower_id: lower_id, higher_id: higher_id }).select('_id').lean();
+        if(!find_chat) return false;
+        if(find_chat._id.toString() !== chat_id.toString()) return false;
         
         return true;
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function findChatWithChatId({ logged_id, chat_id }) {
+    try {
+        const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
+        if(!find_chat) return false;
+        if(find_chat.lower_id === logged_id || find_chat.higher_id === logged_id) return true;
+        else return false;
     } catch (err) {
         throw err;
     }
@@ -589,17 +594,16 @@ async function pushMessageNotification({ from, to, chat_id, message, message_typ
                 }
 
                 // VERİYİ GÖNDER
-                const chat = {
-                    chat_id,
-                    to,
-                    user: from_user
+                const chat_screen = {
+                    chat_id: chat_id,
+                    user: from_user,
                 };
 
                 await PushNotification.send({
                     title: from_user.display_name,
                     body: body,
                     fcm_token: to_user.fcm_token.token,
-                    data: { chat: chat },
+                    data: { chat_screen: chat_screen },
                     channel_id: 'chat',
                     notification_type: 'CHAT',
                 });
@@ -628,11 +632,11 @@ async function pushLikeNotification({ from, to, chat_id }) {
 
         if (to_user && to_user.fcm_token) {
             if(to_user.notifications.like_messages) {
+
                 // VERİYİ GÖNDER
-                const chat = {
-                    chat_id,
-                    to: to,
-                    user: from_user
+                const chat_screen = {
+                    chat_id: chat_id,
+                    user: from_user,
                 };
 
                 // MESAJI DİLİNE GÖRE ÇEVİR.
@@ -642,7 +646,7 @@ async function pushLikeNotification({ from, to, chat_id }) {
                     title: from_user.display_name,
                     body: body,
                     fcm_token: to_user.fcm_token.token,
-                    data: { chat: chat },
+                    data: { chat_screen: chat_screen },
                     channel_id: 'chat',
                     notification_type: 'CHAT',
                 });
