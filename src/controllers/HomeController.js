@@ -43,16 +43,17 @@ class HomeController {
             console.timeEnd('fetch_user_data');
             
             console.time('fetch_datas');
-            const { trend_artist, recommended_tracks, recommended_artists, popular_tracks, popular_artists } = await fetchDatas(loggedUser.spotify_fav_artists);
+            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(loggedUser.spotify_fav_artists);
             console.timeEnd('fetch_datas');
 
             return res.status(200).json({
                 success: true,
-                trend_artist: [],
-                recommended_tracks: [],
-                recommended_artists: [],
-                popular_tracks: [],
-                popular_artists: [],
+                trend_artist: trend_artist,
+                recommended_tracks: recommended_tracks,
+                recommended_artists: recommended_artists,
+                all_tracks: all_tracks,
+                all_artists: all_artists,
+                all_podcasts: all_podcasts,
             });
 
         } catch(err) {
