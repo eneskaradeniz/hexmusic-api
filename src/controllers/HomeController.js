@@ -4,35 +4,10 @@ const Error = require('./ErrorController');
 
 const Track = require('../models/TrackModel');
 const Artist = require('../models/ArtistModel');
-const shared = require('../shared');
 
 class HomeController {
 
     // HOME
-
-    async test(req, res) {
-        try {
-            console.time('fetch_datas');
-            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(['a','1g4J8P1JWwanNyyXckRX5W']);
-            console.timeEnd('fetch_datas');
-
-            return res.status(200).json({
-                success: true,
-                trend_artist: trend_artist,
-                recommended_tracks: recommended_tracks,
-                recommended_artists: recommended_artists,
-                all_tracks: all_tracks,
-                all_artists: all_artists,
-                all_podcasts: all_podcasts,
-            });
-        } catch(err) {
-            console.log(err);
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
 
     async home(req, res) {
         try {
@@ -239,11 +214,8 @@ async function fetchDatas(spotify_fav_artists) {
         const tracks_infos = fetch_track_and_artist_list[1];
         const artists_infos = fetch_track_and_artist_list[2];
 
-        console.log(trend_tracks_aggregate);
         if(trend_tracks_aggregate.length > 0) {
             const _trend_artist = trend_tracks_aggregate[0];
-
-            console.log(_trend_artist);
 
             // BU SANATÇININ TOP 10 TRACKSLARINI GETIR
             const _trend_tracks = await User.aggregate([
@@ -271,15 +243,9 @@ async function fetchDatas(spotify_fav_artists) {
                 },
             ]);
 
-            console.log(_trend_tracks);
-
             if(_trend_tracks.length > 0) {
-                const _artist = Artist.findById(_trend_artist._id).lean();
-
                 var track_ids = [];
                 _trend_tracks.forEach(track => track_ids.push(track._id));
-
-                console.log(track_ids);
 
                 const promises = await Promise.all([
                     Artist.findById(_trend_artist._id).lean(),
@@ -290,8 +256,6 @@ async function fetchDatas(spotify_fav_artists) {
                     artist: promises[0],
                     count: _trend_artist.count,
                 };
-
-                console.log(listen_artist);
 
                 var tracks = [];
 

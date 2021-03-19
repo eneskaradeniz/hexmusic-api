@@ -638,17 +638,12 @@ class UserController {
             .select('chat_id')
             .lean();
 
-            console.log(find_match);
-
             if(find_match === null) {
-                console.log('null geldi h.o');
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_MATCH',
                 });
             }
-
-            console.log('null değil devam');
    
             await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
@@ -709,7 +704,7 @@ class UserController {
             .select('_id chat_id')
             .lean();
             
-            if(!find_match) {
+            if(find_match === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_MATCH',
