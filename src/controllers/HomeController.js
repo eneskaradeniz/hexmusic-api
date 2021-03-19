@@ -133,7 +133,7 @@ async function fetchDatas(spotify_fav_artists) {
         // DB DE TÜM DİNLENEN SANATÇILAR (SAYISI İLE BİRLİKTE)
         // DB DE TÜM DİNLENEN PODCASTLAR (SAYISI İLE BİRLİKTE)
 
-        /*const _trend_artist = User.aggregate([
+        const _trend_artist = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -155,7 +155,7 @@ async function fetchDatas(spotify_fav_artists) {
             {
                 $limit: 1
             },
-        ]);*/
+        ]);
 
         const _all_tracks = User.aggregate([
             {
@@ -196,11 +196,15 @@ async function fetchDatas(spotify_fav_artists) {
         ]);
 
         console.time('fetch_all_listeners');
-        const values = await Promise.all([_all_tracks, _all_artists]);
+        const values = await Promise.all([_trend_artist, _all_tracks, _all_artists]);
         console.timeEnd('fetch_all_listeners');
 
-        const aggregate_tracks = values[0];
-        const aggregate_artists = values[1];
+        const aggregate_trend_artist = values[0];
+
+        const trend_artist_id = aggregate_trend_artist._id;
+
+        const aggregate_tracks = values[1];
+        const aggregate_artists = values[2];
 
         var aggregate_track_ids = [];
         aggregate_tracks.forEach(e => aggregate_track_ids.push(e._id));
@@ -209,12 +213,96 @@ async function fetchDatas(spotify_fav_artists) {
         aggregate_artists.forEach(e => aggregate_artist_ids.push(e._id));
 
         const fetch_track_and_artist_list = await Promise.all([
+            User.aggregate([
+                {
+                    $match: { 
+                        $and: [
+                            { "current_play.is_playing": true },
+                            { "current_play.track": { $ne: null } },
+                            { "current_play.artist": { $eq: trend_artist_id } },
+                            { "permissions.show_live": true },
+                        ]   
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$current_play.track",
+                        count: { $sum: 1 },
+                    }
+                },
+                {
+                    $limit: 10
+                }
+            ]),
             Track.find({ _id: { $in: aggregate_track_ids }}),
             Artist.find({ _id: { $in: aggregate_artist_ids }}),
         ]);
 
-        const tracks_infos = fetch_track_and_artist_list[0];
-        const artists_infos = fetch_track_and_artist_list[1];
+        const trend_tracks_aggregate = fetch_track_and_artist_list[0];
+        const tracks_infos = fetch_track_and_artist_list[1];
+        const artists_infos = fetch_track_and_artist_list[2];
+
+        if(trend_tracks_aggregate.length > 0) {
+            const _trend_artist = trend_tracks_aggregate[0];
+
+            // BU SANATÇININ TOP 10 TRACKSLARINI GETIR
+            const _trend_tracks = await User.aggregate([
+                {
+                    $match: { 
+                        $and: [
+                            { "current_play.is_playing": true },
+                            { "current_play.track": { $ne: null } },
+                            { "current_play.artist": { $eq: _trend_artist._id } },
+                            { "permissions.show_live": true },
+                        ]
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$current_play.track",
+                        count: { $sum: 1 },
+                    }
+                },
+                {
+                    $sort: { 'count': -1 }
+                },
+                {
+                    $limit: 10
+                },
+            ]);
+
+            if(_trend_tracks.length > 0) {
+                const _artist = Artist.findById(_trend_artist._id).lean();
+
+                var track_ids = [];
+                _trend_tracks.forEach(track => track_ids.push(track._id));
+
+                const promises = await Promise.all([
+                    Artist.findById(_trend_artist._id).lean(),
+                    Track.find({ _id: { $in: track_ids }}),
+                ]);
+
+                const listen_artist = {
+                    artist: promises[0],
+                    count: _artist.count,
+                };
+
+                var tracks = [];
+
+                promises[1].forEach((track) => {
+                    const obj = _trend_tracks.find(o => o._id === track._id);
+                    all_tracks.push({
+                        track: track,
+                        count: obj.count,
+                    });
+                });
+
+                trend_artist = {
+                    listen_artist: listen_artist,
+                    tracks: tracks,
+                };
+            }
+        }
 
         tracks_infos.forEach((track) => {
             const obj = aggregate_tracks.find(o => o._id === track._id);
