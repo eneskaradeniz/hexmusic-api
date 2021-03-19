@@ -41,8 +41,6 @@ class HomeController {
             console.time('fetch_user_data');
             const loggedUser = await User.findById(loggedId).select('spotify_fav_artists').lean();
             console.timeEnd('fetch_user_data');
-
-            console.log(loggedUser.spotify_fav_artists);
             
             console.time('fetch_datas');
             const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(loggedUser.spotify_fav_artists);
