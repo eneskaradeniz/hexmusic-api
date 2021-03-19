@@ -13,7 +13,7 @@ class HomeController {
     async test(req, res) {
         try {
             console.time('fetch_datas');
-            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(null);
+            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(['a','1g4J8P1JWwanNyyXckRX5W']);
             console.timeEnd('fetch_datas');
 
             return res.status(200).json({
@@ -41,6 +41,8 @@ class HomeController {
             console.time('fetch_user_data');
             const loggedUser = await User.findById(loggedId).select('spotify_fav_artists').lean();
             console.timeEnd('fetch_user_data');
+
+            console.log(loggedUser.spotify_fav_artists);
             
             console.time('fetch_datas');
             const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(loggedUser.spotify_fav_artists);
@@ -239,8 +241,8 @@ async function fetchDatas(spotify_fav_artists) {
 
         // FINISH
 
-        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artist));
-        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist._id));
+        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artist.toString()));
+        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist._id.toString()));
 
         return {
             trend_artist,
