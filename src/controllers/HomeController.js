@@ -237,6 +237,10 @@ async function fetchDatas(spotify_fav_artists) {
             });
         });
 
+        console.log(all_tracks);
+        console.log(all_artists);
+        console.log(all_podcasts);
+
         // FINISH
 
         recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artist));
