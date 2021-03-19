@@ -7,8 +7,6 @@ const Artist = require('../models/ArtistModel');
 
 class HomeController {
 
-    // HOME
-
     async home(req, res) {
         try {
             const loggedId = req._id;
