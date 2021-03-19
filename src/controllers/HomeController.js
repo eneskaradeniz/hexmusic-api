@@ -283,12 +283,12 @@ async function fetchDatas(spotify_fav_artists) {
 
                 const promises = await Promise.all([
                     Artist.findById(_trend_artist._id).lean(),
-                    Track.find({ _id: { $in: track_ids }}),
+                    Track.find({ _id: { $in: track_ids }}).lean(),
                 ]);
 
                 const listen_artist = {
                     artist: promises[0],
-                    count: _artist.count,
+                    count: _trend_artist.count,
                 };
 
                 console.log(listen_artist);
@@ -297,7 +297,7 @@ async function fetchDatas(spotify_fav_artists) {
 
                 promises[1].forEach((track) => {
                     const obj = _trend_tracks.find(o => o._id === track._id);
-                    all_tracks.push({
+                    tracks.push({
                         track: track,
                         count: obj.count,
                     });
