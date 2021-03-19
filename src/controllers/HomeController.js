@@ -10,6 +10,30 @@ class HomeController {
 
     // HOME
 
+    async test(req, res) {
+        try {
+            console.time('fetch_datas');
+            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(null);
+            console.timeEnd('fetch_datas');
+
+            return res.status(200).json({
+                success: true,
+                trend_artist: trend_artist,
+                recommended_tracks: recommended_tracks,
+                recommended_artists: recommended_artists,
+                all_tracks: all_tracks,
+                all_artists: all_artists,
+                all_podcasts: all_podcasts,
+            });
+        } catch(err) {
+            console.log(err);
+
+            return res.status(400).json({
+                success: false
+            });
+        }
+    }
+
     async home(req, res) {
         try {
             const loggedId = req._id;
@@ -94,12 +118,12 @@ async function fetchDatas(spotify_fav_artists) {
     try {
         var trend_artist;
 
-        var recommended_tracks;
-        var recommended_artists;
+        var recommended_tracks = [];
+        var recommended_artists = [];
 
-        var all_tracks;
-        var all_artists;
-        var all_podcasts;
+        var all_tracks = [];
+        var all_artists = [];
+        var all_podcasts = [];
 
         // DB DE EN ÇOK DİNLENEN SANATÇI VE TOP 10 ŞARKISI (SAYISI İLE BİRLİKTE)
         // DB DE TÜM DİNLENEN ŞARKILAR (SAYISI İLE BİRLİKTE)
@@ -147,17 +171,6 @@ async function fetchDatas(spotify_fav_artists) {
                     count: { $sum: 1 },
                 }
             },
-            {
-                $lookup: {
-                    from: 'tracks',
-                    localField: 'current_play.track',
-                    foreignField: '_id',
-                    as: 'current_play.track'
-                }
-            },
-            {
-                $unwind: '$current_play.track'
-            }
         ]);
 
         const _all_artists = User.aggregate([
@@ -176,17 +189,6 @@ async function fetchDatas(spotify_fav_artists) {
                     _id: "$current_play.artist",
                     count: { $sum: 1 },
                 }
-            },
-            {
-                $lookup: {
-                    from: 'artists',
-                    localField: 'current_play.artist',
-                    foreignField: '_id',
-                    as: 'current_play.artist'
-                }
-            },
-            {
-                $unwind: '$current_play.artist'
             }
         ]);
 
@@ -194,19 +196,36 @@ async function fetchDatas(spotify_fav_artists) {
         const values = await Promise.all([_all_tracks, _all_artists]);
         console.timeEnd('fetch_all_listeners');
 
-        console.log('all_tracks:', values[0]);
-        console.log('all_artists:', values[1]);
+        var test_tracks = [];
+
+        values[0].forEach(e => {
+            test_tracks.push(e._id);
+        });
+
+        var test_artists = [];
+
+        values[1].forEach(e => {
+            test_artists.push(e._id);
+        });
+
+        const asd = await Promise.all([
+            Track.find({ _id: { $in: test_tracks }}),
+            Artist.find({ _id: { $in: test_artists }}),
+        ]);
+
+        const deneme = asd[0];
+        all_artists = asd[1];
 
         // GELEN TRACKSLARDA PODCASTLARİ BİR YERE AYIR
-        values[1].forEach((e) => {
+        deneme.forEach((e) => {
             if(e.is_podcast) all_podcasts.push(e);
             else all_tracks.push(e);
         });
 
         // FINISH
 
-        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artistId));
-        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist.id));
+        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.artist));
+        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist));
 
         return {
             trend_artist,

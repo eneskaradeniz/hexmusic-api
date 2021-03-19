@@ -13,6 +13,8 @@ const middlewares = { user: userMiddleware };
 
 module.exports = (upload) => {
 
+    router.get('/test', HomeController.test);
+
     // AUTH
     router.get('/callback', UserController.callback);
     router.post('/', upload.array('avatars', 3), UserController.register);
