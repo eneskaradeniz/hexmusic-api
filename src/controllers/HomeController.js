@@ -101,11 +101,6 @@ async function fetchDatas(spotify_fav_artists) {
         var all_artists = [];
         var all_podcasts = [];
 
-        // DB DE EN ÇOK DİNLENEN SANATÇI VE TOP 10 ŞARKISI (SAYISI İLE BİRLİKTE)
-        // DB DE TÜM DİNLENEN ŞARKILAR (SAYISI İLE BİRLİKTE)
-        // DB DE TÜM DİNLENEN SANATÇILAR (SAYISI İLE BİRLİKTE)
-        // DB DE TÜM DİNLENEN PODCASTLAR (SAYISI İLE BİRLİKTE)
-
         const _trend_artist = User.aggregate([
             {
                 $match: { 
@@ -173,8 +168,6 @@ async function fetchDatas(spotify_fav_artists) {
         console.timeEnd('fetch_all_listeners');
 
         const aggregate_trend_artist = values[0];
-
-        const trend_artist_id = aggregate_trend_artist._id;
 
         const aggregate_tracks = values[1];
         const aggregate_artists = values[2];
