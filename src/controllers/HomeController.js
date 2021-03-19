@@ -216,15 +216,14 @@ async function fetchDatas(spotify_fav_artists) {
                     $match: { 
                         $and: [
                             { "current_play.is_playing": true },
-                            { "current_play.track": { $ne: null } },
-                            { "current_play.artist": { $eq: trend_artist_id } },
+                            { "current_play.artist": { $ne: null } },
                             { "permissions.show_live": true },
                         ]   
                     }
                 },
                 {
                     $group: {
-                        _id: "$current_play.track",
+                        _id: "$current_play.artist",
                         count: { $sum: 1 },
                     }
                 },
