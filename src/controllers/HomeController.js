@@ -240,8 +240,11 @@ async function fetchDatas(spotify_fav_artists) {
         const tracks_infos = fetch_track_and_artist_list[1];
         const artists_infos = fetch_track_and_artist_list[2];
 
+        console.log(trend_tracks_aggregate);
         if(trend_tracks_aggregate.length > 0) {
             const _trend_artist = trend_tracks_aggregate[0];
+
+            console.log(_trend_artist);
 
             // BU SANATÇININ TOP 10 TRACKSLARINI GETIR
             const _trend_tracks = await User.aggregate([
@@ -269,11 +272,15 @@ async function fetchDatas(spotify_fav_artists) {
                 },
             ]);
 
+            console.log(_trend_tracks);
+
             if(_trend_tracks.length > 0) {
                 const _artist = Artist.findById(_trend_artist._id).lean();
 
                 var track_ids = [];
                 _trend_tracks.forEach(track => track_ids.push(track._id));
+
+                console.log(track_ids);
 
                 const promises = await Promise.all([
                     Artist.findById(_trend_artist._id).lean(),
@@ -284,6 +291,8 @@ async function fetchDatas(spotify_fav_artists) {
                     artist: promises[0],
                     count: _artist.count,
                 };
+
+                console.log(listen_artist);
 
                 var tracks = [];
 
