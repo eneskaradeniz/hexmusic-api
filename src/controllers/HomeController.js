@@ -18,9 +18,9 @@ class HomeController {
             const loggedUser = await User.findById(loggedId).select('spotify_fav_artists').lean();
             console.timeEnd('fetch_user_data');
             
-            /*console.time('fetch_datas');
+            console.time('fetch_datas');
             const { trend_artist, recommended_tracks, recommended_artists, popular_tracks, popular_artists } = await fetchDatas(loggedUser.spotify_fav_artists);
-            console.timeEnd('fetch_datas');*/
+            console.timeEnd('fetch_datas');
 
             return res.status(200).json({
                 success: true,
@@ -97,14 +97,16 @@ async function fetchDatas(spotify_fav_artists) {
         var recommended_tracks;
         var recommended_artists;
 
-        var popular_tracks;
-        var popular_artists;
+        var all_tracks;
+        var all_artists;
+        var all_podcasts;
 
         // DB DE EN ÇOK DİNLENEN SANATÇI VE TOP 10 ŞARKISI (SAYISI İLE BİRLİKTE)
         // DB DE TÜM DİNLENEN ŞARKILAR (SAYISI İLE BİRLİKTE)
         // DB DE TÜM DİNLENEN SANATÇILAR (SAYISI İLE BİRLİKTE)
+        // DB DE TÜM DİNLENEN PODCASTLAR (SAYISI İLE BİRLİKTE)
 
-        const _trend_artist = User.aggregate([
+        /*const _trend_artist = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -126,7 +128,7 @@ async function fetchDatas(spotify_fav_artists) {
             {
                 $limit: 1
             },
-        ]);
+        ]);*/
 
         const _all_tracks = User.aggregate([
             {
@@ -145,6 +147,17 @@ async function fetchDatas(spotify_fav_artists) {
                     count: { $sum: 1 },
                 }
             },
+            {
+                $lookup: {
+                    from: 'tracks',
+                    localField: 'current_play.track',
+                    foreignField: '_id',
+                    as: 'current_play.track'
+                }
+            },
+            {
+                $unwind: '$current_play.track'
+            }
         ]);
 
         const _all_artists = User.aggregate([
@@ -164,35 +177,45 @@ async function fetchDatas(spotify_fav_artists) {
                     count: { $sum: 1 },
                 }
             },
+            {
+                $lookup: {
+                    from: 'artists',
+                    localField: 'current_play.artist',
+                    foreignField: '_id',
+                    as: 'current_play.artist'
+                }
+            },
+            {
+                $unwind: '$current_play.artist'
+            }
         ]);
 
         console.time('fetch_all_listeners');
-        const values = await Promise.all([_trend_artist, _all_tracks, _all_artists]);
+        const values = await Promise.all([_all_tracks, _all_artists]);
         console.timeEnd('fetch_all_listeners');
 
-        var _trend_artist_id;
-        if(values[0].length > 0) _trend_artist_id = values[0][0]._id.toString();
+        console.log('all_tracks:', values[0]);
+        console.log('all_artists:', values[1]);
+
+        // GELEN TRACKSLARDA PODCASTLARİ BİR YERE AYIR
+        values[1].forEach((e) => {
+            if(e.is_podcast) all_podcasts.push(e);
+            else all_tracks.push(e);
+        });
 
         // FINISH
 
-        trend_artist = {
-            listenArtist: values2[1].trend_artist,
-            tracks: values2[0].trend_tracks,
-        };
-
         recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artistId));
-        popular_tracks = all_tracks.filter(x => !spotify_fav_artists.includes(x.track.artistId));
-
         recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist.id));
-        popular_artists = all_artists.filter(x => !spotify_fav_artists.includes(x.artist.id));
 
         return {
             trend_artist,
             recommended_tracks,
             recommended_artists,
-            popular_tracks,
-            popular_artists
-        }
+            all_tracks,
+            all_artists,
+            all_podcasts,
+        };
     } catch(err) {
         throw err;
     }
