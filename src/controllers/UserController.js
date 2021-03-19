@@ -638,6 +638,8 @@ class UserController {
             .select('_id chat_id')
             .lean();
 
+            console.log(find_match);
+
             if(!find_match) {
                 return res.status(200).json({
                     success: false,
