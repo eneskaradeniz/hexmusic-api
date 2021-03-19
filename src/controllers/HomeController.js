@@ -197,36 +197,50 @@ async function fetchDatas(spotify_fav_artists) {
         const values = await Promise.all([_all_tracks, _all_artists]);
         console.timeEnd('fetch_all_listeners');
 
-        var test_tracks = [];
+        const aggregate_tracks = values[0];
+        const aggregate_artists = values[1];
 
-        values[0].forEach(e => {
-            test_tracks.push(e._id);
-        });
+        var aggregate_track_ids = [];
+        aggregate_tracks.forEach(e => aggregate_track_ids.push(e._id));
 
-        var test_artists = [];
+        var aggregate_artist_ids = [];
+        aggregate_artists.forEach(e => aggregate_artist_ids.push(e._id));
 
-        values[1].forEach(e => {
-            test_artists.push(e._id);
-        });
-
-        const asd = await Promise.all([
-            Track.find({ _id: { $in: test_tracks }}),
-            Artist.find({ _id: { $in: test_artists }}),
+        const fetch_track_and_artist_list = await Promise.all([
+            Track.find({ _id: { $in: aggregate_track_ids }}),
+            Artist.find({ _id: { $in: aggregate_artist_ids }}),
         ]);
 
-        const deneme = asd[0];
-        all_artists = asd[1];
+        const tracks_infos = fetch_track_and_artist_list[0];
+        const artists_infos = fetch_track_and_artist_list[1];
 
-        // GELEN TRACKSLARDA PODCASTLARİ BİR YERE AYIR
-        deneme.forEach((e) => {
-            if(e.is_podcast) all_podcasts.push(e);
-            else all_tracks.push(e);
+        tracks_infos.forEach((track) => {
+            const obj = aggregate_tracks.find(o => o._id === track._id);
+            if(track.is_podcast) {
+                all_podcasts.push({
+                    track: track,
+                    count: obj.count,
+                });
+            } else {
+                all_tracks.push({
+                    track: track,
+                    count: obj.count,
+                });
+            }
+        });
+
+        artists_infos.forEach((artist) => {
+            const obj = aggregate_artists.find(o => o._id === artist._id);
+            all_artists.push({
+                artist: artist,
+                count: obj.count,
+            });
         });
 
         // FINISH
 
-        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.artist));
-        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist));
+        recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artist));
+        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.track.artist));
 
         return {
             trend_artist,
