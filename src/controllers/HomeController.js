@@ -237,14 +237,10 @@ async function fetchDatas(spotify_fav_artists) {
             });
         });
 
-        console.log(all_tracks);
-        console.log(all_artists);
-        console.log(all_podcasts);
-
         // FINISH
 
         recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artist));
-        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.track.artist));
+        recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist._id));
 
         return {
             trend_artist,
