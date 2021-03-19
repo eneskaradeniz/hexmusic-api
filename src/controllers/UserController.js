@@ -626,30 +626,29 @@ class UserController {
                     error: 'INVALID_FIELDS',
                 });
             }
-
-            console.log(logged_id);
-            console.log(target_id);
             
             // BÖYLE BİR EŞLEŞMENİN OLUP OLMADIĞINI KONTROL ET.
             const lower_id = logged_id < target_id ? logged_id : target_id;
             const higher_id = logged_id > target_id ? logged_id : target_id;
 
-            console.log(lower_id);
-            console.log(higher_id);
-
             const find_match = await Match.findOne({
                 lower_id: lower_id,
                 higher_id: higher_id,
-            }).lean();
+            })
+            .select('chat_id')
+            .lean();
 
             console.log(find_match);
 
             if(find_match === null) {
+                console.log('null geldi h.o');
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_MATCH',
                 });
             }
+
+            console.log('null değil devam');
    
             await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
