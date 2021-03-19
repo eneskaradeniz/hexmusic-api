@@ -632,15 +632,15 @@ class UserController {
             const higher_id = logged_id > target_id ? logged_id : target_id;
 
             const find_match = await Match.findOne({
-                lower_id,
-                higher_id
+                lower_id: lower_id,
+                higher_id: higher_id,
             })
             .select('_id chat_id')
             .lean();
 
             console.log(find_match);
 
-            if(!find_match) {
+            if(find_match === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_MATCH',
