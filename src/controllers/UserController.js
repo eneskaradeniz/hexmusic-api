@@ -640,9 +640,7 @@ class UserController {
             const find_match = await Match.findOne({
                 lower_id: lower_id,
                 higher_id: higher_id,
-            })
-            .select('chat_id')
-            .lean();
+            }).lean();
 
             console.log(find_match);
 
