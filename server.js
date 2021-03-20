@@ -6,10 +6,11 @@ const socketIO = require('socket.io');
 const compression = require("compression");
 const bodyParser = require('body-parser');
 
-/*const os = require('os');
+/*
+const os = require('os');
 const cluster = require('cluster');
 const numCpu = os.cpus().length;
-console.log('CPU SAYISI:', numCpu);*/
+*/
 
 const shared = require('./src/shared');
 const Error = require('./src/controllers/ErrorController');
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use(cors());
 
 // GZIP COMPRESS
+
 const shouldCompress = (req, res) => {
   if (req.headers['x-no-compression']) {
     // don't compress responses if this request header is present
@@ -55,7 +57,7 @@ server.listen(PORT, async () => {
     await mongoDB.connect();
 });
 
-//SOCKET.IO CONFIGURATION
+// SOCKET.IO CONFIGURATION
 
 const io = socketIO(server);
 
@@ -69,42 +71,43 @@ io.use(socketioJwt.authorize({
   secret: jwtConfig.secret,
   handshake: true,
   auth_header_required: true,
-  callback: false,
 }));
 
 io.on('connection', socket => {
-  console.log('tokenden gelen user_id:', socket.decoded_token._id);
+  connect_socket(socket);
 
-  socket.on('init_user', (data) => initUser(socket, data));
-  socket.on('disconnect', async () => console.log('disconnect:', socket.id));
-  socket.on("start_typing", (data) => startTyping(socket, data));
+  Object.keys(io.sockets.sockets).forEach((e) => {
+    console.log('HELLO');
+    console.log(e);
+  });
+
+  socket.on('disconnect', () => disconnect_socket(socket));
+  socket.on("start_typing", (data) => start_typing(socket, data));
 });
 
-function initUser(socket, data) {
+function connect_socket(socket) {
   try {
-    const { user_id } = data;
-    console.log('INIT YAPILACAK USERID:', user_id);
+    var user_id = socket.decoded_token._id;
 
     // BAŞKA SOCKET VARMI KONTROL ET
-    const find_users = shared.users.filter(x => x.user_id === user_id);
-    if(find_users.length > 0) {
-      console.log('BU IDLI BAŞKA SOKET VAR LOGOUT YAPTIRACAK');
-      find_users.forEach(findUser => {
-        console.log('LOGOUT:', findUser.socket.id);
-        findUser.socket.emit('logout');
-        findUser.socket.disconnect();
+    const find_sockets = shared.sockets.filter(x => x.decoded_token._id === user_id);
+    if(find_sockets.length > 0) {
+      find_sockets.forEach(find_socket => {
+        console.log('LOGOUT:', find_socket.id);
+
+        find_socket.emit('logout');
+        find_socket.disconnect();
       });  
     }
 
     // SOCKET KAYDI YAP
-    shared.users.push({ user_id, socket });
-    socket.emit('init_user');
+    shared.sockets.push(socket);
 
-    console.log(`(${shared.users.length})`, "CONNECT SOCKETID/USERID: " + socket.id + "/" + user_id);
+    console.log(`(${shared.sockets.length})`, "CONNECT SOCKETID/USERID: " + socket.id + "/" + socket.decoded_token._id);
   } catch(err) {
     Error({
       file: 'server.js',
-      method: 'initUser',
+      method: 'connect_socket',
       title: err.toString(),
       info: err,
       type: 'critical',
@@ -112,17 +115,15 @@ function initUser(socket, data) {
   }
 }
 
-async function leftUser(socket) {
+function disconnect_socket(socket) {
   try {
-    // SOKETİ BUL
-    const find_user = shared.users.find(x => x.socket.id === socket.id);
-    if(!find_user) return;
+    var user_id = socket.decoded_token._id;
 
     // DINLEDIĞI MÜZİK VARSA SİL
-    await stopMusic(find_user.user_id);
+    stop_music(user_id);
 
     // LİSTEDEN KULLANICIYI KALDIR
-    shared.users = shared.users.filter(x => x.socket.id !== find_user.socket.id);
+    shared.sockets = shared.sockets.filter(x => x.id !== socket.id);
 
     console.log(`(${shared.users.length})`, "DISCONNECT SOCKETID/USERID: " + find_user.socket.id + "/" + find_user.user_id);
   } catch(err) {
@@ -136,7 +137,7 @@ async function leftUser(socket) {
   }
 }
 
-function startTyping(socket, data) {
+function start_typing(socket, data) {
   try {
     // BU SOKETİ BUL
     const findUser = shared.users.find(x => x.socket.id === socket.id);
@@ -172,7 +173,7 @@ function startTyping(socket, data) {
   }
 }
 
-async function stopMusic(logged_id) {
+async function stop_music(logged_id) {
   const session = await db.startSession();
 
   try {
@@ -230,10 +231,12 @@ const storage = new GridFsStorage({
   
 const upload = multer({ storage });
 
+// ROUTES CONFIGURATION
+
 const routes = require('./src/routes');
 app.use('/', routes(upload));
 
-// EVERY DAY RENEW LIKES AND ADS
+// EVERY DAY RENEW USER COUNTS
 
 const schedule = require('node-schedule');
 const Language = require('./src/utils/Language');
@@ -244,7 +247,6 @@ const firebaseAdmin = require("./src/firebase/firebaseAdmin");
 const DEFAULT_LIKE_COUNT = 30;
 const DEFAULT_ADS_COUNT = 5;
 
-// HER GÜN BELİRLİ SAATTE KULLANICILARIN BEĞENİ HAKLARINI GÜNCELLE
 schedule.scheduleJob('0 15 0 * * *', async () => {
   try {
     const results = await Promise.all([
