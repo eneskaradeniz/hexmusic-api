@@ -79,6 +79,8 @@ io.on('connection', socket => {
   Object.keys(io.sockets.sockets).forEach((e) => {
     console.log('HELLO');
     console.log(e);
+    const test = io.sockets.sockets[e];
+    console.log('user_id:', test.decoded_token._id);
   });
 
   socket.on('disconnect', () => disconnect_socket(socket));
@@ -88,21 +90,20 @@ io.on('connection', socket => {
 function connect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
+    console.log(`(${io.sockets.sockets.length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
     const find_sockets = io.sockets.sockets.filter(x => x.decoded_token._id === user_id);
-    find_sockets.forEach(find_socket => {
-      if(find_socket.id !== socket.id) {
-        console.log('LOGOUT:', find_socket.id);
+    find_sockets.forEach(x => {
+      if(x.id !== socket.id) {
+        console.log('LOGOUT:', x.id);
 
-        find_socket.emit('logout');
-        find_socket.disconnect();
+        x.emit('logout');
+        x.disconnect();
       } else {
         console.log('AYNI SOCKET ID DEVAM');
       }  
     });  
-
-    console.log(`(${io.sockets.sockets.length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',
