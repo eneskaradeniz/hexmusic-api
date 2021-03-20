@@ -83,13 +83,20 @@ io.on('connection', socket => {
 function connect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
-    console.log(`(${io.sockets.clients().length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${Object.keys(io.sockets.connected).length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
 
-    const find_sockets = io.sockets.clients().filter(x => x.decoded_token._id === user_id);
+    var find_sockets = [];
+
+    Object.keys(io.sockets.sockets).forEach((x) => {
+      const find_socket = io.sockets.sockets[x];
+      if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);           
+    });
+
+    console.log('find_sockets:', find_sockets);
+
     find_sockets.forEach(x => {
-      console.log('foreach:', x);
       if(x.id !== socket.id) {
         console.log('LOGOUT:', x.id);
 
@@ -115,7 +122,7 @@ function disconnect_socket(socket) {
     var user_id = socket.decoded_token._id;
     stop_music(user_id);
 
-    console.log(`(${io.sockets.sockets.length})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${Object.keys(io.sockets.connected).length})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',
