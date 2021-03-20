@@ -68,22 +68,16 @@ const jwtConfig = require('./src/config/jwt');
 io.use(socketioJwt.authorize({
   secret: jwtConfig.secret,
   handshake: true,
-  auth_header_required: true
+  auth_header_required: true,
+  callback: 1000,
 }));
 
 io.on('connection', socket => {
   console.log('tokenden gelen user_id:', socket.decoded_token._id);
 
   socket.on('init_user', (data) => initUser(socket, data));
-  socket.on('disconnect', async () => await leftUser(socket));
+  socket.on('disconnect', async () => console.log('disconnect:', socket.id));
   socket.on("start_typing", (data) => startTyping(socket, data));
-
-  socket.on('unauthorized', (error) => {
-    if (error.data.type == 'UnauthorizedError' || error.data.code == 'invalid_token') {
-      // redirect user to login page perhaps?
-      console.log('User token has expired');
-    }
-  });
 });
 
 function initUser(socket, data) {
