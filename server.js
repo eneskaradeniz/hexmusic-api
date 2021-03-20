@@ -76,10 +76,6 @@ io.use(socketioJwt.authorize({
 io.on('connection', socket => {
   connect_socket(socket);
 
-  io.sockets.sockets.map((e) => {
-    console.log('hello:', e.decoded_token._id);
-  });
-
   socket.on('disconnect', () => disconnect_socket(socket));
   socket.on("start_typing", (data) => start_typing(socket, data));
 });
