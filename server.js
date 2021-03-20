@@ -94,8 +94,6 @@ function connect_socket(socket) {
       if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);           
     });
 
-    console.log('find_sockets:', find_sockets);
-
     find_sockets.forEach(x => {
       if(x.id !== socket.id) {
         console.log('LOGOUT:', x.id);
