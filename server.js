@@ -69,7 +69,7 @@ io.use(socketioJwt.authorize({
   secret: jwtConfig.secret,
   handshake: true,
   auth_header_required: true,
-  callback: 1000,
+  callback: false,
 }));
 
 io.on('connection', socket => {
