@@ -99,7 +99,11 @@ async function fetchDatas(spotify_fav_artists) {
         var all_artists = [];
         var all_podcasts = [];
 
-        const _trend_artist = User.aggregate([
+        // DB DE EN ÇOK DİNLENEN SANATÇI
+        // DB DE DİNLENEN TÜM ŞARKILAR
+        // DB DE DİNLENEN TÜM SANATÇILAR
+
+        const _aggregate_artist = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -123,7 +127,7 @@ async function fetchDatas(spotify_fav_artists) {
             },
         ]);
 
-        const _all_tracks = User.aggregate([
+        const _aggregate_tracks = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -142,7 +146,7 @@ async function fetchDatas(spotify_fav_artists) {
             },
         ]);
 
-        const _all_artists = User.aggregate([
+        const _aggregate_artists = User.aggregate([
             {
                 $match: { 
                     $and: [
@@ -162,13 +166,12 @@ async function fetchDatas(spotify_fav_artists) {
         ]);
 
         console.time('fetch_all_listeners');
-        const values = await Promise.all([_trend_artist, _all_tracks, _all_artists]);
+        const fetch_promises = await Promise.all([_aggregate_artist, _aggregate_tracks, _aggregate_artists]);
         console.timeEnd('fetch_all_listeners');
 
-        const aggregate_trend_artist = values[0];
-
-        const aggregate_tracks = values[1];
-        const aggregate_artists = values[2];
+        const aggregate_trend_artist = fetch_promises[0];
+        const aggregate_tracks = fetch_promises[1];
+        const aggregate_artists = fetch_promises[2];
 
         var aggregate_track_ids = [];
         aggregate_tracks.forEach(e => aggregate_track_ids.push(e._id));
@@ -176,39 +179,20 @@ async function fetchDatas(spotify_fav_artists) {
         var aggregate_artist_ids = [];
         aggregate_artists.forEach(e => aggregate_artist_ids.push(e._id));
 
+        // DB DEN ÇEKİLEN ŞARKI/SANATÇILARIN BİLGİLERİNİ DB DEN ALIYORUM (AGGREGATE DE LOOKUP İLE ALABİLİRDİM AMA ÇÖZEMEDİM)
         const fetch_track_and_artist_list = await Promise.all([
-            User.aggregate([
-                {
-                    $match: { 
-                        $and: [
-                            { "current_play.is_playing": true },
-                            { "current_play.artist": { $ne: null } },
-                            { "permissions.show_live": true },
-                        ]   
-                    }
-                },
-                {
-                    $group: {
-                        _id: "$current_play.artist",
-                        count: { $sum: 1 },
-                    }
-                },
-                {
-                    $limit: 10
-                }
-            ]),
             Track.find({ _id: { $in: aggregate_track_ids }}),
             Artist.find({ _id: { $in: aggregate_artist_ids }}),
         ]);
 
-        const trend_tracks_aggregate = fetch_track_and_artist_list[0];
         const tracks_infos = fetch_track_and_artist_list[1];
         const artists_infos = fetch_track_and_artist_list[2];
 
-        if(trend_tracks_aggregate.length > 0) {
-            const _trend_artist = trend_tracks_aggregate[0];
+        // TREND SANATÇI VARSA ONUN GEREKLİ BİLGİLERİNİ AL
+        if(aggregate_trend_artist.length > 0) {
+            const _trend_artist = aggregate_trend_artist[0];
 
-            // BU SANATÇININ TOP 10 TRACKSLARINI GETIR
+            // BU SANATÇININ TOP 10 ŞARKILARINI GETIR
             const _trend_tracks = await User.aggregate([
                 {
                     $match: { 
@@ -288,8 +272,7 @@ async function fetchDatas(spotify_fav_artists) {
             });
         });
 
-        // FINISH
-
+        // KULLANICININ SPOTIFY FAVORİLERİNE GÖRE ÖNERİLEN ŞARKI VE SANATÇILARINI AYARLIYORUM
         recommended_tracks = all_tracks.filter(x => spotify_fav_artists.includes(x.track.artist.toString()));
         recommended_artists = all_artists.filter(x => spotify_fav_artists.includes(x.artist._id.toString()));
 

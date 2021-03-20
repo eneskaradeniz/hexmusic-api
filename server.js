@@ -24,12 +24,31 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
-app.use(compression());
+
+// GZIP COMPRESS
+const shouldCompress = (req, res) => {
+  if (req.headers['x-no-compression']) {
+    // don't compress responses if this request header is present
+    return false;
+  }
+
+  // fallback to standard compression
+  return compression.filter(req, res);
+};
+
+app.use(compression({
+  // filter decides if the response should be compressed or not,
+  // based on the `shouldCompress` function above
+  filter: shouldCompress,
+  // threshold is the byte threshold for the response body size
+  // before compression is considered, the default is 1kb
+  threshold: 0
+}));
+
+// START SERVER
 
 const PORT = process.env.PORT || 3000;
-
 const server = require('http').createServer(app);
-const io = socketIO(server);
 
 server.listen(PORT, async () => {
     console.log("Listening on port", PORT);
@@ -38,8 +57,34 @@ server.listen(PORT, async () => {
 
 //SOCKET.IO CONFIGURATION
 
+const io = socketIO(server);
+
 const db = require('mongoose');
 const User = require('./src/models/UserModel');
+
+const socketioJwt = require('socketio-jwt');
+const jwtConfig = require('./src/config/jwt');
+
+io.use(socketioJwt.authorize({
+  secret: jwtConfig.secret,
+  handshake: true,
+  auth_header_required: true
+}));
+
+io.on('connection', socket => {
+  console.log('tokenden gelen user_id:', socket.decoded_token._id);
+
+  socket.on('init_user', (data) => initUser(socket, data));
+  socket.on('disconnect', async () => await leftUser(socket));
+  socket.on("start_typing", (data) => startTyping(socket, data));
+
+  socket.on('unauthorized', (error) => {
+    if (error.data.type == 'UnauthorizedError' || error.data.code == 'invalid_token') {
+      // redirect user to login page perhaps?
+      console.log('User token has expired');
+    }
+  });
+});
 
 function initUser(socket, data) {
   try {
@@ -156,12 +201,6 @@ async function stopMusic(logged_id) {
   }
 }
 
-io.on('connection', socket => {
-  socket.on('init_user', (data) => initUser(socket, data));
-  socket.on('disconnect', async () => await leftUser(socket));
-  socket.on("start_typing", (data) => startTyping(socket, data));
-});
-
 // GRIDFS CONFIGURATION
 
 const storage = new GridFsStorage({
@@ -202,7 +241,7 @@ app.use('/', routes(upload));
 
 // EVERY DAY RENEW LIKES AND ADS
 
-/*const schedule = require('node-schedule');
+const schedule = require('node-schedule');
 const Language = require('./src/utils/Language');
 
 const _ = require("lodash");
@@ -211,43 +250,47 @@ const firebaseAdmin = require("./src/firebase/firebaseAdmin");
 const DEFAULT_LIKE_COUNT = 30;
 const DEFAULT_ADS_COUNT = 5;
 
+// HER GÜN BELİRLİ SAATTE KULLANICILARIN BEĞENİ HAKLARINI GÜNCELLE
 schedule.scheduleJob('0 15 0 * * *', async () => {
   try {
-    await User.updateMany({ product: { $eq: 'free' } }, { counts: { like: DEFAULT_LIKE_COUNT, megaLike: 1, ads: DEFAULT_ADS_COUNT }});
-    await User.updateMany({ product: { $eq: 'premium_lite' } }, { counts: { like: DEFAULT_LIKE_COUNT, megaLike: 3, ads: DEFAULT_ADS_COUNT }});
-    await User.updateMany({ product: { $eq: 'premium_plus' } }, { counts: { like: DEFAULT_LIKE_COUNT, megaLike: 5, ads: DEFAULT_ADS_COUNT }});
+    const results = await Promise.all([
+      User.find({ "notifications.renew_likes": true }).select('fcm_token language'),
+      User.updateMany({ product: { $eq: 'free' } }, { counts: { like: DEFAULT_LIKE_COUNT, mega_like: 1, ad: DEFAULT_ADS_COUNT }}),
+      User.updateMany({ product: { $eq: 'premium_lite' } }, { counts: { like: DEFAULT_LIKE_COUNT, mega_like: 3, ad: DEFAULT_ADS_COUNT }}),
+      User.updateMany({ product: { $eq: 'premium_plus' } }, { counts: { like: DEFAULT_LIKE_COUNT, mega_like: 5, ad: DEFAULT_ADS_COUNT }}),
+    ]);
 
-    var trTokens = [];
-    var enTokens = [];
+    const users = results[0];
 
-    const users = await User.find({ "notifications.renewLikes": true }).select('_id fcmToken language');
+    var tr_tokens = [];
+    var en_tokens = [];
 
     users.forEach(user => {
       switch(user.language) {
         case 'tr':
-          if(user.fcmToken != null) trTokens.push(user.fcmToken.token);
+          if(user.fcm_token != null) tr_tokens.push(user.fcm_token.token);
           break;
         case 'en':
-          if(user.fcmToken != null) enTokens.push(user.fcmToken.token);
+          if(user.fcm_token != null) en_tokens.push(user.fcm_token.token);
           break;
       }
     });
 
-    const trTitle = await Language.translate({ key: 'renew_likes_title', lang: 'tr' });
-    const trBody = await Language.translate({ key: 'renew_likes_body', lang: 'tr' });
+    const tr_title = Language.translate({ key: 'renew_likes_title', lang: 'tr' });
+    const tr_body = Language.translate({ key: 'renew_likes_body', lang: 'tr' });
 
-    const enTitle = await Language.translate({ key: 'renew_likes_title', lang: 'en' });
-    const enBody = await Language.translate({ key: 'renew_likes_body', lang: 'en' });
+    const en_title = Language.translate({ key: 'renew_likes_title', lang: 'en' });
+    const en_body = Language.translate({ key: 'renew_likes_body', lang: 'en' });
 
-    const trChunks = _.chunk(trTokens, 500);
-    const enChunks = _.chunk(enTokens, 500);
+    const tr_chunks = _.chunk(tr_tokens, 500);
+    const en_chunks = _.chunk(en_tokens, 500);
 
     // TR İÇİN
-    const promisesTR = trChunks.map((tokens) => {
+    const promisesTR = tr_chunks.map((tokens) => {
       const payload = {
         tokens,
-        title: trTitle,
-        body: trBody,
+        title: tr_title,
+        body: tr_body,
         channel_id: 'match',
         data: {
           notification_type: 'RENEW_LIKES',
@@ -258,11 +301,11 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     });
 
     // EN İÇİN
-    const promisesEN = enChunks.map((tokens) => {
+    const promisesEN = en_chunks.map((tokens) => {
       const payload = {
         tokens,
-        title: enTitle,
-        body: enBody,
+        title: en_title,
+        body: en_body,
         channel_id: 'match',
         data: {
           notification_type: 'RENEW_LIKES',
@@ -283,4 +326,3 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     });
   }
 });
-*/
