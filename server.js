@@ -76,6 +76,8 @@ io.use(socketioJwt.authorize({
 io.on('connection', socket => {
   connect_socket(socket);
 
+  console.log('sockets:', io.sockets.sockets);
+
   Object.keys(io.sockets.sockets).forEach((e) => {
     console.log('HELLO');
     console.log(e);
@@ -95,6 +97,7 @@ function connect_socket(socket) {
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
     const find_sockets = io.sockets.sockets.filter(x => x.decoded_token._id === user_id);
     find_sockets.forEach(x => {
+      console.log('foreach:', x);
       if(x.id !== socket.id) {
         console.log('LOGOUT:', x.id);
 

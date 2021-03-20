@@ -9,15 +9,10 @@ class HomeController {
 
     async home(req, res) {
         try {
-            const loggedId = req._id;
-
-            console.time('fetch_user_data');
-            const loggedUser = await User.findById(loggedId).select('spotify_fav_artists').lean();
-            console.timeEnd('fetch_user_data');
-            
-            console.time('fetch_datas');
-            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(loggedUser.spotify_fav_artists);
-            console.timeEnd('fetch_datas');
+            const logged_id = req._id;
+            const logged_user = await User.findById(logged_id).select('spotify_fav_artists').lean();
+  
+            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(logged_user.spotify_fav_artists);
 
             return res.status(200).json({
                 success: true,
