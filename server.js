@@ -67,7 +67,7 @@ const jwtConfig = require('./src/config/jwt');
 
 io.use(socketioJwt.authorize({
   secret: jwtConfig.secret,
-  handshake: true,
+  handshake: false,
   auth_header_required: true,
   callback: false,
 }));
