@@ -89,21 +89,20 @@ function connect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
 
-    // BAŞKA SOCKET VARMI KONTROL ET
-    const find_sockets = shared.sockets.filter(x => x.decoded_token._id === user_id);
-    if(find_sockets.length > 0) {
-      find_sockets.forEach(find_socket => {
+    // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
+    const find_sockets = io.sockets.sockets.filter(x => x.decoded_token._id === user_id);
+    find_sockets.forEach(find_socket => {
+      if(find_socket.id !== socket.id) {
         console.log('LOGOUT:', find_socket.id);
 
         find_socket.emit('logout');
         find_socket.disconnect();
-      });  
-    }
+      } else {
+        console.log('AYNI SOCKET ID DEVAM');
+      }  
+    });  
 
-    // SOCKET KAYDI YAP
-    shared.sockets.push(socket);
-
-    console.log(`(${shared.sockets.length})`, "CONNECT SOCKETID/USERID: " + socket.id + "/" + socket.decoded_token._id);
+    console.log(`(${io.sockets.sockets.length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',
@@ -118,14 +117,9 @@ function connect_socket(socket) {
 function disconnect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
-
-    // DINLEDIĞI MÜZİK VARSA SİL
     stop_music(user_id);
 
-    // LİSTEDEN KULLANICIYI KALDIR
-    shared.sockets = shared.sockets.filter(x => x.id !== socket.id);
-
-    console.log(`(${shared.users.length})`, "DISCONNECT SOCKETID/USERID: " + find_user.socket.id + "/" + find_user.user_id);
+    console.log(`(${io.sockets.sockets.length})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',
@@ -139,28 +133,24 @@ function disconnect_socket(socket) {
 
 function start_typing(socket, data) {
   try {
-    // BU SOKETİ BUL
-    const findUser = shared.users.find(x => x.socket.id === socket.id);
-    if(!findUser) return;
-
+    const user_id = socket.decoded_token._id;
     const { to } = data;
-    const user_id = findUser.user_id;
+  
+    const target_socket_id = Object.keys(io.sockets.sockets).find(x => x.decoded_token._id === to);
+    const target_socket = target_socket_id != null ? io.sockets.sockets[target_socket_id] : null;
 
-    const findTargetUser = shared.users.find(x => x.user_id === to);
-    if(findTargetUser) {
-      findTargetUser.socket.emit('typing', {
+    if(target_socket) {
+      target_socket.emit('typing', {
           is_typing: true,
           user_id: user_id,
+      });
+
+      setTimeout(() => {
+        target_socket.emit('typing', {
+          is_typing: false,
+          user_id: user_id,
         });
-        setTimeout(() => {
-          const findTargetUser = shared.users.find(x => x.user_id === to);
-          if(findTargetUser) {
-            findTargetUser.socket.emit('typing', {
-              is_typing: false,
-              user_id: user_id,
-            });
-          }
-        }, 2000);
+      }, 2000);
     }
   } catch(err) {
     Error({
@@ -186,7 +176,7 @@ async function stop_music(logged_id) {
   } catch(err) {
       Error({
           file: 'server.js',
-          method: 'stopMusic',
+          method: 'stop_music',
           title: err.toString(),
           info: err,
           type: 'critical',
