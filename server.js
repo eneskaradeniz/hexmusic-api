@@ -76,15 +76,6 @@ io.use(socketioJwt.authorize({
 io.on('connection', socket => {
   connect_socket(socket);
 
-  console.log('sockets:', io.sockets.sockets);
-
-  Object.keys(io.sockets.sockets).forEach((e) => {
-    console.log('HELLO');
-    console.log(e);
-    const test = io.sockets.sockets[e];
-    console.log('user_id:', test.decoded_token._id);
-  });
-
   socket.on('disconnect', () => disconnect_socket(socket));
   socket.on("start_typing", (data) => start_typing(socket, data));
 });
@@ -92,10 +83,10 @@ io.on('connection', socket => {
 function connect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
-    console.log(`(${io.sockets.sockets.length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${io.sockets.clients().length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
-    const find_sockets = io.sockets.sockets.filter(x => x.decoded_token._id === user_id);
+    const find_sockets = io.sockets.clients().filter(x => x.decoded_token._id === user_id);
     find_sockets.forEach(x => {
       console.log('foreach:', x);
       if(x.id !== socket.id) {
