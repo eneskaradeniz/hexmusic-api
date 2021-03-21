@@ -29,13 +29,8 @@ class Socket {
             console.log('denemee:', x);
 
             const find_socket = this.socket_io.sockets.sockets[x];
-            if(find_socket.decoded_token._id === user_id) console.log('listeye ekle aynı!');  
+            if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);  
         }
-
-        Object.keys(this.socket_io.sockets.sockets).forEach((x) => {
-            const find_socket = this.socket_io.sockets.sockets[x];
-            if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);           
-        });
 
         return find_sockets;
     }
