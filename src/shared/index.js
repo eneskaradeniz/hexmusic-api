@@ -13,6 +13,7 @@ class Socket {
             console.log('helloo:', x);
             const socket = this.socket_io.sockets.sockets[x];
             if(socket.decoded_token._id === user_id) {
+                console.log('buldu h.o');
                 find_socket = socket;
                 break;
             }
@@ -23,6 +24,13 @@ class Socket {
 
     static findSockets(user_id) {
         var find_sockets = [];
+
+        for(let x in this.socket_io.sockets.sockets) {
+            console.log('denemee:', x);
+
+            const find_socket = this.socket_io.sockets.sockets[x];
+            if(find_socket.decoded_token._id === user_id) console.log('listeye ekle aynı!');  
+        }
 
         Object.keys(this.socket_io.sockets.sockets).forEach((x) => {
             const find_socket = this.socket_io.sockets.sockets[x];
