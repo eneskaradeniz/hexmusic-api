@@ -637,17 +637,17 @@ async function _like({ logged_id, target_id, like_type, match_type, track_id, is
 
         if(target_like) {
             // SOCKETLERE GEREKLI BILGILERI GÖNDER
-            const find_lower_user = shared.users.find(x => x.user_id === lower_id);
-            if(find_lower_user) {
-                find_lower_user.socket.emit('new_match', {
+            const find_lower_socket = shared.findSocket(lower_id);
+            if(find_lower_socket) {
+                find_lower_socket.emit('new_match', {
                     chat: chat.lower_chat,
                     new_match: match.lower_match,
                 });
             }
 
-            const findHigherUser = shared.users.find(x => x.user_id === higher_id);
-            if(findHigherUser) {
-                findHigherUser.socket.emit('new_match', {
+            const find_higher_socket = shared.findSocket(higher_id);
+            if(find_higher_socket) {
+                find_higher_socket.emit('new_match', {
                     chat: chat.higher_chat,
                     new_match: match.higher_match,
                 });
@@ -902,8 +902,8 @@ async function findListenersForTarget(logged_id, track) {
                 if(!is_contiune) continue;
 
                 // FİLTRELEME BAŞARILI İSE SOCKETINI BUL VE GÖNDER
-                const find_user = shared.users.find(x => x.user_id === target_user._id.toString());
-                if(find_user) find_user.socket.emit('get_card', { user: logged_card });  
+                const find_socket = shared.findSocket(target_user._id.toString());
+                if(find_socket) find_socket.emit('get_card', { user: logged_card });  
             } catch(err) {
                 Error({
                     file: 'MatchController.js',

@@ -10,10 +10,8 @@ class Socket {
         var find_socket;
 
         for(let x in this.socket_io.sockets.sockets) {
-            console.log('helloo:', x);
             const socket = this.socket_io.sockets.sockets[x];
             if(socket.decoded_token._id === user_id) {
-                console.log('buldu h.o');
                 find_socket = socket;
                 break;
             }
@@ -26,8 +24,6 @@ class Socket {
         var find_sockets = [];
 
         for(let x in this.socket_io.sockets.sockets) {
-            console.log('denemee:', x);
-
             const find_socket = this.socket_io.sockets.sockets[x];
             if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);  
         }

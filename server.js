@@ -80,7 +80,6 @@ function connect_socket(socket) {
     console.log(`(${shared.getSocketCount()})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
-
     var find_sockets = shared.findSockets(user_id);
 
     find_sockets.forEach(x => {
@@ -89,9 +88,7 @@ function connect_socket(socket) {
 
         x.emit('logout');
         x.disconnect();
-      } else {
-        console.log('AYNI SOCKET ID DEVAM');
-      }  
+      }
     });  
   } catch(err) {
     Error({
@@ -126,8 +123,7 @@ function start_typing(socket, data) {
     const user_id = socket.decoded_token._id;
     const { to } = data;
   
-    const target_socket_id = Object.keys(io.sockets.sockets).find(x => x.decoded_token._id === to);
-    const target_socket = target_socket_id != null ? io.sockets.sockets[target_socket_id] : null;
+    const target_socket = shared.findSocket(to);
 
     if(target_socket) {
       target_socket.emit('typing', {

@@ -546,9 +546,9 @@ class UserController {
 
             // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
             users.forEach(model => {
-                const find_user = shared.users.find(x => x.user_id === model.user_id.toString());
-                if(find_user) {
-                    find_user.socket.emit('end_user', {
+                const find_socket = shared.findSocket(model.user_id.toString());
+                if(find_socket) {
+                    find_socket.emit('end_user', {
                         user_id: model.user_id,
                         chat_id: model.chat_id,
                     });
@@ -652,9 +652,9 @@ class UserController {
                 await Match.deleteOne({ _id: find_match._id }).session(session);
             });
 
-            const find_target_user = shared.users.find(x => x.user_id === target_id);
-            if(find_target_user) {
-                find_target_user.socket.emit('end_user', {
+            const find_target_socket = shared.findSocket(target_id);
+            if(find_target_socket) {
+                find_target_socket.emit('end_user', {
                     user_id: logged_id,
                     chat_id: find_match.chat_id,
                 });
@@ -721,9 +721,9 @@ class UserController {
                 await BlockedUser.create([{ from: logged_id, to: target_id }], { session: session });
             });
 
-            const find_target_user = shared.users.find(x => x.user_id === target_id);
-            if(find_target_user) {
-                find_target_user.socket.emit('end_user', {
+            const find_target_socket = shared.findSocket(target_id);
+            if(find_target_socket) {
+                find_target_socket.emit('end_user', {
                     user_id: logged_id,
                     chat_id: find_match.chat_id,
                 });
