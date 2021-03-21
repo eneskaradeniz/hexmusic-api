@@ -25,6 +25,7 @@ class HomeController {
             });
 
         } catch(err) {
+            console.log(err);
             Error({
                 file: 'HomeController.js',
                 method: 'home',
