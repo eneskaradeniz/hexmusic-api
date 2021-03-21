@@ -6,22 +6,14 @@ const socketIO = require('socket.io');
 const compression = require("compression");
 const bodyParser = require('body-parser');
 
-/*
-const os = require('os');
-const cluster = require('cluster');
-const numCpu = os.cpus().length;
-*/
-
-const shared = require('./src/shared');
-const Error = require('./src/controllers/ErrorController');
-
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
 
-const app = express();
+const Error = require('./src/controllers/ErrorController');
 
+const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
@@ -59,7 +51,7 @@ server.listen(PORT, async () => {
 
 // SOCKET.IO CONFIGURATION
 
-const io = socketIO(server);
+const shared = require('./src/shared/index');
 
 const db = require('mongoose');
 const User = require('./src/models/UserModel');
@@ -67,13 +59,15 @@ const User = require('./src/models/UserModel');
 const socketioJwt = require('socketio-jwt');
 const jwtConfig = require('./src/config/jwt');
 
-io.use(socketioJwt.authorize({
+shared.socket_io = socketIO(server);
+
+shared.socket_io.use(socketioJwt.authorize({
   secret: jwtConfig.secret,
   handshake: true,
   auth_header_required: true,
 }));
 
-io.on('connection', socket => {
+shared.socket_io.on('connection', socket => {
   connect_socket(socket);
 
   socket.on('disconnect', () => disconnect_socket(socket));
@@ -83,16 +77,11 @@ io.on('connection', socket => {
 function connect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
-    console.log(`(${Object.keys(io.sockets.connected).length})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${shared.getSocketCount()})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
 
-    var find_sockets = [];
-
-    Object.keys(io.sockets.sockets).forEach((x) => {
-      const find_socket = io.sockets.sockets[x];
-      if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);           
-    });
+    var find_sockets = shared.findSockets(user_id);
 
     find_sockets.forEach(x => {
       if(x.id !== socket.id) {
@@ -120,7 +109,7 @@ function disconnect_socket(socket) {
     var user_id = socket.decoded_token._id;
     stop_music(user_id);
 
-    console.log(`(${Object.keys(io.sockets.connected).length})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${shared.getSocketCount()})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',

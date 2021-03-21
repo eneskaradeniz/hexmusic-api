@@ -500,9 +500,9 @@ async function findChatWithChatId({ logged_id, chat_id }) {
 
 function emitReceiveMessage({ to, message, chat }) {
     try {
-        const find_user = shared.users.find(x => x.user_id === to);
-        if(find_user) {
-            find_user.socket.emit('receive_message', {
+        const find_socket = shared.findSocket(to);
+        if(find_socket) {
+            find_socket.emit('receive_message', {
                 message: message,
                 chat: chat,
             });
@@ -514,9 +514,9 @@ function emitReceiveMessage({ to, message, chat }) {
 
 function emitLikeMessage({ to, message, chat }) {
     try {
-        const find_user = shared.users.find(x => x.user_id === to);
-        if(find_user) {
-            find_user.socket.emit('like_message', {
+        const find_socket = shared.findSocket(to);
+        if(find_socket) {
+            find_socket.emit('like_message', {
                 message: message,
                 chat: chat,
             });
@@ -528,9 +528,9 @@ function emitLikeMessage({ to, message, chat }) {
 
 function emitReadMessages({ to, chat_id }) {
     try {
-        const find_user = shared.users.find(x => x.user_id === to);
-        if(find_user) {
-            find_user.socket.emit('read_messages', { chat_id });
+        const find_socket = shared.findSocket(to);
+        if(find_socket) {
+            find_socket.emit('read_messages', { chat_id });
         }
     } catch (err) {
         console.log(err);
