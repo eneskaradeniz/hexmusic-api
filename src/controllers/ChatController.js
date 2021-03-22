@@ -104,24 +104,45 @@ class ChatController {
     }
 
     async send_message(req, res) {
+        console.time('send_message');
         const session = await db.startSession();
 
         try {
-            const author_id = req._id;
-            const chat_id = req.params.chat_id;
+            const author_id = ObjectId();
+            const chat_id = ObjectId();
             const { message, type, reply, to } = req.body;
+            if(chat_id === null || message === null || type === null || to === null) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'INVALID_FIELDS'
+                });
+            }
+
+            //const lower_id = author_id < to ? author_id : to;
+            //const higher_id = author_id > to ? author_id : to;
 
             const is_lower = author_id < to;
 
-            const new_message = Message({
-                author_id,
-                message,
-                type,
-                reply
-            });
-            
+            const new_message = { author_id, message, type, reply, like: false, read: false, created_at: Date.now() };
+
+            /*Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
+                $push: { messages: new_message },
+                last_message: {
+                    author_id: new_message.author_id,
+                    message: new_message.message,
+                    type: new_message.type,
+                    created_at: new_message.created_at
+                },
+                lower_read: is_lower ? true : false,
+                higher_read: is_lower ? false : true
+            }).then((result) => {
+                console.log('result');
+            }).catch((err) => {
+                console.log(err);
+            });*/
+
             await session.withTransaction(async () => {
-                return await Chat.updateOne({ _id: chat_id }, {
+                return Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
                     $push: { messages: new_message },
                     last_message: {
                         author_id: new_message.author_id,
@@ -134,17 +155,31 @@ class ChatController {
                 }).session(session);
             });
 
-            emitReceiveMessage({ to, message, chat });
-            pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
+            //emitReceiveMessage({ to, chat_id, message: new_message });
+            //pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
 
             return res.status(200).json({
-                success: true
+                success: true,
+                message: new_message,
             });
         } catch(err) {
+            console.log('CATCH ERROR H.O');
             console.log(err);
+
+            Error({
+                file: 'ChatController.js',
+                method: 'send_message',
+                title: err.toString(),
+                info: err,
+                type: 'critical',
+            });
+
             return res.status(400).json({
                 success: false
             });
+        } finally {
+            session.endSession();
+            console.timeEnd('send_message');
         }
     }
 
@@ -544,13 +579,13 @@ async function findChatWithChatId({ logged_id, chat_id }) {
     }
 }
 
-function emitReceiveMessage({ to, message, chat }) {
+function emitReceiveMessage({ to, chat_id, message }) {
     try {
         const find_socket = shared.findSocket(to);
         if(find_socket) {
             find_socket.emit('receive_message', {
-                message: message,
-                chat: chat,
+                chat_id: chat_id,
+                message: message
             });
         }
     } catch (err) {
