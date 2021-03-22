@@ -105,7 +105,7 @@ class ChatController {
 
     async send_message(req, res) {
         console.time('send_message');
-        const session = await db.startSession();
+        //const session = await db.startSession();
 
         try {
             const author_id = ObjectId();
@@ -125,7 +125,7 @@ class ChatController {
 
             const new_message = { author_id, message, type, reply, like: false, read: false, created_at: Date.now() };
 
-            /*Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
+            await Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
                 $push: { messages: new_message },
                 last_message: {
                     author_id: new_message.author_id,
@@ -135,12 +135,9 @@ class ChatController {
                 },
                 lower_read: is_lower ? true : false,
                 higher_read: is_lower ? false : true
-            }).then((result) => {
-                console.log('result');
-            }).catch((err) => {
-                console.log(err);
-            });*/
+            });
 
+            /*
             await session.withTransaction(async () => {
                 return Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
                     $push: { messages: new_message },
@@ -153,7 +150,7 @@ class ChatController {
                     lower_read: is_lower ? true : false,
                     higher_read: is_lower ? false : true
                 }).session(session);
-            });
+            });*/
 
             //emitReceiveMessage({ to, chat_id, message: new_message });
             //pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
@@ -178,7 +175,7 @@ class ChatController {
                 success: false
             });
         } finally {
-            session.endSession();
+            //session.endSession();
             console.timeEnd('send_message');
         }
     }
