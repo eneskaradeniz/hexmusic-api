@@ -1,12 +1,6 @@
 const mongoose = require('mongoose');
 
 const MatchSchema = mongoose.Schema({
-    chat_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Chat',
-        required: true,
-    },
-    
     lower_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

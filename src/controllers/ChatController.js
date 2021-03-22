@@ -104,6 +104,52 @@ class ChatController {
         }
     }
 
+    async send_message(req, res) {
+        const session = await db.startSession();
+
+        try {
+            const author_id = req._id;
+            const chat_id = req.params.chat_id;
+            const { message, type, reply, to } = req.body;
+
+            const is_lower = author_id < to;
+
+            const new_message = Message({
+                author_id,
+                message,
+                type,
+                reply
+            });
+            
+            await session.withTransaction(async () => {
+                return await Chat.updateOne({ _id: chat_id }, {
+                    $push: { messages: new_message },
+                    last_message: {
+                        author_id: new_message.author_id,
+                        message: new_message.message,
+                        type: new_message.type,
+                        created_at: new_message.created_at
+                    },
+                    lower_read: is_lower ? true : false,
+                    higher_read: is_lower ? false : true
+                }).session(session);
+            });
+
+            emitReceiveMessage({ to, message, chat });
+            pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
+
+            return res.status(200).json({
+                success: true
+            });
+        } catch(err) {
+            console.log(err);
+            return res.status(400).json({
+                success: false
+            });
+        }
+    }
+
+    /*
     async send_message (req, res) {
         const session = await db.startSession();
 
@@ -255,7 +301,8 @@ class ChatController {
             session.endSession();
         }
     }  
-
+    */
+   
     async like_message (req, res) {
         const session = await db.startSession();
         

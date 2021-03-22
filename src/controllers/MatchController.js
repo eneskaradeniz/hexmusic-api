@@ -543,15 +543,17 @@ async function _like({ logged_id, target_id, like_type, match_type, track_id, is
             
                 // İKİ KULLANICIYI EŞLEŞTİR
 
-                var chat_id = ObjectId();
-                var match_id = ObjectId();
+                const chat_id = ObjectId();
+                const match_id = ObjectId();
+
+                const is_mega_like = like_type === 'mega_like' || target_like.like_type === 'mega_like';
     
                 // CHATI OLUŞTUR
                 await Chat.create([{
                     _id: chat_id,
-                    match_id,
-                    lower_id,
-                    higher_id,
+                    lower_id: lower_id,
+                    higher_id: higher_id,
+                    is_mega_like: is_mega_like,
                 }], { session: session });
     
                 // CHATI GETIR
@@ -575,7 +577,6 @@ async function _like({ logged_id, target_id, like_type, match_type, track_id, is
 
                 await Match.create([{
                     _id: match_id,
-                    chat_id,
                     lower_id,
                     higher_id,
                     lower_like_type,
