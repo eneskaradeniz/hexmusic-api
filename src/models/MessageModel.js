@@ -40,7 +40,6 @@ const MessageSchema = mongoose.Schema({
 
 module.exports = MessageSchema;
 
-
 /*
 const MessageSchema = mongoose.Schema({
     chat_id: {

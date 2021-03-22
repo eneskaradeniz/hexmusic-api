@@ -74,20 +74,19 @@ class ChatController {
             }
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
-            const result = await findChatWithChatId({ logged_id, chat_id });
-            if(!result) {
+            // TÜM MESAJLARIN LİSTESİNİ ÇEK.
+            const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id messages').lean();
+            console.log(find_chat);
+            if(!find_chat || find_chat.lower_id.toString() !== logged_id && find_chat.higher_id.toString() !== logged_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
 
-            // TÜM MESAJLARIN LİSTESİNİ ÇEK.
-            const messages = await Message.find({ chat_id }).populate('reply', 'from message type').sort({ created_at: -1 }).lean();
-
             return res.status(200).json({
                 success: true,
-                messages
+                messages: find_chat.messages
             });
         } catch (err) {
             Error({
@@ -302,7 +301,7 @@ class ChatController {
         }
     }  
     */
-   
+
     async like_message (req, res) {
         const session = await db.startSession();
         
@@ -538,7 +537,7 @@ async function findChatWithChatId({ logged_id, chat_id }) {
     try {
         const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
         if(!find_chat) return false;
-        if(find_chat.lower_id.toString() === logged_id.toString() || find_chat.higher_id.toString() === logged_id.toString() ) return true;
+        if(find_chat.lower_id.toString() === logged_id.toString() || find_chat.higher_id.toString() === logged_id.toString()) return true;
         else return false;
     } catch (err) {
         throw err;

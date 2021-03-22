@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const MessageSchema = require('./MessageModel');
 
-const ChatSchema = mongoose.schema({
+const ChatSchema = mongoose.Schema({
     lower_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -41,6 +41,8 @@ const ChatSchema = mongoose.schema({
         default: Date.now
     }
 });
+
+module.exports = mongoose.model('Chat', ChatSchema);
 
 /*
 const ChatSchema = mongoose.Schema({
@@ -84,5 +86,3 @@ const ChatSchema = mongoose.Schema({
     }
 });
 */
-
-module.exports = mongoose.model('Chat', ChatSchema);
