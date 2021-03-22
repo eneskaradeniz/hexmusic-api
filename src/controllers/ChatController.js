@@ -20,10 +20,8 @@ class ChatController {
         try {
             const logged_id = req._id;
 
-            // KULLANICININ TÜM CHATLERİNİ ÇEK.
-            const result = await Chat.find({
-                $or: [{ lower_id: logged_id }, { higher_id: logged_id }],
-            }) 
+            const result = await Chat.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }] })
+            .select('lower_id higher_id last_message lower_read higher_read is_mega_like created_at')
             .populate('lower_id', 'display_name avatars verified')
             .populate('higher_id', 'display_name avatars verified')
             .lean();
@@ -39,6 +37,7 @@ class ChatController {
                     user: is_lower ? chat.higher_id : chat.lower_id,
                     last_message: chat.last_message,
                     read: is_lower ? chat.lower_read : chat.higher_read,
+                    is_mega_like: chat.is_mega_like,
                     created_at: chat.created_at
                 });
             });
@@ -105,11 +104,11 @@ class ChatController {
 
     async send_message(req, res) {
         console.time('send_message');
-        //const session = await db.startSession();
+        const session = await db.startSession();
 
         try {
             const author_id = ObjectId();
-            const chat_id = ObjectId();
+            const chat_id = "6058ab411bfc4f3a74d00338";
             const { message, type, reply, to } = req.body;
             if(chat_id === null || message === null || type === null || to === null) {
                 return res.status(200).json({
@@ -118,28 +117,15 @@ class ChatController {
                 });
             }
 
-            //const lower_id = author_id < to ? author_id : to;
-            //const higher_id = author_id > to ? author_id : to;
+            const lower_id = "6058ab411bfc4f3a74d00339";
+            const higher_id = "6058ab411bfc4f3a74d0033a";
 
             const is_lower = author_id < to;
 
             const new_message = { author_id, message, type, reply, like: false, read: false, created_at: Date.now() };
 
-            await Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
-                $push: { messages: new_message },
-                last_message: {
-                    author_id: new_message.author_id,
-                    message: new_message.message,
-                    type: new_message.type,
-                    created_at: new_message.created_at
-                },
-                lower_read: is_lower ? true : false,
-                higher_read: is_lower ? false : true
-            });
-
-            /*
-            await session.withTransaction(async () => {
-                return Chat.updateOne({ _id: "6058aa45155e7e18a470375e" }, {
+            const result = await session.withTransaction(async () => {
+                return Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
                     $push: { messages: new_message },
                     last_message: {
                         author_id: new_message.author_id,
@@ -149,8 +135,13 @@ class ChatController {
                     },
                     lower_read: is_lower ? true : false,
                     higher_read: is_lower ? false : true
-                }).session(session);
-            });*/
+                }, { }).session(session);
+            });
+
+            console.log(result);
+
+            const test = result.CommandResult.result.ok;
+            console.log('test:', test);
 
             //emitReceiveMessage({ to, chat_id, message: new_message });
             //pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
@@ -175,7 +166,7 @@ class ChatController {
                 success: false
             });
         } finally {
-            //session.endSession();
+            session.endSession();
             console.timeEnd('send_message');
         }
     }
