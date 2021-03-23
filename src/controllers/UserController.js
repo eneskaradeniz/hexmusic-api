@@ -62,7 +62,6 @@ class UserController {
             console.timeEnd('findUser');
 
             if(user) {
-                
                 console.time('profile_and_update');
                 const promises = await Promise.all([
                     // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
@@ -114,10 +113,8 @@ class UserController {
         session.startTransaction();
       
         try {
-            if(req.files) {
-                req.files.forEach(file => avatars.push(file.id));
-            }
-           
+            if(req.files) req.files.forEach(file => avatars.push(file.id));
+                   
             const { spotify_id, spotify_refresh_token, email, display_name, birthday, gender, bio, city, language } = req.body._body ? JSON.parse(req.body._body) : {};
             if(!spotify_id || !spotify_refresh_token || !email || !display_name || !birthday || !gender || !language) {
                 FileController.deleteAvatars(avatars);
@@ -1207,6 +1204,8 @@ async function getMyProfile(logged_id) {
         .select('email display_name avatars verified birthday city bio gender social_accounts last_tracks fav_tracks fav_artists permissions notifications filtering product')
         .lean();
 
+        console.log('user:', user);
+
         const track_ids = uniq([...user.last_tracks, ...user.fav_tracks]);
         const artist_ids = user.fav_artists;
 
@@ -1217,12 +1216,17 @@ async function getMyProfile(logged_id) {
 
         const tracks = promises[0];
 
+        console.log('tracks:', tracks);
+
         var last_tracks = [];
         var fav_tracks = [];
         var fav_artists = promises[1];
 
         user.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
         user.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
+
+        console.log('last_tracks:', last_tracks);
+        console.log('fav_tracks:', fav_tracks);
 
         return {
             user: {
