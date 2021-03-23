@@ -1204,8 +1204,6 @@ async function getMyProfile(logged_id) {
         .select('email display_name avatars verified birthday city bio gender social_accounts last_tracks fav_tracks fav_artists permissions notifications filtering product')
         .lean();
 
-        console.log('user:', user);
-
         const track_ids = uniq([...user.last_tracks, ...user.fav_tracks]);
         const artist_ids = user.fav_artists;
 
@@ -1216,17 +1214,12 @@ async function getMyProfile(logged_id) {
 
         const tracks = promises[0];
 
-        console.log('tracks:', tracks);
-
         var last_tracks = [];
         var fav_tracks = [];
         var fav_artists = promises[1];
 
         user.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
         user.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
-
-        console.log('last_tracks:', last_tracks);
-        console.log('fav_tracks:', fav_tracks);
 
         return {
             user: {
