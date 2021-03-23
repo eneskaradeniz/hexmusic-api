@@ -32,67 +32,15 @@ class MatchController {
             }
 
             var track;
-            var artist;
-
-            const find_track = await Track.findById(id).lean();
-            if(find_track) {
-                if(find_track.is_podcast !== is_podcast) {
-                    return res.status(200).json({
-                        success: false,
-                        error: 'INVALID_TRACK',
-                    });
-                }
-
-                track = find_track;
+            if(is_podcast) {
+                track = await SpotifyController.getPodcast(id);
             } else {
-                const logged_user = await User.findById(logged_id).select('spotify_refresh_token').lean();
-                const access_token = await SpotifyController.refreshAccessToken(logged_user.spotify_refresh_token);
-                if(!access_token) {
-                    return res.status(401).json({
-                        success: false,
-                        error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                    });
-                }
-
-                track = is_podcast ? await SpotifyController.getPodcast(access_token, id) : await SpotifyController.getTrack(access_token, id);
-
-                if(!is_podcast) {
-                    const find_artist = await Artist.countDocuments({ _id: track.artist });
-                    if(!find_artist) {
-                        artist = await SpotifyController.getArtist(access_token, track.artist);
-                    }
-                }
-
-                await session.withTransaction(async () => {
-                    const trackExits = await Track.countDocuments({ _id: track._id }).session(session);
-                    if(trackExits == 0) {
-                        await Track.create([{
-                            _id: track._id,
-                            name: track.name,
-                            artist: track.artist,
-                            artists: track.artists,
-                            album_name: track.album_name,
-                            album_image: track.album_image,
-                            is_podcast: track.is_podcast,
-                        }], { session: session });
-                    }
-                    
-                    if(artist) {
-                        const artistExits = await Artist.countDocuments({ _id: artist._id }).session(session);
-                        if(artistExits == 0) {
-                            await Artist.create([{
-                                _id: artist._id,
-                                name: artist.name,
-                                image: artist.image,
-                            }], { session: session });
-                        }
-                    }
-                });
+                track = await SpotifyController.getTrack(id);
             }
 
             await updateCurrentPlay(logged_id, track);
 
-            findListenersForTarget(logged_id, track);
+            //findListenersForTarget(logged_id, track);
 
             return res.status(200).json({
                 success: true,
