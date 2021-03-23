@@ -16,9 +16,6 @@ const Language = require('../utils/Language');
 
 const Error = require('./ErrorController');
 
-const Track = require('../models/TrackModel');
-const Artist = require('../models/ArtistModel');
-
 class MatchController {
 
     async start_music(req, res) {

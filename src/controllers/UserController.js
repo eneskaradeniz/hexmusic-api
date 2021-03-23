@@ -19,11 +19,6 @@ const shared = require('../shared/index');
 
 const Error = require('./ErrorController');
 
-const Track = require('../models/TrackModel');
-const Artist = require('../models/ArtistModel');
-
-const _ = require("lodash");
-
 const generateJwtToken = (user_id) => jwt.sign({ _id: user_id }, jwtConfig.secret);
 
 class UserController {
@@ -42,26 +37,26 @@ class UserController {
 
             console.time('getAuthorizationCodeGrant');
             const code_grant = await SpotifyController.getAuthorizationCodeGrant(code);
+            console.timeEnd('getAuthorizationCodeGrant');
             if(!code_grant) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_CODE',
                 });
             }
-            console.timeEnd('getAuthorizationCodeGrant');
-
+            
             const { access_token, refresh_token } = code_grant;
 
             console.time('getSpotifyId');
             const spotify_id = await SpotifyController.getSpotifyId(access_token);
+            console.timeEnd('getSpotifyId');
             if(!spotify_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_CODE',
                 });
             }
-            console.timeEnd('getSpotifyId');
-
+           
             console.time('findUser');
             const user = await User.findOne({ spotify_id: spotify_id }).select('_id').lean();
             console.timeEnd('findUser');
@@ -69,7 +64,7 @@ class UserController {
             if(user) {
                 
                 console.time('profile_and_update');
-                let promises = await Promise.all([
+                const promises = await Promise.all([
                     // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
                     updateSpotifyRefreshToken(user._id, refresh_token),
                     getMyProfile(user._id),
@@ -91,27 +86,10 @@ class UserController {
             } else {
                 // BÖYLE BİR KULLANICI YOK KAYIT OL EKRANINA AKTAR
 
-                console.time('my_tops');
-                let promises = await Promise.all([
-                    SpotifyController.getMyTopTracks(access_token),
-                    SpotifyController.getMyTopArtists(access_token),
-                ]);
-                console.timeEnd('my_tops');
-
-                const { spotify_fav_track_ids, spotify_fav_tracks } = promises[0];
-                const { spotify_fav_artist_ids, spotify_fav_artists } = promises[1];
-
                 return res.status(200).json({
                     success: true,
-
                     spotify_id: spotify_id,
                     spotify_refresh_token: refresh_token,
-
-                    spotify_fav_track_ids: spotify_fav_track_ids,
-                    spotify_fav_tracks: spotify_fav_tracks,
-                    
-                    spotify_fav_artist_ids: spotify_fav_artist_ids,
-                    spotify_fav_artists: spotify_fav_artists,
                 });            
             }
         } catch(err) {
@@ -130,123 +108,70 @@ class UserController {
     }
 
     async register(req, res) {
-        console.time('REGISTER');
         var avatars = [];
 
         const session = await db.startSession();
+        session.startTransaction();
       
         try {
-            req.files.forEach(file => avatars.push(file.id));
-
-            const { spotify_id, spotify_refresh_token, spotify_fav_artists, spotify_fav_tracks, email, display_name, birthday, gender, bio, city, fav_tracks, fav_artists, language } = JSON.parse(req.body._body);
-            if(!spotify_id || !spotify_refresh_token || !spotify_fav_artists || !spotify_fav_tracks || !email || !display_name || !birthday || !gender || !language) {
-                FileController.deleteImages(avatars);
+            if(req.files) {
+                req.files.forEach(file => avatars.push(file.id));
+            }
+           
+            const { spotify_id, spotify_refresh_token, email, display_name, birthday, gender, bio, city, language } = req.body._body ? JSON.parse(req.body._body) : {};
+            if(!spotify_id || !spotify_refresh_token || !email || !display_name || !birthday || !gender || !language) {
+                FileController.deleteAvatars(avatars);
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            // ADULT VALIDATOR
             const _isAdult = isAdult(birthday);
             if(!_isAdult) {
-                FileController.deleteImages(avatars);
+                FileController.deleteAvatars(avatars);
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
             
-            console.time('user_exists');
             const user_exists = await User.countDocuments({ spotify_id: spotify_id });
             if (user_exists > 0) {
-                FileController.deleteImages(avatars);
+                FileController.deleteAvatars(avatars);
                 return res.status(200).json({
                     success: false,
                     error: 'ALREADY_REGISTER',
                 });
             }
-            console.timeEnd('user_exists');
 
-            console.time('refreshAccessToken');
             const access_token = await SpotifyController.refreshAccessToken(spotify_refresh_token);
             if(!access_token) {
-                FileController.deleteImages(avatars);
+                FileController.deleteAvatars(avatars);
                 return res.status(401).json({
                     success: false,
                     error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
                 });
             }
-            console.timeEnd('refreshAccessToken');
 
-            const all_tracks = uniq([...spotify_fav_tracks, ...fav_tracks]);
-            const all_artists = uniq([...spotify_fav_artists, ...fav_artists]);
-
-            console.time('find_promises');
-            const find_promises = await Promise.all([
-                Track.find({ _id: { $in: all_tracks }}).select('_id').lean(),
-                Artist.find({ _id: { $in: all_artists }}).select('_id').lean(),
+            const promises = await Promise.all([
+                SpotifyController.getMyTopTracks(access_token),
+                SpotifyController.getMyTopArtists(access_token),
             ]);
-            console.timeEnd('find_promises');
 
-            const tracks = find_promises[0];
-            const artists = find_promises[1];
-
-            // TRACKS
-
-            const track_ids = [];
-            tracks.forEach(e => track_ids.push(e._id));
-
-            const difference_track_ids = all_tracks.filter(x => !track_ids.includes(x));
-
-            const track_chunks = _.chunk(difference_track_ids, 50);
-            const track_promises = track_chunks.map((ids) => SpotifyController.getTracks(access_token, ids));
-
-            // ARTISTS
-            
-            const artist_ids = [];
-            artists.forEach(e => artist_ids.push(e._id));
-
-            const difference_artist_ids = all_artists.filter(x => !artist_ids.includes(x));
-
-            const artist_chunks = _.chunk(difference_artist_ids, 50);
-            const artist_promises = artist_chunks.map((ids) => SpotifyController.getArtists(access_token, ids));
-
-            // FINISH
-
-            console.time('all_promises');
-            const all_promises = await Promise.all([...track_promises, ...artist_promises]);
-            console.timeEnd('all_promises');
-
-            var difference_tracks = [];
-            var difference_artists = [];
-
-            for(let i = 0; i < track_promises.length; i++) {
-                difference_tracks.push.apply(difference_tracks, all_promises[i]);
-            }
-
-            for(let i = track_promises.length; i < all_promises.length; i++) {
-                difference_artists.push.apply(difference_artists, all_promises[i]);
-            }
-
-            console.time('track_and_artist');
-            await session.withTransaction(async () => {
-                return await Promise.all([
-                    Track.create(difference_tracks, { session: session }),
-                    Artist.create(difference_artists, { session: session }),
-                ]);
-            });
-            console.timeEnd('track_and_artist');
+            const { spotify_fav_tracks, fav_tracks } = promises[0];
+            const { spotify_fav_artists, fav_artists } = promises[1];
 
             const user_id = ObjectId();
 
-            console.time('user_create');
-            await User.create({
+            await User.create([{
                 _id: user_id,
                 spotify_id,
                 spotify_refresh_token,
-                spotify_fav_artists,
                 spotify_fav_tracks,
+                spotify_fav_artists,
+                fav_tracks,
+                fav_artists,
                 avatars,
                 email,
                 display_name,
@@ -254,17 +179,13 @@ class UserController {
                 gender,
                 bio,
                 city,
-                fav_tracks,
-                fav_artists,
                 language
-            });
-            console.timeEnd('user_create');
+            }], { session: session });
+
+            await session.commitTransaction();
 
             const token = generateJwtToken(user_id);
-
-            console.time('my_profile');
             const my_profile = await getMyProfile(user_id);
-            console.timeEnd('my_profile');
 
             return res.status(200).json({
                 success: true,
@@ -275,7 +196,10 @@ class UserController {
             });
 
         } catch (err) {
-            FileController.deleteImages(avatars);
+            console.log(err);
+            await session.abortTransaction();
+
+            FileController.deleteAvatars(avatars);
 
             Error({
                 file: 'UserController.js',
@@ -290,7 +214,6 @@ class UserController {
             });
         } finally {
             session.endSession();
-            console.timeEnd('REGISTER');
         }
     }
     
@@ -1030,68 +953,6 @@ class UserController {
         }
     }
 
-    async update_fav_tracks(req, res) {
-        try {
-            const logged_id = req._id;
-            const { fav_tracks } = req.body;
-            if(!fav_tracks) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
-
-            await User.updateOne({ _id: logged_id }, { fav_tracks: fav_tracks });
-
-            return res.status(200).json({
-                success: true,
-            });
-        } catch (err) {
-            Error({
-                file: 'UserController.js',
-                method: 'update_fav_tracks',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
-    async update_fav_artists(req, res) {
-        try {
-            const logged_id = req._id;
-            const { fav_artists } = req.body;
-            if(!fav_artists) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
-
-            await User.updateOne({ _id: logged_id }, { fav_artists });
-
-            return res.status(200).json({
-                success: true,
-            });
-        } catch (err) {
-            Error({
-                file: 'UserController.js',
-                method: 'update_fav_artists',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
     async update_spotify_favorites(req, res) {
         try {
             const logged_id = req._id;
@@ -1235,125 +1096,6 @@ class UserController {
         }
     }
 
-    // SPOTIFY SEARCH
-
-    async search_tracks(req, res) {
-        try {
-            const query = req.params.q;
-            const { refresh_token } = req.body;
-            if(!query || !refresh_token) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
-
-            const tracks = await SpotifyController.searchTracks(refresh_token, query);
-            if(!tracks) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-            
-            return res.status(200).json({
-                success: true,
-                tracks
-            })
-
-        } catch (err) {
-            Error({
-                file: 'UserController.js',
-                method: 'search_tracks',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
-    async search_artists(req, res) {
-        try {
-            const query = req.params.q;
-            const { refresh_token } = req.body;
-            if(!query || !refresh_token) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
-
-            const artists = await SpotifyController.searchArtists(refresh_token, query);
-            if(!artists) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-
-            return res.status(200).json({
-                success: true,
-                artists
-            })
-
-        } catch (err) {
-            Error({
-                file: 'UserController.js',
-                method: 'search_artists',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
-    async search_podcasts(req, res) {
-        try {
-            const query = req.params.q;
-            const { refresh_token } = req.body;
-            if(!query || !refresh_token) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
-
-            const podcasts = await SpotifyController.searchPodcasts(refresh_token, query);
-            if(!podcasts) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'INVALID_SPOTIFY_REFRESH_TOKEN',
-                });
-            }
-            
-            return res.status(200).json({
-                success: true,
-                podcasts
-            })
-
-        } catch (err) {
-            Error({
-                file: 'UserController.js',
-                method: 'search_podcasts',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
     // OTHER
 
     async action(req, res) {
@@ -1460,18 +1202,27 @@ async function updateSpotifyRefreshToken(logged_id, refresh_token) {
 }
 
 async function getMyProfile(logged_id) {
-    console.time('getMyProfile');
     try {
-        console.time('fetch_user');
         const user = await User.findById(logged_id)
-        .select('email display_name avatars verified birthday city bio gender social_accounts last_tracks fav_tracks fav_artists permissions notifications filtering product spotify_fav_tracks spotify_fav_artists')
-        .populate('last_tracks')
-        .populate('fav_tracks')
-        .populate('fav_artists')
-        .populate('spotify_fav_tracks')
-        .populate('spotify_fav_artists')
+        .select('email display_name avatars verified birthday city bio gender social_accounts last_tracks fav_tracks fav_artists permissions notifications filtering product')
         .lean();
-        console.timeEnd('fetch_user');
+
+        const track_ids = uniq([...user.last_tracks, ...user.fav_tracks]);
+        const artist_ids = user.fav_artists;
+
+        const promises = await Promise.all([
+            SpotifyController.getTracks(track_ids),
+            SpotifyController.getArtists(artist_ids)
+        ]);
+
+        const tracks = promises[0];
+
+        var last_tracks = [];
+        var fav_tracks = [];
+        var fav_artists = promises[1];
+
+        user.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
+        user.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
 
         return {
             user: {
@@ -1484,18 +1235,15 @@ async function getMyProfile(logged_id) {
             email: user.email,
           
             birthday: user.birthday,
-            city: user.city,
             gender: user.gender,
 
             bio: user.bio,
             social_accounts: user.social_accounts,
+            city: user.city,
         
-            last_tracks: user.last_tracks,
-            fav_tracks: user.fav_tracks,
-            fav_artists: user.fav_artists,
-        
-            spotify_fav_tracks: user.spotify_fav_tracks,
-            spotify_fav_artists: user.spotify_fav_artists,
+            last_tracks: last_tracks,
+            fav_tracks: fav_tracks,
+            fav_artists: fav_artists,
 
             permissions: user.permissions,
             notifications: user.notifications,
@@ -1506,8 +1254,6 @@ async function getMyProfile(logged_id) {
        
     } catch(err) {
         throw err;
-    } finally {
-        console.timeEnd('getMyProfile');
     }
 }
 

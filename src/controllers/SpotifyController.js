@@ -1,11 +1,21 @@
 require('dotenv').config();
 
 const SpotifyWebApi = require('spotify-web-api-node');
+
+const lodash = require("lodash");
+
 const spotifyApi = new SpotifyWebApi({
     clientId: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
     redirectUri: process.env.REDIRECT_URI,
 });
+
+const ONE_HOUR = 60 * 60 * 1000;
+
+const refresh_token = "AQD3RYmMsfZXwgA6xM0k-zGFmqvqpoFeMXlYFUv7rz249MTxxSeR0890fd0hUJKz38aOb4pq0za0tWKi1y1hQdQfq0GCo82-l3fzdmnkW5AOf0_BQ15TU__bWEACXDebWb4";
+
+var access_token;
+var timestamp;
 
 class SpotifyController {
 
@@ -25,55 +35,54 @@ class SpotifyController {
         }
     }
 
-    static async refreshAccessToken(refresh_token) {
-        try {
-            spotifyApi.setRefreshToken(refresh_token);
-            const data = await spotifyApi.refreshAccessToken();
-            return data.body['access_token'];   
-        } catch(err) {
-            if(err.body.error === 'invalid_grant') return null;
-            throw err;
-        }
-    } 
-
     static async getSpotifyId(access_token) {
         try {
             spotifyApi.setAccessToken(access_token);
             const data = await spotifyApi.getMe();
             return data.body.id;
         } catch (err) {
+            if(err.body.error === 'invalid_grant') return null;
             throw err;
         }
     }
 
-    // TRACK/ARTIST/PODCAST
-
-    static async getPodcast(access_token, id) {
+    static async refreshAccessToken(refresh_token) {
         try {
-            spotifyApi.setAccessToken(access_token);
-    
-            const data = await spotifyApi.getEpisode(id);
-            const podcast = data.body;
+            spotifyApi.setRefreshToken(refresh_token);
 
-            var artists = [];
-            artists.push(podcast.show.publisher);
-
-            return {
-                _id: podcast.id,
-                name: podcast.name,
-                artist: podcast.show.id,
-                artists: artists,
-                album_name: podcast.show.name,
-                album_image: podcast.images[0] != null ? podcast.images[0].url : null,
-                is_podcast: true,
-            };
-        } catch (err) {
+            const data = await spotifyApi.refreshAccessToken();
+            return data.body['access_token']; 
+        } catch(err) {
+            if(err.body.error === 'invalid_grant') return null;
             throw err;
         }
-    }
-    
-    static async getTrack(access_token, id) {
+    } 
+
+    static async getAccessToken() {
         try {
+            spotifyApi.setRefreshToken(refresh_token);
+
+            if(!timestamp || ((Date.now()) - timestamp) >= ONE_HOUR) {
+                const data = await spotifyApi.refreshAccessToken();
+                access_token = data.body['access_token'];
+                timestamp = Date.now();
+
+                console.log('spotify refresh access_token kullanıldı.');
+            } else {
+                console.log('cache access_token kullanıldı.');
+            }
+
+            return access_token;   
+        } catch(err) {
+            throw err;
+        }
+    } 
+
+    // TRACK/PODCAST/ARTIST
+    
+    static async getTrack(id) {
+        try {
+            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTrack(id);
@@ -96,8 +105,34 @@ class SpotifyController {
         }
     }
 
-    static async getArtist(access_token, id) {
+    static async getPodcast(id) {
         try {
+            await this.getAccessToken();
+            spotifyApi.setAccessToken(access_token);
+    
+            const data = await spotifyApi.getEpisode(id);
+            const podcast = data.body;
+
+            var artists = [];
+            artists.push(podcast.show.publisher);
+
+            return {
+                _id: podcast.id,
+                name: podcast.name,
+                artist: podcast.show.id,
+                artists: artists,
+                album_name: podcast.show.name,
+                album_image: podcast.images[0] != null ? podcast.images[0].url : null,
+                is_podcast: true,
+            };
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    static async getArtist(id) {
+        try {
+            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtist(id);
@@ -113,21 +148,27 @@ class SpotifyController {
         }
     }
 
-    static async getTracks(access_token, ids) {
+    static async getTracks(ids) {
         try {
             if(ids.length == 0) return [];
 
+            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
+
+            const chunks = lodash.chunk(ids, 50);
+            const promises = chunks.map((ids) => spotifyApi.getTracks(ids));
+
+            const result = await Promise.all(promises);
+
+            var tracks = [];
+            result.map((data) => tracks = [...tracks, ...data.body.tracks]);
     
-            const data = await spotifyApi.getTracks(ids);
-            const tracks = data.body.tracks;
-        
             var results = [];
-        
+
             tracks.forEach(track => {
                 var artists = [];
                 track.artists.forEach(artist => artists.push(artist.name));
-
+    
                 results.push({
                     _id: track.id,
                     name: track.name,
@@ -137,7 +178,7 @@ class SpotifyController {
                     album_image: track.album.images[0] != null ? track.album.images[0].url : null,
                     is_podcast: false,
                 });
-            }); 
+            });
             
             return results;
         } catch (err) {
@@ -145,14 +186,20 @@ class SpotifyController {
         }
     }
     
-    static async getArtists(access_token, ids) {
+    static async getArtists(ids) {
         try {
             if(ids.length == 0) return [];
 
+            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
-    
-            const data = await spotifyApi.getArtists(ids);
-            const artists = data.body.artists;
+
+            const chunks = lodash.chunk(ids, 50);
+            const promises = chunks.map((ids) => spotifyApi.getArtists(ids));
+
+            const result = await Promise.all(promises);
+
+            var artists = [];
+            result.map((data) => artists = [...artists, ...data.body.artists]);
         
             var results = [];
         
@@ -170,12 +217,50 @@ class SpotifyController {
         }
     }
 
+    static async getPodcasts(ids) {
+        try {
+            if(ids.length == 0) return [];
+
+            await this.getAccessToken();
+            spotifyApi.setAccessToken(access_token);
+
+            const chunks = lodash.chunk(ids, 50);
+            const promises = chunks.map((ids) => spotifyApi.getEpisodes(ids));
+
+            const result = await Promise.all(promises);
+
+            var podcasts = [];
+            result.map((data) => podcasts = [...podcasts, ...data.body.episodes]);
+    
+            var results = [];
+
+            podcasts.forEach(podcast => {
+                var artists = [];
+                artists.push(podcast.show.publisher);
+    
+                results.push({
+                    _id: podcast.id,
+                    name: podcast.name,
+                    artist: podcast.show.id,
+                    artists: artists,
+                    album_name: podcast.show.name,
+                    album_image: podcast.images[0] != null ? podcast.images[0].url : null,
+                    is_podcast: true,
+                });
+            });
+            
+            return results;
+        } catch (err) {
+            throw err;
+        }
+    }
+
     // MY TOPS
     
     static async getMyTopTracks(access_token) {
         try {
-            var spotify_fav_track_ids = [];
             var spotify_fav_tracks = [];
+            var fav_tracks = [];
 
             spotifyApi.setAccessToken(access_token);
             
@@ -185,28 +270,11 @@ class SpotifyController {
             });
 
             const topTracks = data.body.items;
+            topTracks.forEach(track => spotify_fav_tracks.push(track.id));
 
-            if(topTracks.length > 0) {
-                topTracks.forEach(track => {
-                    spotify_fav_track_ids.push(track.id);
+            fav_tracks = spotify_fav_tracks.slice(0, 10);
 
-                    var artists = [];
-                    track.artists.forEach(artist => artists.push(artist.name));
-    
-                    spotify_fav_tracks.push({
-                        _id: track.id,
-                        name: track.name,
-                        artist: track.artists[0].id,
-                        artists: artists,
-                        album_name: track.album.name,
-                        album_image: track.album.images[0] != null ? track.album.images[0].url : null,
-                        is_podcast: false,
-                    });
-                });
-            }
-
-            return { spotify_fav_track_ids, spotify_fav_tracks };
-
+            return { spotify_fav_tracks, fav_tracks };
         } catch (err) {
             throw err;
         }     
@@ -214,8 +282,8 @@ class SpotifyController {
 
     static async getMyTopArtists(access_token) {
         try {
-            var spotify_fav_artist_ids = [];
             var spotify_fav_artists = [];
+            var fav_artists = [];
             
             spotifyApi.setAccessToken(access_token);
 
@@ -225,130 +293,14 @@ class SpotifyController {
             });
 
             const topArtists = data.body.items;
+            topArtists.forEach(artist => spotify_fav_artists.push(artist.id));
 
-            if(topArtists.length > 0) {
-                topArtists.forEach(artist => {
-                    spotify_fav_artist_ids.push(artist.id);
-    
-                    spotify_fav_artists.push({
-                        _id: artist.id,
-                        name: artist.name,
-                        image: artist.images[0] != null ? artist.images[0].url : null,
-                    });
-                });
-            }
+            fav_artists = spotify_fav_artists.slice(0, 10);
 
-            return { spotify_fav_artist_ids, spotify_fav_artists };
-
+            return { spotify_fav_artists, fav_artists };
         } catch (err) {
             throw err;
         }     
-    }
-
-    // SEARCH ITEMS
-
-    static async searchTracks(refresh_token, query) {
-        try {
-            const access_token = await this.refreshAccessToken(refresh_token);
-            if(!access_token) return null;
-
-            spotifyApi.setAccessToken(access_token);
-
-            const data = await spotifyApi.searchTracks(query, { limit: 10 });
-            const tracks = data.body.tracks.items;
-    
-            var results = [];
-            
-            tracks.forEach(track => {
-
-                var artists = [];
-                track.artists.forEach(artist => artists.push(artist.name));
-
-                if(track.name.toLowerCase().includes(query)) {
-                    results.push({
-                        _id: track.id,
-                        name: track.name,
-                        artist: track.artists[0].id,
-                        artists: artists,
-                        album_name: track.album.name,
-                        album_image: track.album.images[0] != null ? track.album.images[0].url : null,
-                        is_podcast: false,
-                    });
-                }
-            }); 
-
-            return results;
-        } catch (err) {
-            throw err;
-        }
-    }
-
-    static async searchArtists(refresh_token, searchField) {
-        try {
-            const access_token = await this.refreshAccessToken(refresh_token);
-            if(!access_token) return null;
-
-            spotifyApi.setAccessToken(access_token);
-
-            const data = await spotifyApi.searchArtists(searchField, { limit: 10 });
-            const artists = data.body.artists.items;
-    
-            var results = [];
-            
-            artists.forEach(artist => {
-                if(artist.name.toLowerCase().includes(searchField)) {
-                    results.push({
-                        _id: artist.id,
-                        name: artist.name,
-                        image: artist.images[0] != null ? artist.images[0].url : null,
-                    });
-                }
-            }); 
-
-            return results;
-        } catch (err) {
-            throw err;
-        }
-    }
-
-    static async searchPodcasts(refresh_token, query) {
-        try {
-            const access_token = await this.refreshAccessToken(refresh_token);
-            if(!access_token) return null;
-
-            spotifyApi.setAccessToken(access_token);
-
-            const data = await spotifyApi.searchEpisodes(query, { limit: 10 });
-            const podcasts = data.body.episodes.items;
-
-            console.log(podcasts);
-            console.log('====');
-
-            var results = [];
-            
-            podcasts.forEach(podcast => {
-                console.log(podcast);
-
-                var artists = [];
-                artists.push(podcast.show.publisher);
-
-                if(podcast.name.toLowerCase().includes(query)) {
-                    results.push({
-                        _id: podcast.id,
-                        name: podcast.name,
-                        artist: podcast.show.id,
-                        artists: artists,
-                        album_name: podcast.show.name,
-                        album_image: podcast.images[0] != null ? podcast.images[0].url : null,
-                        is_podcast: true,
-                    });
-                }
-            }); 
-
-            return results;
-        } catch (err) {
-            throw err;
-        }
     }
 }
 

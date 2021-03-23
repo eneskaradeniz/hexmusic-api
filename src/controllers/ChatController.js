@@ -28,7 +28,6 @@ class ChatController {
 
             var chats = [];
 
-            // FRONTENDIN OKUYACAĞI ŞEKİLDE CHATLERİ OLUŞTUR.
             result.forEach(chat => {
                 let is_lower = logged_id.toString() === chat.lower_id._id.toString();
 
@@ -72,10 +71,7 @@ class ChatController {
                 });
             }
 
-            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
-            // TÜM MESAJLARIN LİSTESİNİ ÇEK.
             const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id messages').lean();
-            console.log(find_chat);
             if(!find_chat || find_chat.lower_id.toString() !== logged_id && find_chat.higher_id.toString() !== logged_id) {
                 return res.status(200).json({
                     success: false,
@@ -103,7 +99,6 @@ class ChatController {
     }
 
     async send_message(req, res) {
-        console.time('send_message');
         const session = await db.startSession();
 
         try {
@@ -124,8 +119,9 @@ class ChatController {
 
             const new_message = { author_id, message, type, reply, like: false, read: false, created_at: Date.now() };
 
-            const result = await session.withTransaction(async () => {
-                return Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
+            var result;
+            await session.withTransaction(async () => {
+                result = await Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
                     $push: { messages: new_message },
                     last_message: {
                         author_id: new_message.author_id,
@@ -135,25 +131,24 @@ class ChatController {
                     },
                     lower_read: is_lower ? true : false,
                     higher_read: is_lower ? false : true
-                }, { }).session(session);
+                }).session(session);
             });
 
-            console.log(result);
+            if(result.nModified === 1) {
+                //emitReceiveMessage({ to, chat_id, message: new_message });
+                //pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
 
-            const test = result.CommandResult.result.ok;
-            console.log('test:', test);
-
-            //emitReceiveMessage({ to, chat_id, message: new_message });
-            //pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
-
-            return res.status(200).json({
-                success: true,
-                message: new_message,
-            });
+                return res.status(200).json({
+                    success: true,
+                    message: new_message
+                });
+            } else {
+                return res.status(200).json({
+                    success: false,
+                    error: 'NOT_FOUND_CHAT'
+                });
+            }
         } catch(err) {
-            console.log('CATCH ERROR H.O');
-            console.log(err);
-
             Error({
                 file: 'ChatController.js',
                 method: 'send_message',
@@ -167,7 +162,6 @@ class ChatController {
             });
         } finally {
             session.endSession();
-            console.timeEnd('send_message');
         }
     }
 

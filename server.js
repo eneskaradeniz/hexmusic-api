@@ -1,4 +1,6 @@
 require('dotenv').config();
+
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const mongoDB = require('./src/databases/mongodb/index');
@@ -6,17 +8,50 @@ const socketIO = require('socket.io');
 const compression = require("compression");
 const bodyParser = require('body-parser');
 
-const path = require('path');
-const crypto = require('crypto');
-const multer = require('multer');
-const GridFsStorage = require('multer-gridfs-storage');
-
 const Error = require('./src/controllers/ErrorController');
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
+
+// MULTER UPLOAD IMAGES
+
+const multer = require('multer');
+
+const path = require('path');
+const crypto = require('crypto');
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, './avatars/');
+  },
+  filename: function(req, file, cb) {
+    crypto.randomBytes(16, (err, buf) => {
+      if (err) cb(null, null);
+      cb(null, (buf.toString('hex') + path.extname(file.originalname)));
+    });
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // reject a file
+  if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 1024 * 1024 * 5
+  },
+  fileFilter: fileFilter
+});
+
+app.use('/avatars', express.static('avatars'));
 
 // GZIP COMPRESS
 
@@ -39,10 +74,15 @@ app.use(compression({
   threshold: 0
 }));
 
+// ROUTES CONFIGURATION
+
+const routes = require('./src/routes');
+app.use('/', routes(upload));
+
 // START SERVER
 
 const PORT = process.env.PORT || 3000;
-const server = require('http').createServer(app);
+const server = http.createServer(app);
 
 server.listen(PORT, async () => {
     console.log("Listening on port", PORT);
@@ -172,52 +212,12 @@ async function stop_music(logged_id) {
   }
 }
 
-// GRIDFS CONFIGURATION
-
-const storage = new GridFsStorage({
-    url: process.env.MONGO_URI,
-    file: (req, file) => {
-      if(file.mimetype === 'image/jpeg') {
-        return new Promise((resolve, reject) => {
-          crypto.randomBytes(16, (err, buf) => {
-            if (err) {
-              Error({
-                file: 'server.js',
-                method: 'storage',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-              });
-              return reject(err);
-            }
-            const filename = buf.toString('hex') + path.extname(file.originalname);
-            const fileInfo = {
-              filename: filename,
-              bucketName: 'uploads'
-            };
-            resolve(fileInfo);
-          });
-        });
-      } else {
-        return null;
-      }
-    
-    }
-});
-  
-const upload = multer({ storage });
-
-// ROUTES CONFIGURATION
-
-const routes = require('./src/routes');
-app.use('/', routes(upload));
-
 // EVERY DAY RENEW USER COUNTS
 
 const schedule = require('node-schedule');
 const Language = require('./src/utils/Language');
 
-const _ = require("lodash");
+const lodash = require("lodash");
 const firebaseAdmin = require("./src/firebase/firebaseAdmin");
 
 const DEFAULT_LIKE_COUNT = 30;
@@ -254,8 +254,8 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
     const en_title = Language.translate({ key: 'renew_likes_title', lang: 'en' });
     const en_body = Language.translate({ key: 'renew_likes_body', lang: 'en' });
 
-    const tr_chunks = _.chunk(tr_tokens, 500);
-    const en_chunks = _.chunk(en_tokens, 500);
+    const tr_chunks = lodash.chunk(tr_tokens, 500);
+    const en_chunks = lodash.chunk(en_tokens, 500);
 
     // TR İÇİN
     const promisesTR = tr_chunks.map((tokens) => {

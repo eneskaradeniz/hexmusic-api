@@ -2,9 +2,6 @@ const User = require('../models/UserModel');
 
 const Error = require('./ErrorController');
 
-const Track = require('../models/TrackModel');
-const Artist = require('../models/ArtistModel');
-
 class HomeController {
 
     async home(req, res) {
@@ -12,7 +9,7 @@ class HomeController {
             const logged_id = req._id;
             const logged_user = await User.findById(logged_id).select('spotify_fav_artists').lean();
   
-            const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(logged_user.spotify_fav_artists);
+            /*const { trend_artist, recommended_tracks, recommended_artists, all_tracks, all_artists, all_podcasts } = await fetchDatas(logged_user.spotify_fav_artists);
 
             return res.status(200).json({
                 success: true,
@@ -22,6 +19,14 @@ class HomeController {
                 all_tracks: all_tracks,
                 all_artists: all_artists,
                 all_podcasts: all_podcasts,
+            });*/
+
+            return res.status(200).json({
+                success: true,
+                trend_artist: [],
+                recommended_tracks: [],
+                all_tracks: [],
+                all_podcasts: []
             });
 
         } catch(err) {
@@ -44,7 +49,7 @@ class HomeController {
         try {
             let count = 0;
 
-            const aggregate = await User.aggregate([
+            /*const aggregate = await User.aggregate([
                 { 
                     $match: { 
                         $and: [
@@ -57,7 +62,7 @@ class HomeController {
                 { $count: "count" },
             ]);
 
-            aggregate.forEach(element => { if(element) count = element.count; });
+            aggregate.forEach(element => { if(element) count = element.count; });*/
 
             return res.status(200).json({
                 success: true,
@@ -84,7 +89,7 @@ module.exports = new HomeController();
 
 // UTILS
 
-async function fetchDatas(spotify_fav_artists) {
+/*async function fetchDatas(spotify_fav_artists) {
     try {
         var trend_artist;
 
@@ -283,4 +288,4 @@ async function fetchDatas(spotify_fav_artists) {
     } catch(err) {
         throw err;
     }
-}
+}*/

@@ -1,89 +1,43 @@
-const mongoose = require('mongoose');
-const ObjectId = require('mongoose').Types.ObjectId;
-
-const connect = mongoose.connection;
-
 const Error = require('./ErrorController');
 
-var gfs;
+const fs = require('fs');
 
-connect.once('open', () => {
-    gfs = new mongoose.mongo.GridFSBucket(connect.db, {
-        bucketName: "uploads"
-    });
-});
+const avatar_path = './avatars/';
 
 class FileController {
 
-    // GET /image:imageId
-
-    async getImageById(req, res) {
+    async deleteAvatar(avatar_id) {
         try {
-            const imageId = req.params.image_id;
+            if(!avatar_id) return false;
+            const path = avatar_path + avatar_id;
 
-            if(!imageId) {
-                return res.status(400).json({
-                    success: false
-                });
+            if(fs.existsSync(path)) {
+                fs.unlinkSync(avatar_path + avatar_id);
+                return true;
             }
 
-            const files = await gfs.find({ _id: ObjectId(imageId) }).toArray();
-
-            if (!files[0] || files.length === 0) {
-                return res.status(404).json({
-                    success: false
-                });
-            }
-
-            if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png' || files[0].contentType === 'image/jpg') {
-                gfs.openDownloadStream(ObjectId(imageId)).pipe(res);
-            } else {
-                return res.status(404).json({
-                    success: false
-                });
-            }
-        } catch(err) {
-            Error({
-                file: 'FileController.js',
-                method: 'getImageById',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false,
-            });
-        }
-    }
-
-    // UTILS
-
-    async deleteImageById(imageId) {
-        try {
-            if(!imageId) return false;
-            await gfs.delete(ObjectId(imageId));
-
-            return true;
+            return false;
         } catch(err) {
             throw err;
         }
     }
 
-    async deleteImages(imageIds) {
+    async deleteAvatars(avatar_ids) {
         try {
-            if(!imageIds) return;
-            if(imageIds.length === 0) return;
+            if(!avatar_ids) return;
+            if(avatar_ids.length === 0) return;
 
-            const promises = imageIds.map((imageId) => {
-                return gfs.delete(ObjectId(imageId));
+            const promises = avatar_ids.map((avatar_id) => {
+                const path = avatar_path + avatar_id;
+                if(fs.existsSync(path)) {
+                    return fs.unlinkSync(path);
+                }
             });
-
             await Promise.all(promises);
         } catch(err) {
             Error({
                 file: 'FileController.js',
-                method: 'deleteImages',
+                method: 'deleteAvatars',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
