@@ -436,11 +436,7 @@ class UserController {
                     $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
                 }).select('chat_id higher_id lower_id').session(session).lean();
 
-                var chat_ids = [];
-                
                 matches.forEach(match => {
-                    chat_ids.push(match.chat_id);
-                    
                     const is_lower = match.lower_id.toString() === logged_id;
                     users.push({ user_id: is_lower ? match.higher_id : match.lower_id, chat_id: match.chat_id });
                 });
@@ -453,11 +449,6 @@ class UserController {
                 // CHATLERİNİ SİL
                 await Chat.deleteMany({
                     $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
-                }).session(session);
-
-                // SİLİNEN CHATLERİN MESAJLARINI SİL
-                await Message.deleteMany({
-                    chat_id: { $in: chat_ids }
                 }).session(session);
             });
 
