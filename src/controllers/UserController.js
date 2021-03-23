@@ -453,7 +453,7 @@ class UserController {
             });
 
             // TÜM FOTOĞRAFLARINI SİL
-            FileController.deleteImages(avatars);
+            FileController.deleteAvatars(avatars);
 
             // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
             users.forEach(model => {
@@ -739,7 +739,7 @@ class UserController {
             });
 
         } catch(err) {
-            FileController.deleteImageById(image_id);
+            FileController.deleteAvatar(image_id);
 
             Error({
                 file: 'UserController.js',
@@ -797,7 +797,7 @@ class UserController {
                 });
             }
 
-            const result = await FileController.deleteImageById(image_id);
+            const result = await FileController.deleteAvatar(image_id);
             if(!result) {
                 return res.status(400).json({
                     success: false,
