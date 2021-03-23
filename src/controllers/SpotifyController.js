@@ -92,7 +92,7 @@ class SpotifyController {
             track.artists.forEach(artist => artists.push(artist.name));
 
             return {
-                _id: track.id,
+                id: track.id,
                 name: track.name,
                 artist: track.artists[0].id,
                 artists: artists,
@@ -117,7 +117,7 @@ class SpotifyController {
             artists.push(podcast.show.publisher);
 
             return {
-                _id: podcast.id,
+                id: podcast.id,
                 name: podcast.name,
                 artist: podcast.show.id,
                 artists: artists,
@@ -139,7 +139,7 @@ class SpotifyController {
             const artist = data.body;
 
             return {
-                _id: artist.id,
+                id: artist.id,
                 name: artist.name,
                 image: artist.images[0] != null ? artist.images[0].url : null,
             };
@@ -170,7 +170,7 @@ class SpotifyController {
                 track.artists.forEach(artist => artists.push(artist.name));
     
                 results.push({
-                    _id: track.id,
+                    id: track.id,
                     name: track.name,
                     artist: track.artists[0].id,
                     artists: artists,
@@ -205,7 +205,7 @@ class SpotifyController {
         
             artists.forEach(artist => {
                 results.push({
-                    _id: artist.id,
+                    id: artist.id,
                     name: artist.name,
                     image: artist.images[0] != null ? artist.images[0].url : null,
                 });
@@ -239,7 +239,7 @@ class SpotifyController {
                 artists.push(podcast.show.publisher);
     
                 results.push({
-                    _id: podcast.id,
+                    id: podcast.id,
                     name: podcast.name,
                     artist: podcast.show.id,
                     artists: artists,
