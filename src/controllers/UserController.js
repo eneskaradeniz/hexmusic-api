@@ -64,13 +64,11 @@ class UserController {
             if(user) {
                 console.time('profile_and_update');
                 const promises = await Promise.all([
-                    // GELEN REFRESH TOKENI GÜNCELLE ÖYLE GİRİŞ YAPTIR.
                     updateSpotifyRefreshToken(user._id, refresh_token),
                     getMyProfile(user._id),
                 ]);
                 console.timeEnd('profile_and_update');
 
-                // BÖYLE BİR KULLANICI VAR TOKEN OLUŞTUR VE PROFILI GETİR
                 const token = generateJwtToken(user._id);
                 const my_profile = promises[1];
 
@@ -83,8 +81,6 @@ class UserController {
                     user: my_profile,
                 }); 
             } else {
-                // BÖYLE BİR KULLANICI YOK KAYIT OL EKRANINA AKTAR
-
                 return res.status(200).json({
                     success: true,
                     spotify_id: spotify_id,
@@ -413,23 +409,12 @@ class UserController {
                 const user = await User.findById(logged_id).select('avatars').lean();
                 avatars = user.avatars;
 
-                // USER I SİL
-                await User.deleteOne({ _id: logged_id }).session(session);
-
-                // ENGELLEDİKLERİNİ SİL
-                await BlockedUser.deleteMany({
-                    $or: [{ from: logged_id }, { to: logged_id }]
-                }).session(session);
-
-                // LİKELARINI SİL
-                await Like.deleteMany({
-                    $or: [{ from: logged_id }, { to: logged_id }]
-                }).session(session);
-
-                // DİSLİKELARINI SİL
-                await Dislike.deleteMany({
-                    $or: [{ from: logged_id }, { to: logged_id }]
-                }).session(session);
+                await Promise.all([
+                    User.deleteOne({ _id: logged_id }).session(session),
+                    BlockedUser.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }]}).session(session),
+                    Like.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }] }).session(session),
+                    Dislike.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }] }).session(session),
+                ]);
 
                 // KULLANICININ TÜM EŞLEŞTİĞİ KULLANICILARIN IDLERINI GETİR (SOKETLERİNE İLİŞKİ BİTTİĞİNİ SÖYLEYECEK)
                 const matches = await Match.find({
