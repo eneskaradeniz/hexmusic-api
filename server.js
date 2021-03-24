@@ -91,6 +91,7 @@ server.listen(PORT, async () => {
 
 // SOCKET.IO CONFIGURATION
 
+const InstantListeners = require('./src/controllers/InstantListenersController');
 const shared = require('./src/shared/index');
 
 const db = require('mongoose');
@@ -190,7 +191,9 @@ function start_typing(socket, data) {
 }
 
 async function stop_music(logged_id) {
-  const session = await db.startSession();
+  InstantListeners.delete(logged_id);
+
+  /*const session = await db.startSession();
 
   try {
       await session.withTransaction(async () => {
@@ -209,7 +212,7 @@ async function stop_music(logged_id) {
       });
   } finally {
       session.endSession();
-  }
+  }*/
 }
 
 // EVERY DAY RENEW USER COUNTS

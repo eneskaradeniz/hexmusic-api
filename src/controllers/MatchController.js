@@ -21,8 +21,6 @@ const Error = require('./ErrorController');
 class MatchController {
 
     async start_music(req, res) {
-        const session = await db.startSession();
-
         try {
             const logged_id = req._id;
             const { id, is_podcast } = req.body;
@@ -35,12 +33,9 @@ class MatchController {
 
             // MÜZİĞİ BİLGİLERİNİ AL
             var track;
-            if(is_podcast) {
-                track = await SpotifyController.getPodcast(id);
-            } else {
-                track = await SpotifyController.getTrack(id);
-            }
-
+            if(is_podcast) track = await SpotifyController.getPodcast(id);
+            else track = await SpotifyController.getTrack(id);
+        
             // DİNLEYİCİLER LİSTESİNE KULLANICIYI KAYDET
             InstantListeners.set({ user_id: logged_id, track_id: track.id, artist_id: track.artist, is_podcast: track.is_podcast });
 
@@ -50,7 +45,7 @@ class MatchController {
 
             return res.status(200).json({
                 success: true,
-                track: track,
+                track: track
             }); 
         } catch(err) {
             Error({
@@ -64,8 +59,6 @@ class MatchController {
             return res.status(400).json({
                 success: false
             });
-        } finally {
-            session.endSession();
         }
     }
 
@@ -73,7 +66,9 @@ class MatchController {
         try {
             const logged_id = req._id;
 
-            await updateCurrentPlay(logged_id, null);
+            InstantListeners.delete(logged_id);
+
+            //await updateCurrentPlay(logged_id, null);
 
             return res.status(200).json({
                 success: true
