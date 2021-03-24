@@ -155,19 +155,16 @@ class UserController {
             const { spotify_fav_tracks, fav_tracks } = promises[0];
             const { spotify_fav_artists, fav_artists } = promises[1];
 
-            console.log('spotify_fav_tracks:', spotify_fav_tracks);
-            console.log('spotify_fav_artists:', spotify_fav_artists);
-
             const user_id = ObjectId();
 
             await User.create([{
                 _id: user_id,
                 spotify_id,
                 spotify_refresh_token,
-                spotify_fav_tracks: spotify_fav_tracks,
-                spotify_fav_artists: spotify_fav_artists,
-                fav_tracks: fav_tracks,
-                fav_artists: fav_artists,
+                spotify_fav_tracks,
+                spotify_fav_artists,
+                fav_tracks,
+                fav_artists,
                 avatars,
                 email,
                 display_name,
@@ -942,18 +939,21 @@ class UserController {
                 });
             }
 
-            const my_top_tracks = await SpotifyController.getMyTopTracks(access_token);
-            const my_top_artists = await SpotifyController.getMyTopArtists(access_token);
+            const promises = await Promise.all([
+                SpotifyController.getMyTopTracks(access_token),
+                SpotifyController.getMyTopArtists(access_token)
+            ]);
+
+            const { spotify_fav_tracks, fav_tracks } = promises[0];
+            const { spotify_fav_artists, fav_artists } = promises[1];
 
             await User.updateOne({ _id: logged_id }, {
-                spotify_fav_tracks: my_top_tracks.spotify_fav_track_ids,
-                spotify_fav_artists: my_top_artists.spotify_fav_artist_ids,
+                spotify_fav_tracks,
+                spotify_fav_artists,
             });
 
             return res.status(200).json({
-                success: true,
-                spotify_fav_tracks: my_top_tracks.spotify_fav_tracks,
-                spotify_fav_artists: my_top_artists.spotify_fav_artists,
+                success: true
             });
 
         } catch (err) {
