@@ -82,6 +82,8 @@ class SpotifyController {
     
     static async getTrack(id) {
         try {
+            if(!id) return null;
+
             await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
@@ -107,6 +109,8 @@ class SpotifyController {
 
     static async getPodcast(id) {
         try {
+            if(!id) return null;
+
             await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
@@ -132,6 +136,8 @@ class SpotifyController {
 
     static async getArtist(id) {
         try {
+            if(!id) return null;
+
             await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
@@ -251,6 +257,124 @@ class SpotifyController {
             
             return results;
         } catch (err) {
+            throw err;
+        }
+    }
+
+    // HOME
+
+    static async getTracksWithCount(ids, arr) {
+        try {
+            if(ids.length === 0) return [];
+
+            await this.getAccessToken();
+            spotifyApi.setAccessToken(access_token);
+
+            const chunks = lodash.chunk(ids, 50);
+            const promises = chunks.map((ids) => spotifyApi.getTracks(ids));
+
+            const result = await Promise.all(promises);
+
+            var tracks = [];
+            result.map((data) => tracks = [...tracks, ...data.body.tracks]);
+    
+            var results = [];
+
+            tracks.forEach(track => {
+                var artists = [];
+                track.artists.forEach(artist => artists.push(artist.name));
+    
+                results.push({
+                    track: {
+                        id: track.id,
+                        name: track.name,
+                        artist: track.artists[0].id,
+                        artists: artists,
+                        album_name: track.album.name,
+                        album_image: track.album.images[0] != null ? track.album.images[0].url : null,
+                        is_podcast: false,
+                    },
+                    count: arr[track.id]
+                });
+            });
+            
+            return results;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    static async getPodcastsWithCount(ids, arr) {
+        try {
+            if(ids.length == 0) return [];
+
+            await this.getAccessToken();
+            spotifyApi.setAccessToken(access_token);
+
+            const chunks = lodash.chunk(ids, 50);
+            const promises = chunks.map((ids) => spotifyApi.getEpisodes(ids));
+
+            const result = await Promise.all(promises);
+
+            var podcasts = [];
+            result.map((data) => podcasts = [...podcasts, ...data.body.episodes]);
+    
+            var results = [];
+
+            podcasts.forEach(podcast => {
+                var artists = [];
+                artists.push(podcast.show.publisher);
+    
+                results.push({
+                    track: {
+                        id: podcast.id,
+                        name: podcast.name,
+                        artist: podcast.show.id,
+                        artists: artists,
+                        album_name: podcast.show.name,
+                        album_image: podcast.images[0] != null ? podcast.images[0].url : null,
+                        is_podcast: true,
+                    },
+                    count: arr[podcast.id]
+                });
+            });
+            
+            return results;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    static async getArtistsWithCount(ids, arr) {
+        try {
+            if(ids.length == 0) return [];
+
+            await this.getAccessToken();
+            spotifyApi.setAccessToken(access_token);
+
+            const chunks = lodash.chunk(ids, 50);
+            const promises = chunks.map((ids) => spotifyApi.getArtists(ids));
+
+            const result = await Promise.all(promises);
+
+            var artists = [];
+            result.map((data) => artists = [...artists, ...data.body.artists]);
+        
+            var results = [];
+        
+            artists.forEach(artist => {
+                results.push({
+                    artist: {
+                        id: artist.id,
+                        name: artist.name,
+                        image: artist.images[0] != null ? artist.images[0].url : null,
+                    },
+                    count: arr[artist.id]
+                });
+            });   
+        
+            return results;
+        } catch(err) {
             throw err;
         }
     }

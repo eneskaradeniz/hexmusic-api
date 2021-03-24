@@ -14,6 +14,8 @@ const shared = require('../shared/index');
 const SpotifyController = require('./SpotifyController');
 const Language = require('../utils/Language');
 
+const InstantListeners = require('./InstantListenersController');
+
 const Error = require('./ErrorController');
 
 class MatchController {
@@ -31,6 +33,7 @@ class MatchController {
                 });
             }
 
+            // MÜZİĞİ BİLGİLERİNİ AL
             var track;
             if(is_podcast) {
                 track = await SpotifyController.getPodcast(id);
@@ -38,9 +41,12 @@ class MatchController {
                 track = await SpotifyController.getTrack(id);
             }
 
-            await updateCurrentPlay(logged_id, track);
+            // DİNLEYİCİLER LİSTESİNE KULLANICIYI KAYDET
+            InstantListeners.set({ user_id: logged_id, track_id: track.id, artist_id: track.artist, is_podcast: track.is_podcast });
 
-            //findListenersForTarget(logged_id, track);
+            // DB DE SON DİNLEDİKLERİMİ VE CURRENT_PLAY GÜNCELLE
+
+            // BU MÜZİĞİ DİNLEYENLERİN SOKETLERİNE KULLANICIYI GÖNDER
 
             return res.status(200).json({
                 success: true,
@@ -94,122 +100,26 @@ class MatchController {
 
             var users = [];
 
-            if(logged_user.filtering.artist) {
-                users = await User.find({
-                    $and: [
-                        { _id: { $ne: logged_id } },
-                        { "permissions.show_live": true },
-                        { "current_play.is_playing": true },
-                        { "current_play.artist": logged_user.current_play.artist },
-                    ]
-                })
-                .select('display_name avatars verified birthday gender permissions current_play')
-                .populate('current_play.track')
-                .lean();
-            } else {
-                users = await User.find({
-                    $and: [
-                        { _id: { $ne: logged_id } },
-                        { "permissions.show_live": true },
-                        { "current_play.is_playing": true },
-                        { "current_play.track": logged_user.current_play.track },
-                    ]
-                })
-                .select('display_name avatars verified birthday gender permissions current_play')
-                .lean();
-            }
+            // KULLANICININ FILTRELEME SEÇENEĞİNİ AL:
+            // yaş aralığı
+            // cinsiyet tercihi
+            // şarkı/sanatçı tercihi
 
-            const filter = await loggedFilter(logged_user, users, 'live');
-            const sortResult = sortByPremiumPlus(filter);
+            // Anlık dinleyiciler listesinden kullanıcının dinlediği müziği bul
+            // Anlık dinleyiciler listesinden kullanıcının dinlediği müziği dinleyen kullanıcıları getir.
+            // 
+
+            //const filter = await loggedFilter(logged_user, users, 'live');
+            //const sortResult = sortByPremiumPlus(filter);
 
             return res.status(200).json({
                 success: true,
-                users: sortResult,
+                users: users,
             });
         } catch(err) {
             Error({
                 file: 'MatchController.js',
                 method: 'live',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        }
-    }
-
-    async likes_me(req, res) {
-        try {
-            const logged_id = req._id;
-
-            // KULLANICININ PREMIUM_PLUS OLUP OLMADIĞINI KONTROL ET
-            const loggedUser = await User.findById(logged_id).select('product spotifyRefreshToken');
-            if(loggedUser.product !== 'premium_plus') {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NO_PERMISSION',
-                });
-            }
-
-            var users = [];
-
-            // KULLANICIYI BEĞENEN KULLANICILARI GETİR
-            const beniBegenenler = await Like.find({ to: logged_id }).populate('from', 'name photos isVerifed birthday permissions');
-            if(beniBegenenler.length === 0) {
-                return res.status(200).json({
-                    success: true,
-                    users
-                });
-            }
-    
-            // KULLANICIYI BEĞENENLERİN IDLERINI LİSTEYE AKTAR
-            var user_ids = [];
-
-            beniBegenenler.forEach(like => {
-                user_ids.push(like.from._id);
-            });
-
-            // KULLANICIYI BEĞENENLERDE DİSLİKE ATTIĞIM VARSA ÇIKAR LİSTEDEN.
-            const dislikeAttiklarim = await Dislike.find({ from: logged_id, to: { $in: user_ids } });
-            var result = beniBegenenler;
-
-            if(dislikeAttiklarim.length > 0) {
-                result = beniBegenenler.filter(x => !dislikeAttiklarim.includes(x.from._id));
-            }
-           
-            // HEPSİNİ SIRAYLA TARA MATCH TYPE I LIVE OLANLARIN SPOTİFYDAN MÜZİK BİLGİLERİNİ ÇEK VE LİSTEYE EKLE
-            if(result.length > 0) {
-            
-                for(const like of result) {
-                    let track;
-                    if(like.trackId != null) track = tracks.find(x => x.id === like.trackId);
-
-                    users.push({
-                        user: {
-                            _id: like.from._id,
-                            name: like.from.name,
-                            photos: like.from.photos,
-                            isVerifed: like.from.isVerifed,
-                        },
-                        birthday: like.from.permissions.showAge ? like.from.birthday : null,
-                        track: track,
-                        percentage: 0,
-                    });
-                }
-            }
-
-            return res.status(200).json({
-                success: true,
-                users
-            });
-
-        } catch (err) {
-            Error({
-                file: 'MatchController.js',
-                method: 'likes_me',
                 title: err.toString(),
                 info: err,
                 type: 'critical',
