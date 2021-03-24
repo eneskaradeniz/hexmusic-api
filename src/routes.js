@@ -10,25 +10,7 @@ const ReportController = require('./controllers/ReportController');
 const userMiddleware = require('./middlewares/auths/user');
 const middlewares = { user: userMiddleware };
 
-const SpotifyController = require('./controllers/SpotifyController');
-
 module.exports = (upload) => {
-
-    router.get('/test', async (req, res, next) => {
-        try {
-            const tracks = await SpotifyController.getPodcasts(['7smFvddTT4ZygNhCPWt5WK', '7smFvddTT4ZygNhCPWt5WK', '7smFvddTT4ZygNhCPWt5WK', '7smFvddTT4ZygNhCPWt5WK', '7smFvddTT4ZygNhCPWt5WK']);
-
-            return res.json({
-                success: true,
-                tracks: tracks
-            });
-        } catch(err) {
-            console.log(err);
-            return res.json({
-                success: false
-            });
-        }
-    });
 
     // AUTH
     router.get('/callback', UserController.callback);
@@ -53,6 +35,7 @@ module.exports = (upload) => {
 
     // USER GET AND UPDATE 
     router.get('/action', [middlewares.user], UserController.action);
+    router.get('/user_last_tracks', [middlewares.user], UserController.user_last_tracks);
 
     router.post('/update_profile', [middlewares.user], UserController.update_profile);
     router.post('/update_notifications', [middlewares.user], UserController.update_notifications);
@@ -67,7 +50,6 @@ module.exports = (upload) => {
     router.post('/stop_music', [middlewares.user], MatchController.stop_music);
 
     router.get('/live', [middlewares.user], MatchController.live);
-    router.get('/likes_me', [middlewares.user], MatchController.likes_me);
 
     router.post('/like/:user_id', [middlewares.user], MatchController.like);
     router.post('/dislike/:user_id', [middlewares.user], MatchController.dislike);

@@ -29,9 +29,9 @@ class HomeController {
             var all_tracks = promises[1];
             var all_podcasts = promises[2];
 
-            tracks.forEach((track) => {
-                if(track.artist === trend_artist.artist.id) trend_artist.tracks.push(track);
-                if(logged_user.spotify_fav_artists.includes(track.artist)) recommended_tracks.push(track);
+            all_tracks.forEach((x) => {
+                if(x.track.artist === trend_artist.artist.id) trend_artist.tracks.push(x);
+                if(spotify_fav_artists.includes(x.track.artist)) recommended_tracks.push(x);
             });
 
             trend_artist.tracks.sort((a,b) => b.count - a.count);
