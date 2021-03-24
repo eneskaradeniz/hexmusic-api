@@ -40,6 +40,10 @@ class HomeController {
 
                 trend_artist.tracks.sort((a,b) => b.count - a.count);
                 trend_artist.tracks = trend_artist.tracks.slice(0, 9);
+
+                recommended_tracks = shuffle(recommended_tracks);
+                all_podcasts = shuffle(all_podcasts);
+                all_tracks = shuffle(all_tracks);
             }
 
             return res.status(200).json({
@@ -90,5 +94,29 @@ class HomeController {
         }
     }
 }
+
+// UTILS
+
+function shuffle(array) {
+    if(array.length === 0) return array;
+
+    var currentIndex = array.length, temporaryValue, randomIndex;
+  
+    // While there remain elements to shuffle...
+    while (0 !== currentIndex) {
+  
+      // Pick a remaining element...
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex -= 1;
+  
+      // And swap it with the current element.
+      temporaryValue = array[currentIndex];
+      array[currentIndex] = array[randomIndex];
+      array[randomIndex] = temporaryValue;
+    }
+  
+    return array;
+}
+
 
 module.exports = new HomeController();
