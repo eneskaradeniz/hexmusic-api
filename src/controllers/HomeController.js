@@ -22,22 +22,25 @@ class HomeController {
                 SpotifyController.getPodcastsWithCount(Object.keys(_all_podcasts), _all_podcasts),
             ]);
 
-            var trend_artist = {
-                artist: promises[0],
-                tracks: []
-            };
-
+            var trend_artist;
             var recommended_tracks = [];
-            var all_tracks = promises[1];
             var all_podcasts = promises[2];
+            var all_tracks = promises[1];
 
-            all_tracks.forEach((x) => {
-                if(x.track.artist === trend_artist.artist.id) trend_artist.tracks.push(x);
-                if(logged_user.spotify_fav_artists.includes(x.track.artist)) recommended_tracks.push(x);
-            });
+            if(promises[0] != null) {
+                trend_artist = {
+                    artist: promises[0],
+                    tracks: []
+                };
 
-            trend_artist.tracks.sort((a,b) => b.count - a.count);
-            trend_artist.tracks.slice(9);
+                all_tracks.forEach((x) => {
+                    if(x.track.artist === trend_artist.artist.id) trend_artist.tracks.push(x);
+                    if(logged_user.spotify_fav_artists.includes(x.track.artist)) recommended_tracks.push(x);
+                });
+
+                trend_artist.tracks.sort((a,b) => b.count - a.count);
+                trend_artist.tracks = trend_artist.tracks.slice(0, 9);
+            }
 
             return res.status(200).json({
                 success: true,
