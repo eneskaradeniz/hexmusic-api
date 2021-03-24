@@ -70,12 +70,12 @@ const UserSchema = mongoose.Schema({
         spotify: { type: String, default: null },
     },
 
-    last_tracks: [{ type: String, ref: 'Track' }],
-    fav_tracks: [{ type: String, ref: 'Track' }],
-    fav_artists: [{ type: String, ref: 'Artist' }],
+    last_tracks: [String],
+    fav_tracks: [String],
+    fav_artists: [String],
 
-    spotify_fav_tracks: [{ type: String, ref: 'Track' }],
-    spotify_fav_artists: [{ type: String, ref: 'Artist' }],
+    spotify_fav_tracks: [String],
+    spotify_fav_artists: [String],
 
     filtering: {
         artist: { type: Boolean, default: false },

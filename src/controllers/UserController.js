@@ -155,6 +155,8 @@ class UserController {
             const { spotify_fav_tracks, fav_tracks } = promises[0];
             const { spotify_fav_artists, fav_artists } = promises[1];
 
+            console.log('spotify_fav_artists:', spotify_fav_artists);
+
             const user_id = ObjectId();
 
             await User.create([{
