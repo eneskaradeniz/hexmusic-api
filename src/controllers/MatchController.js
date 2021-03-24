@@ -94,18 +94,27 @@ class MatchController {
     async live(req, res) {
         try {
             const logged_id = req._id;
-            const logged_user = await User.findById(logged_id).select('filtering current_play').populate('current_play.track').lean();
+
+            const track = InstantListeners.get(logged_id);
+            if(!track) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'NOT_FOUND_TRACK'
+                });
+            }
+
+            const logged_user = await User.findById(logged_id).select('filtering').lean();
 
             var users = [];
 
-            // KULLANICININ FILTRELEME SEÇENEĞİNİ AL:
-            // yaş aralığı
-            // cinsiyet tercihi
-            // şarkı/sanatçı tercihi
+            if(logged_user.filtering.artist) {
+                // BU SANATÇIYI DİNLEYEN TÜM KULLANICILARI GETİR
 
-            // Anlık dinleyiciler listesinden kullanıcının dinlediği müziği bul
-            // Anlık dinleyiciler listesinden kullanıcının dinlediği müziği dinleyen kullanıcıları getir.
-            // 
+
+            } else {
+                // BU ŞARKIYI DİNLEYEN TÜM KULLANICILARI GETİR
+                // GELEN KULLANICILARI SIRAYLA FILTRELEME YAPACAK UYGUN OLAN MAX 10 TANESİNİ ALICAK.
+            }
 
             //const filter = await loggedFilter(logged_user, users, 'live');
             //const sortResult = sortByPremiumPlus(filter);
