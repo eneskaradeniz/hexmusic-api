@@ -155,6 +155,7 @@ class UserController {
             const { spotify_fav_tracks, fav_tracks } = promises[0];
             const { spotify_fav_artists, fav_artists } = promises[1];
 
+            console.log('spotify_fav_tracks:', spotify_fav_tracks);
             console.log('spotify_fav_artists:', spotify_fav_artists);
 
             const user_id = ObjectId();
@@ -163,10 +164,10 @@ class UserController {
                 _id: user_id,
                 spotify_id,
                 spotify_refresh_token,
-                spotify_fav_tracks,
-                spotify_fav_artists,
-                fav_tracks,
-                fav_artists,
+                spotify_fav_tracks: spotify_fav_tracks,
+                spotify_fav_artists: spotify_fav_artists,
+                fav_tracks: fav_tracks,
+                fav_artists: fav_artists,
                 avatars,
                 email,
                 display_name,
