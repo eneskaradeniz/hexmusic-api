@@ -17,7 +17,7 @@ class HomeController {
             await SpotifyController.getAccessToken();
 
             const promises = await Promise.all([
-                SpotifyController.getArtist(_trend_artist.id),
+                SpotifyController.getArtist(_trend_artist != null ? _trend_artist.id : null),
                 SpotifyController.getTracksWithCount(Object.keys(_all_tracks), _all_tracks),
                 SpotifyController.getPodcastsWithCount(Object.keys(_all_podcasts), _all_podcasts),
             ]);
