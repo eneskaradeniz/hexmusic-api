@@ -45,8 +45,7 @@ module.exports = async (req, res, next) => {
                 });
             }
 
-            /*const id = decoded._id;
-            const userExists = await User.countDocuments({ _id: id });
+            /*const userExists = await User.countDocuments({ _id: decoded._id });
             if (userExists <= 0) {
                 return res.status(401).json({
                     success: false,
@@ -56,7 +55,7 @@ module.exports = async (req, res, next) => {
 
             req.bearerToken = token;
             req.tokenInfo = decoded;
-            req._id = id;
+            req._id = decoded._id;
             next();
         });
     } catch(err) {
