@@ -50,7 +50,7 @@ module.exports = async (req, res, next) => {
             // BÖYLE BİR KULLANICININ OLUP OLMADIĞINI KONTROL ET.
             const id = decoded._id;
 
-            console.time('userExists');
+            /*console.time('userExists');
             const userExists = await User.countDocuments({ _id: id });
             if (userExists <= 0) {
                 return res.status(401).json({
@@ -58,7 +58,7 @@ module.exports = async (req, res, next) => {
                     error: 'NOT_FOUND_USER'
                 });
             }
-            console.timeEnd('userExists');
+            console.timeEnd('userExists');*/
 
             req.bearerToken = token;
             req.tokenInfo = decoded;
