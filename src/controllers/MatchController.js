@@ -32,6 +32,8 @@ class MatchController {
             }
 
             // MÜZİĞİ BİLGİLERİNİ AL
+            await SpotifyController.getAccessToken();
+            
             var track;
             if(is_podcast) track = await SpotifyController.getPodcast(id);
             else track = await SpotifyController.getTrack(id);

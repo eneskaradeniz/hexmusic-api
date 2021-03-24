@@ -1186,6 +1186,8 @@ async function getMyProfile(logged_id) {
         const track_ids = uniq([...user.last_tracks, ...user.fav_tracks]);
         const artist_ids = user.fav_artists;
 
+        await SpotifyController.getAccessToken();
+
         const promises = await Promise.all([
             SpotifyController.getTracks(track_ids),
             SpotifyController.getArtists(artist_ids)

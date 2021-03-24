@@ -14,6 +14,8 @@ class HomeController {
   
             const { _trend_artist, _all_tracks, _all_podcasts } = InstantListeners.getHome();
 
+            await SpotifyController.getAccessToken();
+
             const promises = await Promise.all([
                 SpotifyController.getArtist(_trend_artist.id),
                 SpotifyController.getTracksWithCount(Object.keys(_all_tracks), _all_tracks),

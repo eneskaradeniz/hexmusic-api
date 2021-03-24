@@ -84,7 +84,6 @@ class SpotifyController {
         try {
             if(!id) return null;
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getTrack(id);
@@ -111,7 +110,6 @@ class SpotifyController {
         try {
             if(!id) return null;
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getEpisode(id);
@@ -138,7 +136,6 @@ class SpotifyController {
         try {
             if(!id) return null;
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
     
             const data = await spotifyApi.getArtist(id);
@@ -158,7 +155,6 @@ class SpotifyController {
         try {
             if(ids.length == 0) return [];
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
 
             const chunks = lodash.chunk(ids, 50);
@@ -196,7 +192,6 @@ class SpotifyController {
         try {
             if(ids.length == 0) return [];
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
 
             const chunks = lodash.chunk(ids, 50);
@@ -227,7 +222,6 @@ class SpotifyController {
         try {
             if(ids.length == 0) return [];
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
 
             const chunks = lodash.chunk(ids, 50);
@@ -267,7 +261,6 @@ class SpotifyController {
         try {
             if(ids.length === 0) return [];
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
 
             const chunks = lodash.chunk(ids, 50);
@@ -308,7 +301,6 @@ class SpotifyController {
         try {
             if(ids.length == 0) return [];
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
 
             const chunks = lodash.chunk(ids, 50);
@@ -349,7 +341,6 @@ class SpotifyController {
         try {
             if(ids.length == 0) return [];
 
-            await this.getAccessToken();
             spotifyApi.setAccessToken(access_token);
 
             const chunks = lodash.chunk(ids, 50);
