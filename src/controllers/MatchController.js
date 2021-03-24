@@ -345,7 +345,59 @@ class MatchController {
 
 module.exports = new MatchController();
 
-// NEWS
+// DENEME
+
+async function updateCurrentPlay(logged_id, track) {
+    const session = await db.startSession();
+
+    try {
+        if(track) {
+            await session.withTransaction(async () => {
+                const user = await User.findById(logged_id).select('current_play last_tracks');
+    
+                user.current_play = {
+                    track: track.id,
+                    artist: track.artist,
+                    is_playing: true,
+                    timestamp: Date.now(),
+                };
+    
+                // SON DİNLEDİKLERİME EKLE
+                if(user.last_tracks.length > 0) {
+                    if(user.last_tracks[0] !== track.id) {
+                        // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
+                        if(user.last_tracks.length >= 10) user.last_tracks.pop();
+                        user.last_tracks.unshift(track.id);
+                    }
+                } else {
+                    // LİSTEDE HİÇ ELEMAN YOK EKLE
+                    user.last_tracks.unshift(track.id);
+                }
+
+                await user.save();
+            });
+        } else {
+            await session.withTransaction(async () => {
+                await User.updateOne({ _id: logged_id }, { 
+                    'current_play.is_playing': false,
+                    'current_play.timestamp': Date.now(),
+                }).session(session);
+            });
+        }
+    } catch(err) {
+        Error({
+            file: 'MatchController.js',
+            method: 'updateCurrentPlay',
+            title: err.toString(),
+            info: err,
+            type: 'critical',
+        });
+    } finally {
+        session.endSession();
+    }
+}
+
+// METHODS
 
 async function _like({ logged_id, target_id, like_type, match_type, track_id, is_not_free, update_counts }) {
 
@@ -633,56 +685,6 @@ function calculateAge(timestamp) {
 
 function sortByPremiumPlus(array) {
     return array.sort((a, b) => (a.product === "premium_plus" && b.product === "premium_plus") ? 0 : a.product === "premium_plus" ? -1 : 1);
-}
-
-async function updateCurrentPlay(logged_id, track) {
-    const session = await db.startSession();
-
-    try {
-        if(track) {
-            await session.withTransaction(async () => {
-                const user = await User.findById(logged_id).select('current_play last_tracks');
-    
-                user.current_play = {
-                    track: track.id,
-                    artist: track.artist,
-                    is_playing: true,
-                    timestamp: Date.now(),
-                };
-    
-                // SON DİNLEDİKLERİME EKLE
-                if(user.last_tracks.length > 0) {
-                    if(user.last_tracks[0] !== track.id) {
-                        // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
-                        if(user.last_tracks.length >= 10) user.last_tracks.pop();
-                        user.last_tracks.unshift(track.id);
-                    }
-                } else {
-                    // LİSTEDE HİÇ ELEMAN YOK EKLE
-                    user.last_tracks.unshift(track.id);
-                }
-
-                await user.save();
-            });
-        } else {
-            await session.withTransaction(async () => {
-                await User.updateOne({ _id: logged_id }, { 
-                    'current_play.is_playing': false,
-                    'current_play.timestamp': Date.now(),
-                }).session(session);
-            });
-        }
-    } catch(err) {
-        Error({
-            file: 'MatchController.js',
-            method: 'updateCurrentPlay',
-            title: err.toString(),
-            info: err,
-            type: 'critical',
-        });
-    } finally {
-        session.endSession();
-    }
 }
 
 async function findListenersForTarget(logged_id, track) {

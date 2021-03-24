@@ -7,6 +7,8 @@ const Error = require('../../controllers/ErrorController');
 
 module.exports = async (req, res, next) => {
     try {
+        console.time('middleware');
+
         const authHeader = req.headers.authorization;
 
         if (!authHeader) {
@@ -48,6 +50,7 @@ module.exports = async (req, res, next) => {
             // BÖYLE BİR KULLANICININ OLUP OLMADIĞINI KONTROL ET.
             const id = decoded._id;
 
+            console.time('userExists');
             const userExists = await User.countDocuments({ _id: id });
             if (userExists <= 0) {
                 return res.status(401).json({
@@ -55,11 +58,14 @@ module.exports = async (req, res, next) => {
                     error: 'NOT_FOUND_USER'
                 });
             }
+            console.timeEnd('userExists');
 
             req.bearerToken = token;
             req.tokenInfo = decoded;
             req._id = id;
             next();
+
+            console.timeEnd('middleware');
         });
     } catch(err) {
         Error({
