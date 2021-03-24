@@ -31,7 +31,7 @@ class HomeController {
 
             all_tracks.forEach((x) => {
                 if(x.track.artist === trend_artist.artist.id) trend_artist.tracks.push(x);
-                if(spotify_fav_artists.includes(x.track.artist)) recommended_tracks.push(x);
+                if(logged_user.spotify_fav_artists.includes(x.track.artist)) recommended_tracks.push(x);
             });
 
             trend_artist.tracks.sort((a,b) => b.count - a.count);
