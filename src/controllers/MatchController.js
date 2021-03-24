@@ -33,7 +33,7 @@ class MatchController {
 
             // MÜZİĞİ BİLGİLERİNİ AL
             await SpotifyController.getAccessToken();
-            
+
             var track;
             if(is_podcast) track = await SpotifyController.getPodcast(id);
             else track = await SpotifyController.getTrack(id);
@@ -42,6 +42,7 @@ class MatchController {
             InstantListeners.set({ user_id: logged_id, track_id: track.id, artist_id: track.artist, is_podcast: track.is_podcast });
 
             // DB DE SON DİNLEDİKLERİMİ VE CURRENT_PLAY GÜNCELLE
+            updateCurrentPlay(logged_id, track);
 
             // BU MÜZİĞİ DİNLEYENLERİN SOKETLERİNE KULLANICIYI GÖNDER
 
@@ -70,7 +71,7 @@ class MatchController {
 
             InstantListeners.delete(logged_id);
 
-            //await updateCurrentPlay(logged_id, null);
+            updateCurrentPlay(logged_id, null);
 
             return res.status(200).json({
                 success: true
@@ -643,7 +644,7 @@ async function updateCurrentPlay(logged_id, track) {
                 const user = await User.findById(logged_id).select('current_play last_tracks');
     
                 user.current_play = {
-                    track: track._id,
+                    track: track.id,
                     artist: track.artist,
                     is_playing: true,
                     timestamp: Date.now(),
@@ -651,14 +652,14 @@ async function updateCurrentPlay(logged_id, track) {
     
                 // SON DİNLEDİKLERİME EKLE
                 if(user.last_tracks.length > 0) {
-                    if(user.last_tracks[0] !== track._id) {
+                    if(user.last_tracks[0] !== track.id) {
                         // EN BAŞTA ŞARKI VAR VE EŞİT DEĞİL O YÜZDEN EKLE
                         if(user.last_tracks.length >= 10) user.last_tracks.pop();
-                        user.last_tracks.unshift(track._id);
+                        user.last_tracks.unshift(track.id);
                     }
                 } else {
                     // LİSTEDE HİÇ ELEMAN YOK EKLE
-                    user.last_tracks.unshift(track._id);
+                    user.last_tracks.unshift(track.id);
                 }
 
                 await user.save();
