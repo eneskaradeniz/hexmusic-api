@@ -24,6 +24,7 @@ class ChatController {
             const result = await Chat.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }] })
             .populate('lower_id', 'display_name avatars verified')
             .populate('higher_id', 'display_name avatars verified')
+            .sort({ created_at: -1 })
             .lean();
 
             var chats = [];
@@ -82,7 +83,11 @@ class ChatController {
             }
 
             // CHATIN MESAJLARINI ÇEK
-            const messages = await Message.find({ chat_id: chat_id }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean();
+            const messages = await Message.find({ chat_id: chat_id })
+            .skip((page - 1) * PAGE_SIZE)
+            .limit(PAGE_SIZE)
+            .sort({ created_at: -1 })
+            .lean();
 
             return res.status(200).json({
                 success: true,
