@@ -276,10 +276,13 @@ class UserController {
                 });
             }
 
-            // TRACKS AND ARTISTS
+            // FETCH TRACKS AND ARTISTS
 
-            const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks]);
-            const artist_ids = target_profile.fav_artists;
+            const common_track_ids = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
+            const common_artist_ids = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
+
+            const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks, ...common_track_ids]);
+            const artist_ids = uniq([...target_profile.fav_artists, ...common_artist_ids]);
 
             await SpotifyController.getAccessToken();
 
@@ -289,15 +292,13 @@ class UserController {
             ]);
 
             const tracks = promises[0];
-
-            var last_tracks = [];
-            var fav_tracks = [];
-            var fav_artists = promises[1];
-
-            target_profile.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
-            target_profile.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
+            const artists = promises[1];
 
             // PROFILE
+
+            const last_tracks = target_profile.last_tracks.map(x => tracks.find(track => track.id === x));
+            const fav_tracks = target_profile.fav_tracks.map(x => tracks.find(track => track.id === x));
+            const fav_artists = target_profile.fav_artists.map(x => artists.find(artist => artist.id === x));
 
             const profile = {
                 user: {
@@ -320,16 +321,16 @@ class UserController {
 
             // COMMON
 
-            const common_tracks = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.some(({_id}) => x._id === _id));
-            const common_artists = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.some(({_id}) => x._id === _id));
+            const common_tracks = common_track_ids.map(x => tracks.find(track => track.id === x));
+            const common_artists = common_artist_ids.map(x => artists.find(artist => artist.id === x));
 
-            var percentage = calculatePercentage(common_artists.length, logged_profile.spotify_fav_artists.length, target_profile.spotify_fav_artists.length);
+            const percentage = calculatePercentage(common_artists.length, logged_profile.spotify_fav_artists.length, target_profile.spotify_fav_artists.length);
 
             const common = {
                 common_tracks: common_tracks,
                 common_artists: common_artists,
-                percentage: percentage,
-            }
+                percentage: percentage
+            };
 
             // MATCH
 
