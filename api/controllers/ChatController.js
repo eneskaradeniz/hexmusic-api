@@ -11,6 +11,8 @@ const Language = require('../lang/Language');
 
 const Error = require('./ErrorController');
 
+const PAGE_SIZE = 20;
+
 class ChatController {
 
     // CHAT
@@ -18,6 +20,13 @@ class ChatController {
     async chat_list(req, res) {
         try {
             const logged_id = req._id;
+            const page = parseInt(req.query.page);
+            if(!page) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'INVALID_FIELDS',
+                });
+            }
 
             const result = await Chat.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }] })
             .populate('lower_id', 'display_name avatars verified')
@@ -69,8 +78,6 @@ class ChatController {
                     error: 'INVALID_FIELDS',
                 });
             }
-
-            const PAGE_SIZE = 20;
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
             const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
@@ -403,11 +410,12 @@ function generateChats(chat) {
 
 async function findChat({ chat_id, lower_id, higher_id }) {
     try {
-        const find_chat = await Chat.findOne({ lower_id: lower_id, higher_id: higher_id }).select('_id').lean();
-        if(!find_chat) return false;
-        if(find_chat._id.toString() !== chat_id.toString()) return false;
-        
-        return true;
+        console.log('chat_id:', chat_id);
+        console.log('lower_id:', lower_id);
+        console.log('higher_id:', higher_id);
+
+        const find_chat = await Chat.countDocuments({ _id: chat_id, lower_id, higher_id });
+        return find_chat > 0 ? true : false;
     } catch (err) {
         throw err;
     }

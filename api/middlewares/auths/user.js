@@ -43,13 +43,12 @@ module.exports = async (req, res, next) => {
                 });
             }
 
-            /*const userExists = await User.countDocuments({ _id: decoded._id });
-            if (userExists <= 0) {
+            if(!decoded._id) {
                 return res.status(401).json({
                     success: false,
-                    error: 'NOT_FOUND_USER'
+                    error: 'INVALID_TOKEN'
                 });
-            }*/
+            }
 
             req.bearerToken = token;
             req.tokenInfo = decoded;
