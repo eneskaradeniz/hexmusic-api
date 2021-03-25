@@ -280,8 +280,8 @@ class UserController {
 
             var match_track_ids = [];
             if(find_match) {
-                if(find_match.lower_track_id) test.push(find_match.lower_track_id);
-                if(find_match.higher_track_id) test.push(find_match.higher_track_id);
+                if(find_match.lower_track_id) match_track_ids.push(find_match.lower_track_id);
+                if(find_match.higher_track_id) match_track_ids.push(find_match.higher_track_id);
             }
 
             const common_track_ids = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
