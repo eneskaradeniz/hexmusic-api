@@ -1098,10 +1098,9 @@ class UserController {
             .lean();
 
             // EŞLEŞTİĞİ KULLANICILARIN IDLERINI BİR LİSTEYE AKTAR
-            var user_ids = [];
-            matches.forEach(match => {
+            var user_ids = matches.map(match => {
                 const is_lower = match.lower_id.toString() === logged_id;
-                user_ids.push(is_lower ? match.higher_id : match.lower_id);
+                return is_lower ? match.higher_id : match.lower_id;
             });
 
             // EŞLEŞTİĞİ İNSANLARIN EĞER PERMISSON.SHOW_ACTION OLANLARIN DİNLEDİĞİ MÜZİKLERİ GETİR.
@@ -1112,27 +1111,30 @@ class UserController {
                     { "permissions.show_action": true },
                 ]
             })
-            .select('display_name avatars verified current_play')
-            .populate('current_play.track');
+            .select('display_name avatars verified current_play');
 
-            // BU LİSTENİN İÇİNDEKİ MÜZİKLERİ ÇEK
-            var users = [];
+            // GELEN MÜZİKLERİN BİLGİLERİNİ ÇEK
+            await SpotifyController.getAccessToken();
 
-            for(let i = 0; i < results.length; i++) {
-                const user = results[i];
+            const track_ids = uniq(results.map(user => user.current_play.track));
+            const tracks = await SpotifyController.getTracks(track_ids);
 
-                users.push({
+            // FRONTENDIN ANLAYACAĞI ŞEKİLDE AYARLA
+            var users = results.map(user => {
+                const track = tracks.find(x => x.id === user.current_play.track);
+
+                return {
                     user: {
                         _id: user._id,
                         display_name: user.display_name,
                         avatars: user.avatars,
                         verified: user.verified,
                     },
-                    track: user.current_play.track,
+                    track: track,
                     is_playing: user.current_play.is_playing,
-                    timestamp: user.current_play.timestamp,
-                });
-            }
+                    timestamp: user.current_play.timestamp
+                };
+            });
 
             return res.status(200).json({
                 success: true,
@@ -1156,11 +1158,15 @@ class UserController {
     async user_last_tracks(req, res) {
         try {
             const logged_id = req._id;
-            const user = await User.findById(logged_id).select('last_tracks').populate('last_tracks').lean();
+            const user = await User.findById(logged_id).select('last_tracks').lean();
+
+            await SpotifyController.getAccessToken();
+
+            const last_tracks = await SpotifyController.getTracks(user.last_tracks);
 
             return res.status(200).json({
                 success: true,
-                tracks: user.last_tracks,
+                tracks: last_tracks,
             }); 
 
         } catch(err) {

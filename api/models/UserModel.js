@@ -4,8 +4,8 @@ const { isEmail } = require('validator');
 const UserSchema = mongoose.Schema({
 
     current_play: {
-        track: { type: String, ref: 'Track', default: null },
-        artist: { type: String, ref: 'Artist', default: null },
+        track: { type: String, default: null },
+        artist: { type: String, default: null },
 
         is_playing: { type: Boolean, default: false },
         timestamp: { type: Number, default: null },
