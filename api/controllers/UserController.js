@@ -369,6 +369,9 @@ class UserController {
 
                 const logged_track = tracks.find(x => x.id === (is_lower ? find_match.lower_track_id : find_match.higher_track_id));
                 const target_track = tracks.find(x => x.id === (is_lower ? find_match.higher_track_id : find_match.lower_track_id));
+
+                console.log('logged_track:', logged_track);
+                console.log('target_track:', target_track);
     
                 match = {
                     logged_user,
