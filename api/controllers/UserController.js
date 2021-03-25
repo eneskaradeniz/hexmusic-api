@@ -255,22 +255,13 @@ class UserController {
             const results = await Promise.all([
                 User.findById(logged_id)
                 .select('display_name avatars verified spotify_fav_tracks spotify_fav_artists')
-                .populate('spotify_fav_tracks')
-                .populate('spotify_fav_artists')
                 .lean(),
 
                 User.findById(target_id)
                 .select('display_name avatars verified birthday city bio social_accounts last_tracks fav_tracks fav_artists spotify_fav_tracks spotify_fav_artists permissions')
-                .populate('fav_tracks')
-                .populate('fav_artists')
-                .populate('last_tracks')
-                .populate('spotify_fav_tracks')
-                .populate('spotify_fav_artists')
                 .lean(),
 
                 Match.findOne({ lower_id: lower_id, higher_id: higher_id })
-                .populate('lower_track')
-                .populate('higher_track')
                 .lean(),
             ]);
 
@@ -284,6 +275,27 @@ class UserController {
                     error: 'NOT_FOUND_TARGET_USER',
                 });
             }
+
+            // TRACKS AND ARTISTS
+
+            const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks]);
+            const artist_ids = target_profile.fav_artists;
+
+            await SpotifyController.getAccessToken();
+
+            const promises = await Promise.all([
+                SpotifyController.getTracks(track_ids),
+                SpotifyController.getArtists(artist_ids)
+            ]);
+
+            const tracks = promises[0];
+
+            var last_tracks = [];
+            var fav_tracks = [];
+            var fav_artists = promises[1];
+
+            user.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
+            user.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
 
             // PROFILE
 
@@ -301,9 +313,9 @@ class UserController {
                 bio: target_profile.bio,
                 social_accounts: target_profile.social_accounts,
                 
-                last_tracks: target_profile.permissions.show_last_tracks ? target_profile.last_tracks : null,
-                fav_tracks: target_profile.fav_tracks,
-                fav_artists: target_profile.fav_artists,
+                last_tracks: target_profile.permissions.show_last_tracks ? last_tracks : null,
+                fav_tracks: fav_tracks,
+                fav_artists: fav_artists,
             }
 
             // COMMON
