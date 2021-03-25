@@ -133,7 +133,9 @@ class ChatController {
 
             const is_lower = lower_id === author_id;
 
+            console.time('findChat');
             const result = await findChat({ chat_id, lower_id, higher_id });
+            console.timeEnd('findChat');
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -164,6 +166,7 @@ class ChatController {
             }
 
             var new_message;
+            console.time('send_message');
             await session.withTransaction(async () => {
                 const created_at = Date.now();
                 const promises = await Promise.all([
@@ -192,6 +195,7 @@ class ChatController {
 
                 new_message = promises[0][0];
             });
+            console.timeEnd('send_message');
 
             emitReceiveMessage({ to, chat_id, message: new_message });
             pushMessageNotification({ author_id, to, chat_id, message, message_type: type });
