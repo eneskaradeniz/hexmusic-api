@@ -20,13 +20,6 @@ class ChatController {
     async chat_list(req, res) {
         try {
             const logged_id = req._id;
-            const page = parseInt(req.query.page);
-            if(!page) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
 
             const result = await Chat.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }] })
             .populate('lower_id', 'display_name avatars verified')
