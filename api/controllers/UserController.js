@@ -294,8 +294,8 @@ class UserController {
             var fav_tracks = [];
             var fav_artists = promises[1];
 
-            user.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
-            user.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
+            target_profile.last_tracks.forEach((id) => last_tracks.push(tracks.find(x => x.id === id)));
+            target_profile.fav_tracks.forEach((id) => fav_tracks.push(tracks.find(x => x.id === id)));
 
             // PROFILE
 
