@@ -42,10 +42,7 @@ module.exports = async (req, res, next) => {
                     error
                 });
             }
-
-            console.log('decoded:', decoded);
-            console.log('_id:', decoded._id);
-
+            
             if(!decoded._id) {
                 return res.status(401).json({
                     success: false,
