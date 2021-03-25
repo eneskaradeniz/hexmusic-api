@@ -110,7 +110,7 @@ class ChatController {
             const author_id = req._id;
             const chat_id = req.params.chat_id;
             const { message, type, reply, to } = req.body;
-            if(chat_id === null || message === null || type === null || to === null) {
+            if(chat_id === null || message === null || type === null || to === null || to === author_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS'
@@ -184,13 +184,15 @@ class ChatController {
             });
 
             emitReceiveMessage({ to, chat_id, message: new_message });
-            pushMessageNotification({ author_id, to, chat_id, message, message_type });
+            pushMessageNotification({ author_id, to, chat_id, message, message_type: type });
 
             return res.status(200).json({
                 success: true,
                 message: new_message
             });
         } catch(err) {
+            await session.abortTransaction();
+
             Error({
                 file: 'ChatController.js',
                 method: 'send_message',
@@ -214,7 +216,7 @@ class ChatController {
             const author_id = req._id;
             const message_id = req.params.message_id;
             const { chat_id, like, to } = req.body;
-            if(author_id === null || message_id === null || chat_id === null || like === null || to === null) {
+            if(author_id === null || message_id === null || chat_id === null || like === null || to === null || to === author_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -281,6 +283,8 @@ class ChatController {
                 message: update_message
             });
         } catch(err) {
+            await session.abortTransaction();
+
             Error({
                 file: 'ChatController.js',
                 method: 'like_message',
@@ -337,9 +341,9 @@ class ChatController {
 
                 // CHATI GÜNCELLE
                 if(is_lower) {
-                    promises.push(Chat.updateOne({ _id: chat_id }, { lower_read: true })).session(session);
+                    promises.push(Chat.updateOne({ _id: chat_id }, { lower_read: true }).session(session));
                 } else {
-                    promises.push(Chat.updateOne({ _id: chat_id }, { higher_read: true })).session(session);
+                    promises.push(Chat.updateOne({ _id: chat_id }, { higher_read: true }).session(session));
                 }
             });
 
@@ -353,6 +357,8 @@ class ChatController {
                 success: true
             });
         } catch(err) {
+            await session.abortTransaction();
+
             Error({
                 file: 'ChatController.js',
                 method: 'read_messages',
