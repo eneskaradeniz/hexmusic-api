@@ -19,24 +19,26 @@ class InstantListenersController {
         return this.instant_listeners.get(user_id);
     }
 
-    static getTrackListeners(id) {
-        var user_ids = [];
+    static getTrackListeners(user_id, id) {
+        var listeners = [];
 
         this.instant_listeners.forEach((value, key) => {
-            if(value.track_id === id) user_ids.push(key);
+            if(key != user_id)
+                if(value.track_id === id) listeners[key] = value;
         });
 
-        return user_ids;
+        return listeners;
     }
 
-    static getArtistListeners(id) {
-        var user_ids = [];
+    static getArtistListeners(user_id, id) {
+        var listeners = [];
 
         this.instant_listeners.forEach((value, key) => {
-            if(value.artist_id === id) user_ids.push(key);
+            if(key != user_id)
+                if(value.artist_id === id) listeners[key] = value;
         });
 
-        return user_ids;
+        return listeners;
     }
 
     static getHome() {

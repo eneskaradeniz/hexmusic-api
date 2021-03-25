@@ -34,14 +34,8 @@ const MatchSchema = mongoose.Schema({
         required: true,
     },
 
-    lower_track: {
-        type: String,
-        ref: 'Track',
-    },
-    higher_track: {
-        type: String,
-        ref: 'Track',
-    },
+    lower_track_id: { type: String },
+    higher_track_id: { type: String },
 
     created_at: {
         type: Number,

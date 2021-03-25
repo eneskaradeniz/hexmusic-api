@@ -10,6 +10,8 @@ const bodyParser = require('body-parser');
 
 const Error = require('./src/controllers/ErrorController');
 
+// CONFIG EXPRESS
+
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
@@ -91,8 +93,8 @@ server.listen(PORT, async () => {
 
 // SOCKET.IO CONFIGURATION
 
-const InstantListeners = require('./src/controllers/InstantListenersController');
-const shared = require('./src/shared/index');
+const InstantListeners = require('./src/shared/InstantListenersController');
+const SocketController = require('./src/shared/SocketController');
 
 const db = require('mongoose');
 const User = require('./src/models/UserModel');
@@ -100,15 +102,15 @@ const User = require('./src/models/UserModel');
 const socketioJwt = require('socketio-jwt');
 const jwtConfig = require('./src/config/jwt');
 
-shared.socket_io = socketIO(server);
+SocketController.socket_io = socketIO(server);
 
-shared.socket_io.use(socketioJwt.authorize({
+SocketController.socket_io.use(socketioJwt.authorize({
   secret: jwtConfig.secret,
   handshake: true,
   auth_header_required: true,
 }));
 
-shared.socket_io.on('connection', socket => {
+SocketController.socket_io.on('connection', socket => {
   connect_socket(socket);
 
   socket.on('disconnect', () => disconnect_socket(socket));
@@ -118,10 +120,10 @@ shared.socket_io.on('connection', socket => {
 function connect_socket(socket) {
   try {
     var user_id = socket.decoded_token._id;
-    console.log(`(${shared.getSocketCount()})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${SocketController.getSocketCount()})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
     // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
-    var find_sockets = shared.findSockets(user_id);
+    var find_sockets = SocketController.findSockets(user_id);
 
     find_sockets.forEach(x => {
       if(x.id !== socket.id) {
@@ -147,7 +149,7 @@ function disconnect_socket(socket) {
     var user_id = socket.decoded_token._id;
     stop_music(user_id);
 
-    console.log(`(${shared.getSocketCount()})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
+    console.log(`(${SocketController.getSocketCount()})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
   } catch(err) {
     Error({
       file: 'server.js',
@@ -164,7 +166,7 @@ function start_typing(socket, data) {
     const user_id = socket.decoded_token._id;
     const { to } = data;
   
-    const target_socket = shared.findSocket(to);
+    const target_socket = SocketController.findSocket(to);
 
     if(target_socket) {
       target_socket.emit('typing', {
@@ -193,7 +195,7 @@ function start_typing(socket, data) {
 async function stop_music(logged_id) {
   InstantListeners.delete(logged_id);
 
-  /*const session = await db.startSession();
+  const session = await db.startSession();
 
   try {
       await session.withTransaction(async () => {
@@ -212,16 +214,16 @@ async function stop_music(logged_id) {
       });
   } finally {
       session.endSession();
-  }*/
+  }
 }
 
 // EVERY DAY RENEW USER COUNTS
 
 const schedule = require('node-schedule');
-const Language = require('./src/utils/Language');
+const Language = require('./src/lang/Language');
 
 const lodash = require("lodash");
-const firebaseAdmin = require("./src/firebase/firebaseAdmin");
+const firebaseAdmin = require("./src/firebase/FirebaseAdmin");
 
 const DEFAULT_LIKE_COUNT = 30;
 const DEFAULT_ADS_COUNT = 5;

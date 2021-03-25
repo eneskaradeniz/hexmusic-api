@@ -1,8 +1,9 @@
+require('dotenv').config();
+
 const db = require('mongoose');
 
 const ObjectId = require('mongoose').Types.ObjectId;
 const jwt = require('jsonwebtoken');
-const jwtConfig = require('../config/jwt');
 
 const User = require('../models/UserModel');
 const BlockedUser = require('../models/BlockedUserModel');
@@ -12,14 +13,14 @@ const Message = require('../models/MessageModel');
 const Like = require('../models/LikeModel');
 const Dislike = require('../models/DislikeModel');
 
-const SpotifyController = require('./SpotifyController');
+const SpotifyController = require('../shared/SpotifyController');
 const FileController = require('../controllers/FileController');
 
-const shared = require('../shared/index');
+const shared = require('../shared/SocketController');
 
 const Error = require('./ErrorController');
 
-const generateJwtToken = (user_id) => jwt.sign({ _id: user_id }, jwtConfig.secret);
+const generateJwtToken = (user_id) => jwt.sign({ _id: user_id }, process.env.JWT_SECRET);
 
 class UserController {
 

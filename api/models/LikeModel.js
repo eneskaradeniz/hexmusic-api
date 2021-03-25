@@ -22,10 +22,7 @@ const LikeSchema = mongoose.Schema({
         enum: ['live', 'explore', 'likes_me'],
         required: true,
     },
-    track: {
-        type: String,
-        ref: 'Track',
-    },
+    track_id: { type: String },
     
     created_at: {
         type: Number,

@@ -2,8 +2,8 @@ const User = require('../models/UserModel');
 
 const Error = require('./ErrorController');
 
-const InstantListeners = require('./InstantListenersController');
-const SpotifyController = require('./SpotifyController');
+const InstantListeners = require('../shared/InstantListenersController');
+const SpotifyController = require('../shared/SpotifyController');
 
 class HomeController {
 

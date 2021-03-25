@@ -1,14 +1,13 @@
 const db = require('mongoose');
-const ObjectId = require('mongoose').Types.ObjectId;
 
 const Chat = require('../models/ChatModel');
 const Message = require('../models/MessageModel');
 const User = require('../models/UserModel');
 
-const PushNotification = require('../controllers/PushNotificationController');
-const shared = require('../shared/index');
+const FirebaseAdmin = require('../firebase/FirebaseAdmin');
+const SocketController = require('../shared/SocketController');
 
-const Language = require('../utils/Language');
+const Language = require('../lang/Language');
 
 const Error = require('./ErrorController');
 
@@ -21,7 +20,6 @@ class ChatController {
             const logged_id = req._id;
 
             const result = await Chat.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }] })
-            .select('lower_id higher_id last_message lower_read higher_read is_mega_like created_at')
             .populate('lower_id', 'display_name avatars verified')
             .populate('higher_id', 'display_name avatars verified')
             .lean();
@@ -29,7 +27,7 @@ class ChatController {
             var chats = [];
 
             result.forEach(chat => {
-                let is_lower = logged_id.toString() === chat.lower_id._id.toString();
+                const is_lower = logged_id.toString() === chat.lower_id._id.toString();
 
                 chats.push({
                     _id: chat._id,
@@ -43,7 +41,7 @@ class ChatController {
 
             return res.status(200).json({
                 success: true,
-                chats,
+                chats
             });
         } catch (err) {
             Error({
@@ -64,24 +62,31 @@ class ChatController {
         try {
             const logged_id = req._id;
             const chat_id = req.params.chat_id;
-            if(!chat_id) {
+            const page = parseInt(req.query.page);
+            if(!chat_id || !page) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id messages').lean();
-            if(!find_chat || find_chat.lower_id.toString() !== logged_id && find_chat.higher_id.toString() !== logged_id) {
+            const PAGE_SIZE = 20;
+
+            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
+            const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
+            if(!find_chat || (find_chat.lower_id.toString() !== logged_id.toString() && find_chat.higher_id.toString() !== logged_id.toString())) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
 
+            // CHATIN MESAJLARINI ÇEK
+            const messages = await Message.find({ chat_id: chat_id }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean();
+
             return res.status(200).json({
                 success: true,
-                messages: find_chat.messages
+                messages
             });
         } catch (err) {
             Error({
@@ -102,8 +107,8 @@ class ChatController {
         const session = await db.startSession();
 
         try {
-            const author_id = ObjectId();
-            const chat_id = "6058ab411bfc4f3a74d00338";
+            const author_id = req._id;
+            const chat_id = req.params.chat_id;
             const { message, type, reply, to } = req.body;
             if(chat_id === null || message === null || type === null || to === null) {
                 return res.status(200).json({
@@ -112,42 +117,56 @@ class ChatController {
                 });
             }
 
-            const lower_id = "6058ab411bfc4f3a74d00339";
-            const higher_id = "6058ab411bfc4f3a74d0033a";
+            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
+            const lower_id = author_id < to ? author_id : to;
+            const higher_id = author_id > to ? author_id : to;
 
-            const is_lower = author_id < to;
+            const is_lower = lower_id === author_id;
 
-            const new_message = { author_id, message, type, reply, like: false, read: false, created_at: Date.now() };
-
-            var result;
-            await session.withTransaction(async () => {
-                result = await Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
-                    $push: { messages: new_message },
-                    last_message: {
-                        author_id: new_message.author_id,
-                        message: new_message.message,
-                        type: new_message.type,
-                        created_at: new_message.created_at
-                    },
-                    lower_read: is_lower ? true : false,
-                    higher_read: is_lower ? false : true
-                }).session(session);
-            });
-
-            if(result.nModified === 1) {
-                //emitReceiveMessage({ to, chat_id, message: new_message });
-                //pushMessageNotification({ from: author_id, to, chat_id, message, message_type });
-
-                return res.status(200).json({
-                    success: true,
-                    message: new_message
-                });
-            } else {
+            const result = await findChat({ chat_id, lower_id, higher_id });
+            if(!result) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
+
+            var new_message;
+            await session.withTransaction(async () => {
+                const created_at = Date.now();
+                const promises = await Promise.all([
+                    // MESAJI OLUŞTUR
+                    Message.create([{
+                        author_id,
+                        message,
+                        type,
+                        reply,
+                        created_at
+                    }], { session: session }),
+
+                    // CHATİ GÜNCELLE
+                    Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
+                        last_message: {
+                            author_id,
+                            message,
+                            type,
+                            created_at
+                        },
+                        lower_read: is_lower ? true : false,
+                        higher_read: is_lower ? false : true
+                    }).session(session),
+                ]);
+
+                new_message = promises[0];
+            });
+
+            emitReceiveMessage({ to, chat_id, message: new_message });
+            pushMessageNotification({ author_id, to, chat_id, message, message_type });
+
+            return res.status(200).json({
+                success: true,
+                message: new_message
+            });
         } catch(err) {
             Error({
                 file: 'ChatController.js',
@@ -165,168 +184,14 @@ class ChatController {
         }
     }
 
-    /*
-    async send_message (req, res) {
-        const session = await db.startSession();
-
-        try {
-            const chat_id = req.params.chat_id;
-            const from = req._id;
-            const { message, type, to, reply_id } = req.body;
-            if(chat_id === null || from === null || message === null || type === null || to === null) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'INVALID_FIELDS',
-                });
-            }
-
-            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
-            const lower_id = from < to ? from : to;
-            const higher_id = from > to ? from : to;
-
-            const is_lower = lower_id === from;
-
-            const result = await findChat({ chat_id, lower_id, higher_id });
-            if(!result) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_FOUND_CHAT'
-                });
-            }
-
-            // MESAJIN TİPİNE GÖRE İŞLEM YAP.
-            var _message;
-
-            switch(type) {
-                case 'text':
-                    _message = message;
-                    break;
-                case 'track':
-                    _message = JSON.stringify(message);
-                    break;
-                case 'artist':
-                    _message = JSON.stringify(message);
-                    break;
-                case 'podcast':
-                    _message = JSON.stringify(message);
-                    break;
-                default:
-                    return res.status(200).json({
-                        success: false,
-                        error: 'INVALID_MESSAGE_TYPE',
-                    });
-            }
-
-            // REPLY VARSA DOĞRULUĞUNU KONTROL ET VE BİLGİLERİNİ AL
-            if(reply_id) {
-                const find_reply_message = await Message.findById(reply_id).select('chat_id').lean();
-                if(!find_reply_message) {
-                    return res.status(200).json({
-                        success: false,
-                        error: 'NOT_FOUND_REPLY_MESSAGE',
-                    });
-                }
-
-                // BU CHATIN MESAJI OLUP OLMADIĞINA BAK.
-                if(find_reply_message.chat_id.toString() !== chat_id) {
-                    return res.status(200).json({
-                        success: false,
-                        error: 'INVALID_REPLY_MESSAGE',
-                    });
-                }
-            }
-
-            // BU BİLGİLERİ KULLANARAK MESAJI GÖNDER.
-            var new_message;
-            var update_chat;
-
-            await session.withTransaction(async () => {
-
-                // MESAJI OLUŞTUR
-                const message_id = ObjectId();
-                await Message.create([{
-                    _id: message_id,
-                    chat_id,
-                    from,
-                    message: _message,
-                    type,
-                    reply: reply_id,
-                }], { session: session });
-
-                // MESAJI GETİR
-                new_message = await Message.findById(message_id).populate('reply', 'from message type').session(session).lean();
-
-                // CHATI GÜNCELLE
-                await Chat.updateOne({ _id: chat_id }, {
-                    last_message: {
-                        _id: new_message._id,
-                        message: new_message.message,
-                        type: new_message.type,
-                        from: new_message.from,
-                        created_at: new_message.created_at,
-                    },
-                    lower_read: is_lower ? true : false,
-                    higher_read: is_lower ? false : true,
-                }).session(session);
-
-                // CHATI ÇEK
-                update_chat = await Chat.findById(chat_id)
-                    .populate('lower_id', 'display_name avatars verified')
-                    .populate('higher_id', 'display_name avatars verified')
-                    .session(session)
-                    .lean();
-            });
-
-            // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-            const { lower_chat, higher_chat } = generateChats(update_chat);
-
-            // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
-            emitReceiveMessage({
-                to,
-                message: new_message,
-                chat: is_lower ? higher_chat : lower_chat
-            });
-
-            // TARGET A BİLDİRİM GÖNDER
-            pushMessageNotification({
-                from,
-                to,
-                chat_id: chat_id,
-                message: _message,
-                message_type: type
-            }); 
-
-            return res.status(200).json({
-                success: true,
-                message: new_message,
-                chat: is_lower ? lower_chat : higher_chat,
-            });
-        } catch (err) {
-            Error({
-                file: 'ChatController.js',
-                method: 'send_message',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        } finally {
-            session.endSession();
-        }
-    }  
-    */
-
     async like_message (req, res) {
         const session = await db.startSession();
         
         try {
-            const from = req._id;
+            const author_id = req._id;
             const message_id = req.params.message_id;
             const { chat_id, like, to } = req.body;
-            if(from === null || message_id === null || chat_id === null || like === null || to === null) {
+            if(author_id === null || message_id === null || chat_id === null || like === null || to === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -334,10 +199,10 @@ class ChatController {
             }
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
-            const lower_id = from < to ? from : to;
-            const higher_id = from > to ? from : to;
+            const lower_id = author_id < to ? author_id : to;
+            const higher_id = author_id > to ? author_id : to;
 
-            const is_lower = from === lower_id;
+            const is_lower = author_id === lower_id;
 
             const result = await findChat({ chat_id, lower_id, higher_id });
             if(!result) {
@@ -347,73 +212,51 @@ class ChatController {
                 });
             }
 
-            var _lower_chat;
-            var _higher_chat;
-
             var update_message;
-
-            const transactionResults = await session.withTransaction(async () => {
-                // BÖYLE BİR MESAJ VARMI KONTROL ET
-                const find_message = await Message.countDocuments({ _id: message_id });
-                if(find_message <= 0) return;
+            await session.withTransaction(async () => {
+                var promises = [];
 
                 // MESAJI GÜNCELLE
-                update_message = await Message.findByIdAndUpdate(message_id, { like: like }, { new: true, upsert: true }).populate('reply', 'from message type').session(session).lean();
+                promises.push(Message.findByIdAndUpdate(message_id, { like: like }, { new: true }).session(session).lean());
         
                 if(like) {
-                    // CHATI GÜNCELLE
-                    const update_chat = await Chat.findByIdAndUpdate(update_message.chat_id, {
+                    // CHATİ GÜNCELLE
+                    promises.push(Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
                         last_message: {
-                            _id: update_message._id,
-                            message: update_message.message,
-                            type: 'like',
-                            from: is_lower ? lower_id : higher_id,
-                            created_at: Date.now(),
+                            author_id,
+                            message,
+                            type,
+                            created_at
                         },
                         lower_read: is_lower ? true : false,
-                        higher_read: is_lower ? false : true,
-                    }, { new: true, upsert: true })
-                    .populate('lower_id', 'display_name avatars verified')
-                    .populate('higher_id', 'display_name avatars verified')
-                    .session(session)
-                    .lean();
-
-                    // İKİ KULLANICI İÇİN CHATI FRONT END İÇİN OLUŞTUR.
-                    const { lower_chat, higher_chat } = generateChats(update_chat);
-                    _lower_chat = lower_chat;
-                    _higher_chat = higher_chat;
+                        higher_read: is_lower ? false : true
+                    }).session(session));
                 }
+
+                const results = await Promise.all(promises);
+                update_message = results[0];
             });
-        
-            if(transactionResults) {
-                // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
-                emitLikeMessage({
+
+            // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
+            emitLikeMessage({
+                to,
+                message: update_message,
+                chat: is_lower ? _higher_chat : _lower_chat
+            });
+
+            // TARGET A BİLDİRİM GÖNDER
+            if(like) {
+                pushLikeNotification({
+                    author_id,
                     to,
-                    message: update_message,
-                    chat: is_lower ? _higher_chat : _lower_chat
-                });
-
-                // TARGET A BİLDİRİM GÖNDER
-                if(like) {
-                    pushLikeNotification({
-                        from,
-                        to,
-                        chat_id
-                    });
-                }
-
-                return res.status(200).json({
-                    success: true,
-                    message: update_message,
-                    chat: is_lower ? _lower_chat : _higher_chat,
-                });
-            } else {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_FOUND_MESSAGE'
+                    chat_id
                 });
             }
 
+            return res.status(200).json({
+                success: true,
+                message: update_message
+            });
         } catch(err) {
             Error({
                 file: 'ChatController.js',
@@ -435,10 +278,10 @@ class ChatController {
         const session = await db.startSession();
 
         try {
-            const from = req._id;
+            const author_id = req._id;
             const chat_id = req.params.chat_id;
             const { to } = req.body;
-            if(from === null || chat_id  === null || to  === null) {
+            if(author_id === null || chat_id  === null || to  === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -446,10 +289,10 @@ class ChatController {
             } 
           
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
-            const lower_id = from < to ? from : to;
-            const higher_id = from > to ? from : to;
+            const lower_id = author_id < to ? author_id : to;
+            const higher_id = author_id > to ? author_id : to;
 
-            const is_lower = from === lower_id;
+            const is_lower = author_id === lower_id;
 
             const result = await findChat({ chat_id, lower_id, higher_id });
             if(!result) {
@@ -460,22 +303,20 @@ class ChatController {
             }
 
             await session.withTransaction(async () => {
+                const promises = [];
+
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
-                await Message.updateMany({ 
+                promises.push(Message.updateMany({ 
                     chat_id: chat_id,
-                    from: { $ne: from },
+                    author_id: is_lower ? higher_id : lower_id,
                     read: false,
-                }, { $set: { read: true } }).session(session);
+                }, { $set: { read: true } }).session(session));
 
                 // CHATI GÜNCELLE
                 if(is_lower) {
-                    await Chat.updateOne({ _id: chat_id }, {
-                        lower_read: true,
-                    }, { session: session });
+                    promises.push(Chat.updateOne({ _id: chat_id }, { lower_read: true })).session(session);
                 } else {
-                    await Chat.findByIdAndUpdate({ _id: chat_id }, {
-                        higher_read: true,
-                    }, { session: session });
+                    promises.push(Chat.updateOne({ _id: chat_id }, { higher_read: true })).session(session);
                 }
             });
 
@@ -550,20 +391,11 @@ async function findChat({ chat_id, lower_id, higher_id }) {
     }
 }
 
-async function findChatWithChatId({ logged_id, chat_id }) {
-    try {
-        const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
-        if(!find_chat) return false;
-        if(find_chat.lower_id.toString() === logged_id.toString() || find_chat.higher_id.toString() === logged_id.toString()) return true;
-        else return false;
-    } catch (err) {
-        throw err;
-    }
-}
+// SOCKET EMITS
 
 function emitReceiveMessage({ to, chat_id, message }) {
     try {
-        const find_socket = shared.findSocket(to);
+        const find_socket = SocketController.findSocket(to);
         if(find_socket) {
             find_socket.emit('receive_message', {
                 chat_id: chat_id,
@@ -575,13 +407,13 @@ function emitReceiveMessage({ to, chat_id, message }) {
     }
 }
 
-function emitLikeMessage({ to, message, chat }) {
+function emitLikeMessage({ to, chat_id, message }) {
     try {
-        const find_socket = shared.findSocket(to);
+        const find_socket = SocketController.findSocket(to);
         if(find_socket) {
             find_socket.emit('like_message', {
-                message: message,
-                chat: chat,
+                chat_id: chat_id,
+                message: message
             });
         }
     } catch (err) {
@@ -591,7 +423,7 @@ function emitLikeMessage({ to, message, chat }) {
 
 function emitReadMessages({ to, chat_id }) {
     try {
-        const find_socket = shared.findSocket(to);
+        const find_socket = SocketController.findSocket(to);
         if(find_socket) {
             find_socket.emit('read_messages', { chat_id });
         }
@@ -600,11 +432,13 @@ function emitReadMessages({ to, chat_id }) {
     }
 }
 
-async function pushMessageNotification({ from, to, chat_id, message, message_type }) {
+// PUSH NOTIFICATIONS
+
+async function pushMessageNotification({ author_id, to, chat_id, message, message_type }) {
     try {
         const results = await Promise.all([
             User.findById(to).select('fcm_token notifications language').lean(),
-            User.findById(from).select('display_name avatars verified').lean(),
+            User.findById(author_id).select('display_name avatars verified').lean(),
         ]);
 
         const to_user = results[0];
@@ -662,13 +496,13 @@ async function pushMessageNotification({ from, to, chat_id, message, message_typ
                     user: from_user,
                 };
 
-                await PushNotification.send({
+                await FirebaseAdmin.sendToDevice({
                     title: from_user.display_name,
                     body: body,
-                    fcm_token: to_user.fcm_token.token,
+                    token: to_user.fcm_token.token,
                     data: { chat_screen: chat_screen },
                     channel_id: 'chat',
-                    notification_type: 'CHAT',
+                    notification_type: 'CHAT'
                 });
             }  
         }
@@ -683,11 +517,11 @@ async function pushMessageNotification({ from, to, chat_id, message, message_typ
     }
 } 
 
-async function pushLikeNotification({ from, to, chat_id }) {
+async function pushLikeNotification({ author_id, to, chat_id }) {
     try {
         const results = await Promise.all([
             User.findById(to).select('fcm_token notifications language').lean(),
-            User.findById(from).select('display_name avatars verified').lean(),
+            User.findById(author_id).select('display_name avatars verified').lean(),
         ]);
 
         const to_user = results[0];
@@ -705,10 +539,10 @@ async function pushLikeNotification({ from, to, chat_id }) {
                 // MESAJI DİLİNE GÖRE ÇEVİR.
                 const body = Language.translate({ key: 'like_message', lang: to_user.language });
 
-                await PushNotification.send({
+                await FirebaseAdmin.sendToDevice({
                     title: from_user.display_name,
                     body: body,
-                    fcm_token: to_user.fcm_token.token,
+                    token: to_user.fcm_token.token,
                     data: { chat_screen: chat_screen },
                     channel_id: 'chat',
                     notification_type: 'CHAT',

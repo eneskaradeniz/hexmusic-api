@@ -1,8 +1,6 @@
+require('dotenv').config();
+
 const jwt = require('jsonwebtoken');
-const config = require('../../config/jwt');
-
-const User = require('../../models/UserModel');
-
 const Error = require('../../controllers/ErrorController');
 
 module.exports = async (req, res, next) => {
@@ -27,7 +25,7 @@ module.exports = async (req, res, next) => {
         const token = arrayAuth[1];
         req.bearerToken = token;
 
-        jwt.verify(token, config.secret, async (err, decoded) => {
+        jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
             if (err){
                 let error;
                 switch(err.name){

@@ -8,6 +8,28 @@ admin.initializeApp({
 
 const firebaseAdmin = {};
 
+firebaseAdmin.sendToDevice = function({ title, body, token, data, channel_id, notification_type }) {
+    const payload = {
+        notification: {
+            title,
+            body,
+            android_channel_id: channel_id,
+        },
+        data: {
+            ...data,
+            notification_type: notification_type,
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            sound: 'default',
+        },
+    };
+
+    const options = {
+        priority: 'high',
+    };
+
+    return admin.messaging().sendToDevice(token, payload, options);
+};
+
 firebaseAdmin.sendMulticastNotification = function(payload) {
     const message = {
         notification: {
