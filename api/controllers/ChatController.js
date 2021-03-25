@@ -131,6 +131,28 @@ class ChatController {
                 });
             }
 
+            // MESAJIN TİPİNE GÖRE İŞLEM YAP.
+            var _message;
+            switch(type) {
+                case 'text':
+                    _message = message;
+                    break;
+                case 'track':
+                    _message = JSON.stringify(message);
+                    break;
+                case 'artist':
+                    _message = JSON.stringify(message);
+                    break;
+                case 'podcast':
+                    _message = JSON.stringify(message);
+                    break;
+                default:
+                    return res.status(200).json({
+                        success: false,
+                        error: 'INVALID_MESSAGE_TYPE',
+                    });
+            }
+
             var new_message;
             await session.withTransaction(async () => {
                 const created_at = Date.now();
@@ -138,7 +160,7 @@ class ChatController {
                     // MESAJI OLUŞTUR
                     Message.create([{
                         author_id,
-                        message,
+                        message: _message,
                         type,
                         reply,
                         created_at
@@ -148,7 +170,7 @@ class ChatController {
                     Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
                         last_message: {
                             author_id,
-                            message,
+                            message: _message,
                             type,
                             created_at
                         },

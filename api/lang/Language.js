@@ -1,5 +1,5 @@
-const tr = require('./tr.json');
-const en = require('./en.json');
+const tr = require('./langs/tr.json');
+const en = require('./langs/en.json');
 
 class Language {
     static translate({ key, lang }) {
