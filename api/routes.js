@@ -7,8 +7,8 @@ const MatchController = require('./controllers/MatchController');
 const HomeController = require('./controllers/HomeController');
 const ReportController = require('./controllers/ReportController');
 
-const userMiddleware = require('./middlewares/auths/user');
-const middlewares = { user: userMiddleware };
+const user_middleware = require('./middlewares/auths/user');
+const middlewares = { user: user_middleware };
 
 module.exports = (upload) => {
 

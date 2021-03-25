@@ -3,12 +3,12 @@ require('dotenv').config();
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
-const mongoDB = require('./src/databases/mongodb/index');
+const mongoDB = require('./api/databases/mongodb/index');
 const socketIO = require('socket.io');
 const compression = require("compression");
 const bodyParser = require('body-parser');
 
-const Error = require('./src/controllers/ErrorController');
+const Error = require('./api/controllers/ErrorController');
 
 // CONFIG EXPRESS
 
@@ -78,7 +78,7 @@ app.use(compression({
 
 // ROUTES CONFIGURATION
 
-const routes = require('./src/routes');
+const routes = require('./api/routes');
 app.use('/', routes(upload));
 
 // START SERVER
@@ -93,19 +93,18 @@ server.listen(PORT, async () => {
 
 // SOCKET.IO CONFIGURATION
 
-const InstantListeners = require('./src/shared/InstantListenersController');
-const SocketController = require('./src/shared/SocketController');
+const InstantListeners = require('./api/shared/InstantListenersController');
+const SocketController = require('./api/shared/SocketController');
 
 const db = require('mongoose');
-const User = require('./src/models/UserModel');
+const User = require('./api/models/UserModel');
 
 const socketioJwt = require('socketio-jwt');
-const jwtConfig = require('./src/config/jwt');
 
 SocketController.socket_io = socketIO(server);
 
 SocketController.socket_io.use(socketioJwt.authorize({
-  secret: jwtConfig.secret,
+  secret: process.env.JWT_SECRET,
   handshake: true,
   auth_header_required: true,
 }));
@@ -220,10 +219,10 @@ async function stop_music(logged_id) {
 // EVERY DAY RENEW USER COUNTS
 
 const schedule = require('node-schedule');
-const Language = require('./src/lang/Language');
+const Language = require('./api/lang/Language');
 
 const lodash = require("lodash");
-const firebaseAdmin = require("./src/firebase/FirebaseAdmin");
+const FirebaseAdmin = require("./api/firebase/FirebaseAdmin");
 
 const DEFAULT_LIKE_COUNT = 30;
 const DEFAULT_ADS_COUNT = 5;
@@ -274,7 +273,7 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
         }
       };
 
-      return firebaseAdmin.sendMulticastNotification(payload); 
+      return FirebaseAdmin.sendMulticastNotification(payload); 
     });
 
     // EN İÇİN
@@ -289,7 +288,7 @@ schedule.scheduleJob('0 15 0 * * *', async () => {
         }
       };
 
-      return firebaseAdmin.sendMulticastNotification(payload); 
+      return FirebaseAdmin.sendMulticastNotification(payload); 
     });
 
     await Promise.all([promisesTR, promisesEN]);
