@@ -117,6 +117,9 @@ class ChatController {
                 });
             }
 
+            console.log('author_id:', author_id);
+            console.log('to:', to);
+
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
             const lower_id = author_id < to ? author_id : to;
             const higher_id = author_id > to ? author_id : to;
