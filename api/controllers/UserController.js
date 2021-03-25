@@ -261,7 +261,7 @@ class UserController {
                 .select('display_name avatars verified birthday city bio social_accounts last_tracks fav_tracks fav_artists spotify_fav_tracks spotify_fav_artists permissions')
                 .lean(),
 
-                Match.findOne({ lower_id: lower_id, higher_id: higher_id })
+                Match.findOne({ lower_id, higher_id })
                 .lean(),
             ]);
 
@@ -278,10 +278,18 @@ class UserController {
 
             // FETCH TRACKS AND ARTISTS
 
+            var lower_track_id;
+            var higher_track_id;
+
+            if(find_match) {
+                lower_track_id = find_match.lower_track_id;
+                higher_track_id = find_match.higher_track_id;
+            }
+
             const common_track_ids = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
             const common_artist_ids = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
 
-            const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks, ...common_track_ids]);
+            const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks, ...common_track_ids, ...[lower_track_id, higher_track_id]]);
             const artist_ids = uniq([...target_profile.fav_artists, ...common_artist_ids]);
 
             await SpotifyController.getAccessToken();
@@ -345,6 +353,7 @@ class UserController {
                     avatars: logged_profile.avatars,
                     verified: logged_profile.verified,
                 };
+
                 const target_user = {
                     _id: target_profile._id,
                     display_name: target_profile.display_name,
@@ -358,8 +367,8 @@ class UserController {
                 const logged_like_type = is_lower ? find_match.lower_like_type : find_match.higher_like_type;
                 const target_like_type = is_lower ? find_match.higher_like_type : find_match.lower_like_type;
 
-                const logged_track = is_lower ? find_match.lower_track : find_match.higher_track;
-                const target_track = is_lower ? find_match.higher_track : find_match.lower_track;
+                const logged_track = tracks.find(x => x.id === (is_lower ? find_match.lower_track_id : find_match.higher_track_id));
+                const target_track = tracks.find(x => x.id === (is_lower ? find_match.higher_track_id : find_match.lower_track_id));
     
                 match = {
                     logged_user,
@@ -1283,6 +1292,7 @@ function calculatePercentage(common_artists_length, logged_spotify_fav_artists_l
 function uniq(a) {
     var seen = {};
     return a.filter(function(item) {
+        if(!item) return false;
         return seen.hasOwnProperty(item) ? false : (seen[item] = true);
     });
 }
