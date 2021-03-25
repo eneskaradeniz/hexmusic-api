@@ -11,7 +11,7 @@ const Language = require('../lang/Language');
 
 const Error = require('./ErrorController');
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 15;
 
 class ChatController {
 
@@ -74,7 +74,10 @@ class ChatController {
             }
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
+            console.time('find_chat');
             const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
+            console.timeEnd('find_chat');
+
             if(!find_chat || (find_chat.lower_id.toString() !== logged_id.toString() && find_chat.higher_id.toString() !== logged_id.toString())) {
                 return res.status(200).json({
                     success: false,
@@ -83,11 +86,13 @@ class ChatController {
             }
 
             // CHATIN MESAJLARINI ÇEK
+            console.time('fetch_messages');
             const messages = await Message.find({ chat_id: chat_id })
             .skip((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
             .sort({ created_at: -1 })
             .lean();
+            console.timeEnd('fetch_messages');
 
             return res.status(200).json({
                 success: true,
