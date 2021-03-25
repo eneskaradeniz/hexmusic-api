@@ -180,7 +180,7 @@ class ChatController {
                     }).session(session),
                 ]);
 
-                new_message = promises[0];
+                new_message = promises[0][0];
             });
 
             emitReceiveMessage({ to, chat_id, message: new_message });
