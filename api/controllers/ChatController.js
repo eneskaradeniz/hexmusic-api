@@ -117,9 +117,6 @@ class ChatController {
                 });
             }
 
-            console.log('author_id:', author_id);
-            console.log('to:', to);
-
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
             const lower_id = author_id < to ? author_id : to;
             const higher_id = author_id > to ? author_id : to;
@@ -162,6 +159,7 @@ class ChatController {
                 const promises = await Promise.all([
                     // MESAJI OLUŞTUR
                     Message.create([{
+                        chat_id,
                         author_id,
                         message: _message,
                         type,
@@ -406,10 +404,6 @@ function generateChats(chat) {
 
 async function findChat({ chat_id, lower_id, higher_id }) {
     try {
-        console.log('chat_id:', chat_id);
-        console.log('lower_id:', lower_id);
-        console.log('higher_id:', higher_id);
-
         const find_chat = await Chat.countDocuments({ _id: chat_id, lower_id, higher_id });
         return find_chat > 0 ? true : false;
     } catch (err) {
