@@ -129,7 +129,7 @@ class MatchController {
 
                 if(gender_preference !== 'all') {
                     query = {
-                        _id: { in: user_ids },
+                        _id: { $in: user_ids },
     
                         'permissions.show_live': true,
                         my_blocked: { $ne: logged_id },
@@ -144,7 +144,7 @@ class MatchController {
                     };
                 } else {
                     query = {
-                        _id: { in: user_ids },
+                        _id: { $in: user_ids },
     
                        ' permissions.show_live': true,
                         my_blocked: { $ne: logged_id },
