@@ -23,9 +23,13 @@ firebaseAdmin.sendToDevice = function({ title, body, token, data, channel_id, no
         },
     };
 
+    console.log(payload);
+
     const options = {
         priority: 'high',
     };
+
+    console.log(options);
 
     return admin.messaging().sendToDevice(token, payload, options);
 };
