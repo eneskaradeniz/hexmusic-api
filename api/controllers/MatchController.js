@@ -116,6 +116,7 @@ class MatchController {
             var users = [];
 
             const user_ids = Object.keys(listeners).map(x => db.Types.ObjectId(x));
+            console.log('user_ids:', user_ids);
 
             if(user_ids.length > 0) {
 
@@ -205,6 +206,7 @@ class MatchController {
                 users: users
             });
         } catch(err) {
+            console.log(err);
             Error({
                 file: 'MatchController.js',
                 method: 'live',
