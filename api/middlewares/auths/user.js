@@ -43,8 +43,6 @@ module.exports = async (req, res, next) => {
                     error
                 });
             }
-
-            console.log('decoded:', decoded);
             
             if(!decoded._id) {
                 console.log('decoded _id yok');
