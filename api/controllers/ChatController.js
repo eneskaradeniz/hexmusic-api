@@ -212,8 +212,6 @@ class ChatController {
                 message: new_message
             });
         } catch(err) {
-            await session.abortTransaction();
-
             Error({
                 file: 'ChatController.js',
                 method: 'send_message',
@@ -304,8 +302,6 @@ class ChatController {
                 message: update_message
             });
         } catch(err) {
-            await session.abortTransaction();
-
             Error({
                 file: 'ChatController.js',
                 method: 'like_message',
@@ -380,8 +376,6 @@ class ChatController {
                 success: true
             });
         } catch(err) {
-            await session.abortTransaction();
-
             Error({
                 file: 'ChatController.js',
                 method: 'read_messages',
@@ -402,34 +396,6 @@ class ChatController {
 module.exports = new ChatController();
 
 // UTILS
-
-function generateChats(chat) {
-    try {
-        const lower_chat = {
-            _id: chat._id,
-            user: chat.higher_id,
-    
-            last_message: chat.last_message,
-    
-            read: chat.lower_read,
-            created_at: chat.created_at,
-        };
-    
-        const higher_chat = {
-            _id:  chat._id,
-            user: chat.lower_id,
-    
-            last_message: chat.last_message,
-    
-            read: chat.higher_read,
-            created_at: chat.created_at,
-        };
-        
-        return { lower_chat, higher_chat };
-    } catch(err) {
-        throw err;
-    }
-}
 
 async function findChat({ chat_id, lower_id, higher_id }) {
     try {
