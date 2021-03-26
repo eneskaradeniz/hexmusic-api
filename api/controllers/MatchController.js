@@ -9,12 +9,12 @@ const Dislike = require('../models/DislikeModel');
 
 const FirebaseAdmin = require('../firebase/FirebaseAdmin');
 
-const SocketController = require('../shared/SocketController');
+const SocketIO = require('../shared/SocketIO').getInstance();
 
-const SpotifyController = require('../shared/SpotifyController');
+const SpotifyAPI = require('../shared/SpotifyAPI');
 const Language = require('../lang/Language');
 
-const InstantListeners = require('../shared/InstantListenersController');
+const InstantListeners = require('../shared/InstantListeners');
 
 const Error = require('./ErrorController');
 
@@ -32,11 +32,11 @@ class MatchController {
             }
 
             // MÜZİĞİ BİLGİLERİNİ AL
-            await SpotifyController.getAccessToken();
+            await SpotifyAPI.getAccessToken();
 
             var track;
-            if(is_podcast) track = await SpotifyController.getPodcast(id);
-            else track = await SpotifyController.getTrack(id);
+            if(is_podcast) track = await SpotifyAPI.getPodcast(id);
+            else track = await SpotifyAPI.getTrack(id);
         
             // DİNLEYİCİLER LİSTESİNE KULLANICIYI KAYDET
             InstantListeners.set({ user_id: logged_id, track_id: track.id, artist_id: track.artist, is_podcast: track.is_podcast });
@@ -137,7 +137,7 @@ class MatchController {
                     // GELEN KULLANICILARIN DİNLEDİĞİ MÜZİKLERİ AYNI OLMAYACAK ŞEKİLDE LİSTEYE AKTAR.
                 }
     
-                const tracks = await SpotifyController.getTracks(track_ids);
+                const tracks = await SpotifyAPI.getTracks(track_ids);
 
                 // KART MODELİ
                 var birthday;
@@ -426,7 +426,7 @@ async function findListenersForTarget(logged_id, track) {
                 if(!is_contiune) continue;
 
                 // FİLTRELEME BAŞARILI İSE SOCKETINI BUL VE GÖNDER
-                const find_socket = SocketController.findSocket(target_user._id.toString());
+                const find_socket = SocketIO.findSocket(target_user._id.toString());
                 if(find_socket) find_socket.emit('get_card', { user: logged_card });  
             } catch(err) {
                 Error({
@@ -723,7 +723,7 @@ async function _like({ logged_id, target_id, match_type, like_type, track_id, is
             const match = generateMatchs(_match);
 
             // SOCKETLERE GEREKLI BILGILERI GÖNDER
-            const find_lower_socket = SocketController.findSocket(lower_id);
+            const find_lower_socket = SocketIO.findSocket(lower_id);
             if(find_lower_socket) {
                 find_lower_socket.emit('new_match', {
                     chat: chat.lower_chat,
@@ -731,7 +731,7 @@ async function _like({ logged_id, target_id, match_type, like_type, track_id, is
                 });
             }
 
-            const find_higher_socket = SocketController.findSocket(higher_id);
+            const find_higher_socket = SocketIO.findSocket(higher_id);
             if(find_higher_socket) {
                 find_higher_socket.emit('new_match', {
                     chat: chat.higher_chat,

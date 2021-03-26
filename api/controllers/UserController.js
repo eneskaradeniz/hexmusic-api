@@ -13,10 +13,10 @@ const Message = require('../models/MessageModel');
 const Like = require('../models/LikeModel');
 const Dislike = require('../models/DislikeModel');
 
-const SpotifyController = require('../shared/SpotifyController');
-const FileController = require('../controllers/FileController');
+const SpotifyAPI = require('../shared/SpotifyAPI');
+const SocketIO = require('../shared/SocketIO').getInstance();
 
-const shared = require('../shared/SocketController');
+const FileController = require('../controllers/FileController');
 
 const Error = require('./ErrorController');
 
@@ -37,7 +37,7 @@ class UserController {
             }
 
             console.time('getAuthorizationCodeGrant');
-            const code_grant = await SpotifyController.getAuthorizationCodeGrant(code);
+            const code_grant = await SpotifyAPI.getAuthorizationCodeGrant(code);
             console.timeEnd('getAuthorizationCodeGrant');
             if(!code_grant) {
                 return res.status(200).json({
@@ -49,7 +49,7 @@ class UserController {
             const { access_token, refresh_token } = code_grant;
 
             console.time('getSpotifyId');
-            const spotify_id = await SpotifyController.getSpotifyId(access_token);
+            const spotify_id = await SpotifyAPI.getSpotifyId(access_token);
             console.timeEnd('getSpotifyId');
             if(!spotify_id) {
                 return res.status(200).json({
@@ -139,7 +139,7 @@ class UserController {
                 });
             }
 
-            const access_token = await SpotifyController.refreshAccessToken(spotify_refresh_token);
+            const access_token = await SpotifyAPI.refreshAccessToken(spotify_refresh_token);
             if(!access_token) {
                 FileController.deleteAvatars(avatars);
                 return res.status(401).json({
@@ -149,8 +149,8 @@ class UserController {
             }
 
             const promises = await Promise.all([
-                SpotifyController.getMyTopTracks(access_token),
-                SpotifyController.getMyTopArtists(access_token),
+                SpotifyAPI.getMyTopTracks(access_token),
+                SpotifyAPI.getMyTopArtists(access_token),
             ]);
 
             const { spotify_fav_tracks, fav_tracks } = promises[0];
@@ -190,7 +190,6 @@ class UserController {
             });
 
         } catch (err) {
-            console.log(err);
             await session.abortTransaction();
 
             FileController.deleteAvatars(avatars);
@@ -290,11 +289,11 @@ class UserController {
             const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks, ...common_track_ids, ...match_track_ids]);
             const artist_ids = uniq([...target_profile.fav_artists, ...common_artist_ids]);
 
-            await SpotifyController.getAccessToken();
+            await SpotifyAPI.getAccessToken();
 
             const promises = await Promise.all([
-                SpotifyController.getTracks(track_ids),
-                SpotifyController.getArtists(artist_ids)
+                SpotifyAPI.getTracks(track_ids),
+                SpotifyAPI.getArtists(artist_ids)
             ]);
 
             const tracks = promises[0];
@@ -379,8 +378,6 @@ class UserController {
                     target_like_type,
                     target_track
                 };
-
-                console.log(match);
             }
 
             return res.status(200).json({
@@ -465,7 +462,7 @@ class UserController {
 
             // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
             users.forEach(model => {
-                const find_socket = shared.findSocket(model.user_id.toString());
+                const find_socket = SocketIO.findSocket(model.user_id.toString());
                 if(find_socket) {
                     find_socket.emit('end_user', {
                         user_id: model.user_id,
@@ -571,7 +568,7 @@ class UserController {
                 await Match.deleteOne({ _id: find_match._id }).session(session);
             });
 
-            const find_target_socket = shared.findSocket(target_id);
+            const find_target_socket = SocketIO.findSocket(target_id);
             if(find_target_socket) {
                 find_target_socket.emit('end_user', {
                     user_id: logged_id,
@@ -640,7 +637,7 @@ class UserController {
                 await BlockedUser.create([{ from: logged_id, to: target_id }], { session: session });
             });
 
-            const find_target_socket = shared.findSocket(target_id);
+            const find_target_socket = SocketIO.findSocket(target_id);
             if(find_target_socket) {
                 find_target_socket.emit('end_user', {
                     user_id: logged_id,
@@ -954,7 +951,7 @@ class UserController {
             const logged_id = req._id;
 
             const user = await User.findById(logged_id).select('spotify_refresh_token').lean();
-            const access_token = await SpotifyController.refreshAccessToken(user.spotify_refresh_token);
+            const access_token = await SpotifyAPI.refreshAccessToken(user.spotify_refresh_token);
             if(!access_token) {
                 return res.status(401).json({
                     success: false,
@@ -963,8 +960,8 @@ class UserController {
             }
 
             const promises = await Promise.all([
-                SpotifyController.getMyTopTracks(access_token),
-                SpotifyController.getMyTopArtists(access_token)
+                SpotifyAPI.getMyTopTracks(access_token),
+                SpotifyAPI.getMyTopArtists(access_token)
             ]);
 
             const { spotify_fav_tracks, fav_tracks } = promises[0];
@@ -1123,10 +1120,10 @@ class UserController {
             .select('display_name avatars verified current_play');
 
             // GELEN MÜZİKLERİN BİLGİLERİNİ ÇEK
-            await SpotifyController.getAccessToken();
+            await SpotifyAPI.getAccessToken();
 
             const track_ids = uniq(results.map(user => user.current_play.track));
-            const tracks = await SpotifyController.getTracks(track_ids);
+            const tracks = await SpotifyAPI.getTracks(track_ids);
 
             // FRONTENDIN ANLAYACAĞI ŞEKİLDE AYARLA
             var users = results.map(user => {
@@ -1169,9 +1166,9 @@ class UserController {
             const logged_id = req._id;
             const user = await User.findById(logged_id).select('last_tracks').lean();
 
-            await SpotifyController.getAccessToken();
+            await SpotifyAPI.getAccessToken();
 
-            const last_tracks = await SpotifyController.getTracks(user.last_tracks);
+            const last_tracks = await SpotifyAPI.getTracks(user.last_tracks);
 
             return res.status(200).json({
                 success: true,
@@ -1215,11 +1212,11 @@ async function getMyProfile(logged_id) {
         const track_ids = uniq([...user.last_tracks, ...user.fav_tracks]);
         const artist_ids = user.fav_artists;
 
-        await SpotifyController.getAccessToken();
+        await SpotifyAPI.getAccessToken();
 
         const promises = await Promise.all([
-            SpotifyController.getTracks(track_ids),
-            SpotifyController.getArtists(artist_ids)
+            SpotifyAPI.getTracks(track_ids),
+            SpotifyAPI.getArtists(artist_ids)
         ]);
 
         const tracks = promises[0];

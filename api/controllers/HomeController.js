@@ -2,8 +2,8 @@ const User = require('../models/UserModel');
 
 const Error = require('./ErrorController');
 
-const InstantListeners = require('../shared/InstantListenersController');
-const SpotifyController = require('../shared/SpotifyController');
+const InstantListeners = require('../shared/InstantListeners').getInstance();
+const SpotifyAPI = require('../shared/SpotifyAPI');
 
 class HomeController {
 
@@ -14,12 +14,12 @@ class HomeController {
   
             const { _trend_artist, _all_tracks, _all_podcasts } = InstantListeners.getHome();
 
-            await SpotifyController.getAccessToken();
+            await SpotifyAPI.getAccessToken();
 
             const promises = await Promise.all([
-                SpotifyController.getArtist(_trend_artist != null ? _trend_artist.id : null),
-                SpotifyController.getTracksWithCount(Object.keys(_all_tracks), _all_tracks),
-                SpotifyController.getPodcastsWithCount(Object.keys(_all_podcasts), _all_podcasts),
+                SpotifyAPI.getArtist(_trend_artist != null ? _trend_artist.id : null),
+                SpotifyAPI.getTracksWithCount(Object.keys(_all_tracks), _all_tracks),
+                SpotifyAPI.getPodcastsWithCount(Object.keys(_all_podcasts), _all_podcasts),
             ]);
 
             var trend_artist;
@@ -72,7 +72,7 @@ class HomeController {
 
     async live_count(req, res) {
         try {
-            let count = InstantListeners.getTotalCount() || 0;
+            let count = InstantListeners.size || 0;
 
             return res.status(200).json({
                 success: true,

@@ -5,7 +5,7 @@ const Message = require('../models/MessageModel');
 const User = require('../models/UserModel');
 
 const FirebaseAdmin = require('../firebase/FirebaseAdmin');
-const SocketController = require('../shared/SocketController');
+const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Language = require('../lang/Language');
 
@@ -435,7 +435,7 @@ async function findChat({ chat_id, lower_id, higher_id }) {
 
 function emitReceiveMessage({ to, chat_id, message }) {
     try {
-        const find_socket = SocketController.findSocket(to);
+        const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('receive_message', {
                 chat_id: chat_id,
@@ -449,7 +449,7 @@ function emitReceiveMessage({ to, chat_id, message }) {
 
 function emitLikeMessage({ to, chat_id, message }) {
     try {
-        const find_socket = SocketController.findSocket(to);
+        const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('like_message', {
                 chat_id: chat_id,
@@ -463,7 +463,7 @@ function emitLikeMessage({ to, chat_id, message }) {
 
 function emitReadMessages({ to, chat_id }) {
     try {
-        const find_socket = SocketController.findSocket(to);
+        const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('read_messages', { chat_id });
         }
