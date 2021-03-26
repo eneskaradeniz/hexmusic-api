@@ -10,11 +10,10 @@ const Dislike = require('../models/DislikeModel');
 const FirebaseAdmin = require('../firebase/FirebaseAdmin');
 
 const SocketIO = require('../shared/SocketIO').getInstance();
-
+const InstantListeners = require('../shared/InstantListeners').getInstance();
 const SpotifyAPI = require('../shared/SpotifyAPI');
-const Language = require('../lang/Language');
 
-const InstantListeners = require('../shared/InstantListeners');
+const Language = require('../lang/Language');
 
 const Error = require('./ErrorController');
 

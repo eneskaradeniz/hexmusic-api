@@ -5,9 +5,9 @@ const Message = require('../models/MessageModel');
 const User = require('../models/UserModel');
 
 const FirebaseAdmin = require('../firebase/FirebaseAdmin');
-const SocketIO = require('../shared/SocketIO').getInstance();
-
 const Language = require('../lang/Language');
+
+const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Error = require('./ErrorController');
 
