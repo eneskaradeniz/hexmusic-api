@@ -22,10 +22,10 @@ class PrivateSocketIO {
         }));
 
         this.socket_io.on('connection', socket => {
-            connect_socket(socket);
+            this.connect_socket(socket);
 
-            socket.on('disconnect', () => disconnect_socket(socket));
-            socket.on("start_typing", (data) => start_typing(socket, data));
+            socket.on('disconnect', () => this.disconnect_socket(socket));
+            socket.on("start_typing", (data) => this.start_typing(socket, data));
         });
     }
 
@@ -35,7 +35,7 @@ class PrivateSocketIO {
             console.log(`(${this.count})`, "CONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
             // BU USERID LI BAŞKA SOCKET VARMI KONTROL ET
-            var find_sockets = Sockets.findSockets(user_id);
+            var find_sockets = this.findSockets(user_id);
 
             find_sockets.forEach(x => {
                 if(x.id !== socket.id) {
