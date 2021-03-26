@@ -102,6 +102,8 @@ class MatchController {
                 });
             }
 
+            const logged_user = await User.findById(logged_id).select('filtering').lean();
+
             var listeners = [];
             if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, track.artist); 
             else listeners = InstantListeners.getTrackListeners(logged_id, track.id); 
@@ -109,8 +111,6 @@ class MatchController {
             var users = [];
 
             if(listeners.length !== 0) {
-                const logged_user = await User.findById(logged_id).select('filtering').lean();
-
                 /*
                     MÜZİĞİ DİNLEN KULLANICILARIN IDSINI ALICAM
                     DB DE BU İDLİ KULLANICILARDAN:
