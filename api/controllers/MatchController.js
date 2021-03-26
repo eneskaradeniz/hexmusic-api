@@ -159,7 +159,6 @@ class MatchController {
                 const fetch = await User
                 .find(query)
                 .limit(10)
-                .sort({ product: 'premium_plus' })
                 .select('display_name avatars verified birthday permissions')
                 .lean();
 
