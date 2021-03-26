@@ -115,7 +115,9 @@ class MatchController {
 
             var users = [];
 
-            if(Object.keys(listeners).length > 0) {
+            const user_ids = Object.keys(listeners).map(x => db.Types.ObjectId(x));
+
+            if(user_ids.length > 0) {
 
                 // FİLTRELEMEYİ VE QUERYİ AYARLA
                 const gender_preference = logged_user.filtering.gender_preference;
@@ -126,7 +128,7 @@ class MatchController {
 
                 if(gender_preference !== 'all') {
                     query = {
-                        _id: { in: Object.keys(listeners) },
+                        _id: { in: user_ids },
     
                         'permissions.show_live': true,
                         my_blocked: { $ne: logged_id },
