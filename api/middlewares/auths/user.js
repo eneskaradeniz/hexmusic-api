@@ -27,6 +27,7 @@ module.exports = async (req, res, next) => {
 
         jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
             if (err){
+                console.log(err);
                 let error;
                 switch(err.name){
                     case 'TokenExpiredError':
@@ -44,6 +45,7 @@ module.exports = async (req, res, next) => {
             }
             
             if(!decoded._id) {
+                console.log('decoded _id yok');
                 return res.status(401).json({
                     success: false,
                     error: 'INVALID_TOKEN'
@@ -58,7 +60,7 @@ module.exports = async (req, res, next) => {
     } catch(err) {
         Error({
             file: 'user.js',
-            method: 'module.exports',
+            method: 'middleware.user',
             title: err.toString(),
             info: err,
             type: 'critical',
