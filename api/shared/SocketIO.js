@@ -9,6 +9,8 @@ const Error = require('../controllers/ErrorController');
 
 class PrivateSocketIO {
 
+    // SOCKET.IO CONFIGURATION
+
     constructor() {
         this.socket_io = null;
     }
@@ -113,7 +115,7 @@ class PrivateSocketIO {
         }
     }
 
-    // ============
+    // SOCKET.IO CLIENTS
 
     get count() {
         return this.socket_io.engine.clientsCount;

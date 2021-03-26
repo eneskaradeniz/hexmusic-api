@@ -359,6 +359,8 @@ class ChatController {
                 } else {
                     promises.push(Chat.updateOne({ _id: chat_id }, { higher_read: true }).session(session));
                 }
+
+                await Promise.all(promises);
             });
 
             // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE
