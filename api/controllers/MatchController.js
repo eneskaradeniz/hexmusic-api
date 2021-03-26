@@ -95,6 +95,7 @@ class MatchController {
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ GETİR
             const logged_track = InstantListeners.get(logged_id);
+            console.log('logged_track:', logged_track);
             if(!logged_track) {
                 return res.status(200).json({
                     success: false,
@@ -104,11 +105,13 @@ class MatchController {
 
             // KULLANICININ FİLTRELEME BİLGİLERİNİ GETİR
             const logged_user = await User.findById(logged_id).select('filtering').lean();
+            console.log('logged_user:', logged_user);
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR
             var listeners = [];
             if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, logged_track.artist_id); 
             else listeners = InstantListeners.getTrackListeners(logged_id, logged_track.track_id); 
+            console.log('listeners:', listeners);
 
             var users = [];
 
@@ -160,6 +163,8 @@ class MatchController {
                 .select('display_name avatars verified birthday permissions')
                 .lean();
 
+                console.log('fetch:', fetch);
+
                 // SPOTIFY ACCESS TOKEN AYARLANDI
                 await SpotifyAPI.getAccessToken();
                 
@@ -192,7 +197,7 @@ class MatchController {
                 });
             }
 
-            console.log(users);
+            console.log('users:', users);
 
             return res.status(200).json({
                 success: true,
