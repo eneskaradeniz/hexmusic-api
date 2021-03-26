@@ -1,8 +1,5 @@
 require('dotenv').config();
 
-const socketIO = require('socket.io');
-const socketioJwt = require('socketio-jwt');
-
 const InstantListeners = require('../shared/InstantListeners').getInstance();
 
 const db = require('mongoose');
@@ -12,21 +9,8 @@ const Error = require('../controllers/ErrorController');
 
 class PrivateSocketIO {
 
-    constructor(server) {
-        this.socket_io = socketIO(server);
-
-        this.socket_io.use(socketioJwt.authorize({
-            secret: process.env.JWT_SECRET,
-            handshake: true,
-            auth_header_required: true,
-        }));
-
-        this.socket_io.on('connection', socket => {
-            this.connect_socket(socket);
-
-            socket.on('disconnect', () => this.disconnect_socket(socket));
-            socket.on("start_typing", (data) => this.start_typing(socket, data));
-        });
+    constructor() {
+        this.socket_io = null;
     }
 
     connect_socket(socket) {
@@ -59,7 +43,7 @@ class PrivateSocketIO {
     disconnect_socket(socket) {
         try {
             var user_id = socket.decoded_token._id;
-            stop_music(user_id);
+            this.stop_music(user_id);
 
             console.log(`(${this.count})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
         } catch(err) {
@@ -78,7 +62,7 @@ class PrivateSocketIO {
             const user_id = socket.decoded_token._id;
             const { to } = data;
         
-            const target_socket = Sockets.findSocket(to);
+            const target_socket = this.findSocket(to);
 
             if(target_socket) {
                 target_socket.emit('typing', {
@@ -112,8 +96,8 @@ class PrivateSocketIO {
         try {
             await session.withTransaction(async () => {
                 await User.updateOne({ _id: logged_id }, { 
-                'current_play.is_playing': false,
-                'current_play.timestamp': Date.now(),
+                    'current_play.is_playing': false,
+                    'current_play.timestamp': Date.now(),
                 }).session(session);
             });
         } catch(err) {
@@ -165,9 +149,9 @@ class SocketIO {
     constructor() {
         throw new Error('Use SocketIO.getInstance()');
     }
-    static getInstance(server) {
+    static getInstance() {
         if (!SocketIO.instance) {
-            SocketIO.instance = new PrivateSocketIO(server);
+            SocketIO.instance = new PrivateSocketIO();
         }
         return SocketIO.instance;
     }

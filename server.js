@@ -90,6 +90,24 @@ server.listen(PORT, async () => {
 
 // SOCKET.IO CONFIGURATION
 
-require('./api/shared/SocketIO').getInstance(server);
+const socketIO = require('socket.io');
+const socketioJwt = require('socketio-jwt');
+
+const SocketIO = require('./api/shared/SocketIO').getInstance();
+
+SocketIO.socket_io = socketIO(server);
+
+SocketIO.socket_io.use(socketioJwt.authorize({
+    secret: process.env.JWT_SECRET,
+    handshake: true,
+    auth_header_required: true,
+}));
+
+SocketIO.socket_io.on('connection', socket => {
+    SocketIO.connect_socket(socket);
+
+    socket.on('disconnect', () => SocketIO.disconnect_socket(socket));
+    socket.on("start_typing", (data) => SocketIO.start_typing(socket, data));
+});
 
 // SCHEDULE CONFIGURATION
