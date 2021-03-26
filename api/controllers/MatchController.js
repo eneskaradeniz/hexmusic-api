@@ -148,7 +148,7 @@ class MatchController {
                     query = {
                         _id: { $in: user_ids },
     
-                       ' permissions.show_live': true,
+                       'permissions.show_live': true,
                         my_blocked: { $ne: logged_id },
                         matches: { $ne: logged_id },
     
@@ -171,38 +171,42 @@ class MatchController {
 
                 console.log('fetch:', fetch);
 
-                // SPOTIFY ACCESS TOKEN AYARLANDI
-                console.time('spotify_tracks');
-                await SpotifyAPI.getAccessToken();
-                
-                // MÜZİKLERİN BİLGİLERİNİ ÇEK
-                var track_ids = [logged_track.track_id];
-                if(logged_user.filtering.artist) {
-                    tracks = await SpotifyAPI.getTracks(lodash.uniq([...track_ids, ...fetch.map(x => listeners[x._id.toString()].track_id)]));
-                }
-                
-                var tracks = [];
-                if(logged_track.is_podcast) tracks = await SpotifyAPI.getPodcasts(track_ids);
-                else tracks = await SpotifyAPI.getTracks(track_ids);
-                console.timeEnd('spotify_tracks');
+                if(fetch.length > 0) {
 
-                fetch.forEach(user => {
-                    var age;
-                    if(user.permissions.show_age) age = user.age;
-    
-                    const track = tracks.find(x => x.id === listeners[user._id.toString()].track_id);
-    
-                    users.push({
-                        user: {
-                            _id: user._id,
-                            display_name: user.display_name,
-                            avatars: user.avatars,
-                            verified: user.verified,
-                        },
-                        age: age,
-                        track: track
+                    // SPOTIFY ACCESS TOKEN AYARLANDI
+                    console.time('spotify_tracks');
+
+                    await SpotifyAPI.getAccessToken();
+                    
+                    // MÜZİKLERİN BİLGİLERİNİ ÇEK
+                    var track_ids = [logged_track.track_id];
+                    if(logged_user.filtering.artist) 
+                        tracks = await SpotifyAPI.getTracks(lodash.uniq([...track_ids, ...fetch.map(x => listeners[x._id.toString()].track_id)]));
+                              
+                    var tracks = [];
+                    if(logged_track.is_podcast) tracks = await SpotifyAPI.getPodcasts(track_ids);
+                    else tracks = await SpotifyAPI.getTracks(track_ids);
+
+                    console.timeEnd('spotify_tracks');
+
+                    fetch.forEach(user => {
+                        var age;
+                        if(user.permissions.show_age) age = user.age;
+        
+                        const track = tracks.find(x => x.id === listeners[user._id.toString()].track_id);
+        
+                        users.push({
+                            user: {
+                                _id: user._id,
+                                display_name: user.display_name,
+                                avatars: user.avatars,
+                                verified: user.verified,
+                            },
+                            age: age,
+                            track: track
+                        });
                     });
-                });
+                }
             }
 
             console.log('users:', users);
