@@ -87,9 +87,16 @@ class ChatController {
 
             // CHATIN MESAJLARINI ÇEK
             console.time('fetch_messages');
+
+            /*
             const messages = await Message.find({ chat_id: chat_id })
             .skip((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
+            .sort({ created_at: -1 })
+            .lean();
+            */
+           
+            const messages = await Message.find({ chat_id: chat_id })
             .sort({ created_at: -1 })
             .lean();
             console.timeEnd('fetch_messages');
@@ -347,23 +354,19 @@ class ChatController {
 
             console.time('read');
             await session.withTransaction(async () => {
-                const promises = [];
-
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
-                promises.push(Message.updateMany({ 
+                await Message.updateMany({ 
                     chat_id: chat_id,
                     author_id: { $ne: author_id },
                     read: false,
-                }, { $set: { read: true } }).session(session));
+                }, { $set: { read: true } }).session(session);
 
                 // CHATI GÜNCELLE
                 if(is_lower) {
-                    promises.push(Chat.updateOne({ _id: chat_id }, { lower_read: true }).session(session));
+                    await Chat.updateOne({ _id: chat_id }, { lower_read: true }).session(session);
                 } else {
-                    promises.push(Chat.updateOne({ _id: chat_id }, { higher_read: true }).session(session));
+                    await Chat.updateOne({ _id: chat_id }, { higher_read: true }).session(session);
                 }
-
-                await Promise.all(promises);
             });
             console.timeEnd('read');
 
