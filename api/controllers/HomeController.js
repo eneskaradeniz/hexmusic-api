@@ -3,7 +3,7 @@ const User = require('../models/UserModel');
 const Error = require('./ErrorController');
 
 const InstantListeners = require('../shared/InstantListeners').getInstance();
-const SpotifyAPI = require('../shared/SpotifyAPI');
+const SpotifyAPI = require('../shared/SpotifyAPI').getInstance();
 
 class HomeController {
 

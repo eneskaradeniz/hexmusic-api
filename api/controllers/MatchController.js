@@ -11,7 +11,7 @@ const FirebaseAdmin = require('../firebase/FirebaseAdmin');
 
 const SocketIO = require('../shared/SocketIO').getInstance();
 const InstantListeners = require('../shared/InstantListeners').getInstance();
-const SpotifyAPI = require('../shared/SpotifyAPI');
+const SpotifyAPI = require('../shared/SpotifyAPI').getInstance();
 
 const Language = require('../lang/Language');
 

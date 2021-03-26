@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const SpotifyWebApi = require('spotify-web-api-node');
-
 const lodash = require("lodash");
 
 const spotifyApi = new SpotifyWebApi({
@@ -12,16 +11,18 @@ const spotifyApi = new SpotifyWebApi({
 
 const ONE_HOUR = 60 * 60 * 1000;
 
-const refresh_token = "AQD3RYmMsfZXwgA6xM0k-zGFmqvqpoFeMXlYFUv7rz249MTxxSeR0890fd0hUJKz38aOb4pq0za0tWKi1y1hQdQfq0GCo82-l3fzdmnkW5AOf0_BQ15TU__bWEACXDebWb4";
+const refresh_token = process.env.SPOTIFY_REFRESH_TOKEN;
 
-var access_token;
-var timestamp;
+class PrivateSpotifyAPI {
 
-class SpotifyController {
+    constructor() {
+        this.access_token = null;
+        this.timestamp = null;
+    }
 
     // AUTH
 
-    static async getAuthorizationCodeGrant(code) {
+    async getAuthorizationCodeGrant(code) {
         try {
             const data = await spotifyApi.authorizationCodeGrant(code);
 
@@ -35,7 +36,7 @@ class SpotifyController {
         }
     }
 
-    static async getSpotifyId(access_token) {
+    async getSpotifyId(access_token) {
         try {
             spotifyApi.setAccessToken(access_token);
             const data = await spotifyApi.getMe();
@@ -46,7 +47,7 @@ class SpotifyController {
         }
     }
 
-    static async refreshAccessToken(refresh_token) {
+    async refreshAccessToken(refresh_token) {
         try {
             spotifyApi.setRefreshToken(refresh_token);
 
@@ -58,21 +59,19 @@ class SpotifyController {
         }
     } 
 
-    static async getAccessToken() {
+    async getAccessToken() {
         try {
             spotifyApi.setRefreshToken(refresh_token);
 
-            if(!timestamp || ((Date.now()) - timestamp) >= ONE_HOUR) {
+            if(!this.timestamp || ((Date.now()) - this.timestamp) >= ONE_HOUR) {
                 const data = await spotifyApi.refreshAccessToken();
-                access_token = data.body['access_token'];
-                timestamp = Date.now();
+                this.access_token = data.body['access_token'];
+                this.timestamp = Date.now();
 
                 console.log('spotify refresh access_token kullanıldı.');
             } else {
                 console.log('cache access_token kullanıldı.');
             }
-
-            return access_token;   
         } catch(err) {
             throw err;
         }
@@ -80,11 +79,11 @@ class SpotifyController {
 
     // TRACK/PODCAST/ARTIST
     
-    static async getTrack(id) {
+    async getTrack(id) {
         try {
             if(!id) return null;
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
     
             const data = await spotifyApi.getTrack(id);
             const track = data.body;
@@ -106,11 +105,11 @@ class SpotifyController {
         }
     }
 
-    static async getPodcast(id) {
+    async getPodcast(id) {
         try {
             if(!id) return null;
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
     
             const data = await spotifyApi.getEpisode(id);
             const podcast = data.body;
@@ -132,11 +131,11 @@ class SpotifyController {
         }
     }
 
-    static async getArtist(id) {
+    async getArtist(id) {
         try {
             if(!id) return null;
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
     
             const data = await spotifyApi.getArtist(id);
             const artist = data.body;
@@ -151,11 +150,11 @@ class SpotifyController {
         }
     }
 
-    static async getTracks(ids) {
+    async getTracks(ids) {
         try {
             if(ids.length == 0) return [];
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
 
             const chunks = lodash.chunk(ids, 50);
             const promises = chunks.map((ids) => spotifyApi.getTracks(ids));
@@ -188,11 +187,11 @@ class SpotifyController {
         }
     }
     
-    static async getArtists(ids) {
+    async getArtists(ids) {
         try {
             if(ids.length == 0) return [];
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
 
             const chunks = lodash.chunk(ids, 50);
             const promises = chunks.map((ids) => spotifyApi.getArtists(ids));
@@ -218,11 +217,11 @@ class SpotifyController {
         }
     }
 
-    static async getPodcasts(ids) {
+    async getPodcasts(ids) {
         try {
             if(ids.length == 0) return [];
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
 
             const chunks = lodash.chunk(ids, 50);
             const promises = chunks.map((ids) => spotifyApi.getEpisodes(ids));
@@ -257,11 +256,11 @@ class SpotifyController {
 
     // HOME
 
-    static async getTracksWithCount(ids, arr) {
+    async getTracksWithCount(ids, arr) {
         try {
             if(ids.length === 0) return [];
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
 
             const chunks = lodash.chunk(ids, 50);
             const promises = chunks.map((ids) => spotifyApi.getTracks(ids));
@@ -297,11 +296,11 @@ class SpotifyController {
         }
     }
 
-    static async getPodcastsWithCount(ids, arr) {
+    async getPodcastsWithCount(ids, arr) {
         try {
             if(ids.length == 0) return [];
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
 
             const chunks = lodash.chunk(ids, 50);
             const promises = chunks.map((ids) => spotifyApi.getEpisodes(ids));
@@ -337,11 +336,11 @@ class SpotifyController {
         }
     }
 
-    static async getArtistsWithCount(ids, arr) {
+    async getArtistsWithCount(ids, arr) {
         try {
             if(ids.length == 0) return [];
 
-            spotifyApi.setAccessToken(access_token);
+            spotifyApi.setAccessToken(this.access_token);
 
             const chunks = lodash.chunk(ids, 50);
             const promises = chunks.map((ids) => spotifyApi.getArtists(ids));
@@ -372,7 +371,7 @@ class SpotifyController {
 
     // MY TOPS
     
-    static async getMyTopTracks(access_token) {
+    async getMyTopTracks(access_token) {
         try {
             var spotify_fav_tracks = [];
             var fav_tracks = [];
@@ -395,7 +394,7 @@ class SpotifyController {
         }     
     }
 
-    static async getMyTopArtists(access_token) {
+    async getMyTopArtists(access_token) {
         try {
             var spotify_fav_artists = [];
             var fav_artists = [];
@@ -419,4 +418,16 @@ class SpotifyController {
     }
 }
 
-module.exports = SpotifyController;
+class SpotifyAPI {
+    constructor() {
+        throw new Error('Use SpotifyAPI.getInstance()');
+    }
+    static getInstance() {
+        if (!SpotifyAPI.instance) {
+            SpotifyAPI.instance = new PrivateSpotifyAPI();
+        }
+        return SpotifyAPI.instance;
+    }
+}
+
+module.exports = SpotifyAPI;

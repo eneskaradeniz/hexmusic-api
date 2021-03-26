@@ -13,7 +13,7 @@ const Message = require('../models/MessageModel');
 const Like = require('../models/LikeModel');
 const Dislike = require('../models/DislikeModel');
 
-const SpotifyAPI = require('../shared/SpotifyAPI');
+const SpotifyAPI = require('../shared/SpotifyAPI').getInstance();
 const SocketIO = require('../shared/SocketIO').getInstance();
 
 const FileController = require('../controllers/FileController');
