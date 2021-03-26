@@ -335,7 +335,9 @@ class ChatController {
 
             const is_lower = author_id === lower_id;
 
+            console.time('findChat');
             const result = await findChat({ chat_id, lower_id, higher_id });
+            console.timeEnd('findChat');
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -343,13 +345,14 @@ class ChatController {
                 });
             }
 
+            console.time('read');
             await session.withTransaction(async () => {
                 const promises = [];
 
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
                 promises.push(Message.updateMany({ 
                     chat_id: chat_id,
-                    author_id: is_lower ? higher_id : lower_id,
+                    author_id: { $ne: author_id },
                     read: false,
                 }, { $set: { read: true } }).session(session));
 
@@ -362,6 +365,7 @@ class ChatController {
 
                 await Promise.all(promises);
             });
+            console.timeEnd('read');
 
             // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE
             emitReadMessages({
