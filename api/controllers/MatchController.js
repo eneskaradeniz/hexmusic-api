@@ -114,8 +114,8 @@ class MatchController {
             console.log('listeners:', listeners);
 
             var users = [];
-
-            const user_ids = Object.keys(listeners).map(x => db.Types.ObjectId(x));
+ 
+            const user_ids = Object.keys(listeners).map(x => x.toString());
             console.log('user_ids:', user_ids);
 
             if(user_ids.length > 0) {
@@ -144,7 +144,7 @@ class MatchController {
                     };
                 } else {
                     query = {
-                        _id: { in: Object.keys(listeners) },
+                        _id: { in: user_ids },
     
                        ' permissions.show_live': true,
                         my_blocked: { $ne: logged_id },
