@@ -20,6 +20,8 @@ const FileController = require('../controllers/FileController');
 
 const Error = require('./ErrorController');
 
+const lodash = require('lodash');
+
 const generateJwtToken = (user_id) => jwt.sign({ _id: user_id }, process.env.JWT_SECRET);
 
 class UserController {
@@ -121,8 +123,8 @@ class UserController {
                 });
             }
 
-            const _isAdult = isAdult(birthday);
-            if(!_isAdult) {
+            const age = calculateAge(birthday);
+            if(!age || age < 18) {
                 FileController.deleteAvatars(avatars);
                 return res.status(200).json({
                     success: false,
@@ -170,6 +172,7 @@ class UserController {
                 email,
                 display_name,
                 birthday,
+                age,
                 gender,
                 bio,
                 city,
@@ -286,8 +289,8 @@ class UserController {
             const common_track_ids = logged_profile.spotify_fav_tracks.filter(x => target_profile.spotify_fav_tracks.includes(x));
             const common_artist_ids = logged_profile.spotify_fav_artists.filter(x => target_profile.spotify_fav_artists.includes(x));
 
-            const track_ids = uniq([...target_profile.last_tracks, ...target_profile.fav_tracks, ...common_track_ids, ...match_track_ids]);
-            const artist_ids = uniq([...target_profile.fav_artists, ...common_artist_ids]);
+            const track_ids = lodash.uniq([...target_profile.last_tracks, ...target_profile.fav_tracks, ...common_track_ids, ...match_track_ids]);
+            const artist_ids = lodash.uniq([...target_profile.fav_artists, ...common_artist_ids]);
 
             await SpotifyAPI.getAccessToken();
 
@@ -617,7 +620,7 @@ class UserController {
                 lower_id,
                 higher_id
             })
-            .select('_id chat_id')
+            .select('chat_id')
             .lean();
             
             if(find_match === null) {
@@ -635,6 +638,10 @@ class UserController {
 
                 // KULLANICIYI ENGELLE.
                 await BlockedUser.create([{ from: logged_id, to: target_id }], { session: session });
+
+                // İKİ KULLANICININ DA BLOCKED/MY_BLOCKED KISIMLARINI AYARLA
+                await User.updateOne({ _id: logged_id }, { $push: { my_blocked: target_id } }).session(session);
+                await User.updateOne({ _id: target_id }, { $push: { blocked: logged_id } }).session(session);
             });
 
             const find_target_socket = SocketIO.findSocket(target_id);
@@ -666,6 +673,8 @@ class UserController {
     }
 
     async unblock_user(req, res) {
+        const session = await db.startSession();
+
         try {
             const logged_id = req._id;
             const target_id = req.params.user_id;
@@ -676,7 +685,7 @@ class UserController {
                 });
             }
 
-            // BÖYLE BİR BLOK VARMI KONTROL ET.
+            // BÖYLE BİR BLOK VARMI KONTROL ET
             const find_block_user = await BlockedUser.findOne({ from: logged_id, to: target_id }).select('_id').lean();
             if(!find_block_user) {
                 return res.status(200).json({
@@ -685,8 +694,14 @@ class UserController {
                 });
             }
 
-            // ENGELİ KALDIR.
-            await BlockedUser.deleteOne({ _id: find_block_user._id });  
+            await session.withTransaction(async () => {
+                // ENGELİ KALDIR
+                await BlockedUser.deleteOne({ _id: find_block_user._id }).session(session);  
+
+                // İKİ KULLANICININ DA BLOCKED/MY_BLOCKED KISIMLARINI AYARLA
+                await User.updateOne({ _id: logged_id }, { $pull: { my_blocked: target_id } }).session(session);
+                await User.updateOne({ _id: target_id }, { $pull: { blocked: logged_id } }).session(session);
+            });
 
             return res.status(200).json({
                 success: true
@@ -704,6 +719,8 @@ class UserController {
             return res.status(400).json({
                 success: false
             });
+        } finally {
+            session.endSession();
         }
     }
    
@@ -845,8 +862,8 @@ class UserController {
             }
 
             // ADULT VALIDATOR
-            const _isAdult = isAdult(birthday);
-            if(!_isAdult) {
+            const age = calculateAge(birthday);
+            if(!age || age < 18) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -1122,7 +1139,7 @@ class UserController {
             // GELEN MÜZİKLERİN BİLGİLERİNİ ÇEK
             await SpotifyAPI.getAccessToken();
 
-            const track_ids = uniq(results.map(user => user.current_play.track));
+            const track_ids = lodash.uniq(results.map(user => user.current_play.track));
             const tracks = await SpotifyAPI.getTracks(track_ids);
 
             // FRONTENDIN ANLAYACAĞI ŞEKİLDE AYARLA
@@ -1209,7 +1226,7 @@ async function getMyProfile(logged_id) {
         .select('email display_name avatars verified birthday city bio gender social_accounts last_tracks fav_tracks fav_artists permissions notifications filtering product')
         .lean();
 
-        const track_ids = uniq([...user.last_tracks, ...user.fav_tracks]);
+        const track_ids = lodash.uniq([...user.last_tracks, ...user.fav_tracks]);
         const artist_ids = user.fav_artists;
 
         await SpotifyAPI.getAccessToken();
@@ -1261,15 +1278,13 @@ async function getMyProfile(logged_id) {
     }
 }
 
-function isAdult(timestamp) {
+function calculateAge(timestamp) {
     try {
         var birthday = new Date(timestamp);
         var ageDifMs = Date.now() - birthday.getTime();
         var ageDate = new Date(ageDifMs);
         var age = Math.abs(ageDate.getUTCFullYear() - 1970);
-        if(!age) if(age < 18) return false;
-       
-        return true;
+        return age;
     } catch(err) {
         throw err;
     }
@@ -1284,12 +1299,4 @@ function calculatePercentage(common_artists_length, logged_spotify_fav_artists_l
     }
 
     return 0;
-}
-
-function uniq(a) {
-    var seen = {};
-    return a.filter(function(item) {
-        if(!item) return false;
-        return seen.hasOwnProperty(item) ? false : (seen[item] = true);
-    });
 }

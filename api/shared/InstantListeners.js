@@ -25,7 +25,7 @@ class PrivateInstantListeners {
     }
 
     getTrackListeners(user_id, id) {
-        var listeners = [];
+        var listeners = {};
 
         this.instant_listeners.forEach((value, key) => {
             if(key != user_id)
@@ -36,7 +36,7 @@ class PrivateInstantListeners {
     }
 
     getArtistListeners(user_id, id) {
-        var listeners = [];
+        var listeners = {};
 
         this.instant_listeners.forEach((value, key) => {
             if(key != user_id)

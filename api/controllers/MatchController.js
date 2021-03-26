@@ -1,9 +1,10 @@
 const db = require('mongoose');
 
+const lodash = require('lodash');
+
 const Chat = require('../models/ChatModel');
 const Match = require('../models/MatchModel');
 const User = require('../models/UserModel');
-const BlockedUser = require('../models/BlockedUserModel');
 const Like = require('../models/LikeModel');
 const Dislike = require('../models/DislikeModel');
 
@@ -42,8 +43,6 @@ class MatchController {
 
             // DB DE SON DİNLEDİKLERİMİ VE CURRENT_PLAY GÜNCELLE
             updateCurrentPlay(logged_id, track);
-
-            // BU MÜZİĞİ DİNLEYENLERİN SOKETLERİNE KULLANICIYI GÖNDER
 
             return res.status(200).json({
                 success: true,
@@ -94,67 +93,106 @@ class MatchController {
         try {
             const logged_id = req._id;
 
-            const track = InstantListeners.get(logged_id);
-            if(!track) {
+            // KULLANICININ DİNLEDİĞİ MÜZİĞİ GETİR
+            const logged_track = InstantListeners.get(logged_id);
+            if(!logged_track) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_TRACK'
                 });
             }
 
+            // KULLANICININ FİLTRELEME BİLGİLERİNİ GETİR
             const logged_user = await User.findById(logged_id).select('filtering').lean();
 
+            // KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR
             var listeners = [];
-            if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, track.artist); 
-            else listeners = InstantListeners.getTrackListeners(logged_id, track.id); 
+            if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, logged_track.artist_id); 
+            else listeners = InstantListeners.getTrackListeners(logged_id, logged_track.track_id); 
 
             var users = [];
 
-            if(listeners.length !== 0) {
-                /*
-                    MÜZİĞİ DİNLEN KULLANICILARIN IDSINI ALICAM
-                    DB DE BU İDLİ KULLANICILARDAN:
-                        BEN YADA O ENGELEMEDİYSEK
-                        EŞLEŞMEDİYSEK
-                        LİKE ATMADIYSAM
-                        DİSLİKE ATMADIYSAM
+            if(listeners.length > 0) {
 
-                        YAŞ ARALIĞI TERCİHİME UYUYORSA
-                        CİNSİYET TERCİHİME UYUYORSA
+                // FİLTRELEMEYİ VE QUERYİ AYARLA
+                const gender_preference = logged_user.filtering.gender_preference;
+                const min_age = logged_user.filtering.min_age;
+                const max_age = logged_user.filtering.max_age;
+
+                var query;
+
+                if(gender_preference !== 'all') {
+                    query = {
+                        _id: { in: Object.keys(listeners) },
+    
+                        'permissions.show_live': true,
+                        my_blocked: { $ne: logged_id },
+                        matches: { $ne: logged_id },
+    
+                        blocked: { $ne: logged_id },
+                        likes: { $ne: logged_id },
+                        dislikes: { $ne: logged_id },
                     
-                    MAX 10 TANE
-                    PREMİUM_PLUS DAN FREE YE DOĞRU SIRALANMIŞ
-                    SELECT('display_name avatars verified birthday permissions')
-
-                    GELEN VERİLERİ FRONTEND İN ANLAYACAĞI ŞEKİLDE KART MODELİNE ÇEVİR VE GÖNDER.
-                */
+                        age: { $gte: min_age, $lte: max_age },
+                        gender: { $eq: gender_preference },
+                    };
+                } else {
+                    query = {
+                        _id: { in: Object.keys(listeners) },
     
-                
-
-                var track_ids = [track.track_id];
-                if(logged_user.filtering.artist) {
-                    // GELEN KULLANICILARIN DİNLEDİĞİ MÜZİKLERİ AYNI OLMAYACAK ŞEKİLDE LİSTEYE AKTAR.
+                       ' permissions.show_live': true,
+                        my_blocked: { $ne: logged_id },
+                        matches: { $ne: logged_id },
+    
+                        blocked: { $ne: logged_id },
+                        likes: { $ne: logged_id },
+                        dislikes: { $ne: logged_id },
+    
+                        age: { $gte: min_age, $lte: max_age },
+                    };
                 }
+
+                // UYGUN OLAN 10 KİŞİYİ GETİR
+                const fetch = await User
+                .find(query)
+                .limit(10)
+                .sort({ product: 'premium_plus' })
+                .select('display_name avatars verified birthday permissions')
+                .lean();
+
+                // SPOTIFY ACCESS TOKEN AYARLANDI
+                await SpotifyAPI.getAccessToken();
+                
+                // MÜZİKLERİN BİLGİLERİNİ ÇEK
+                var track_ids = [logged_track.track_id];
+                if(logged_user.filtering.artist) {
+                    tracks = await SpotifyAPI.getTracks(lodash.uniq([...track_ids, ...fetch.map(x => listeners[x._id.toString()].track_id)]));
+                }
+                
+                var tracks = [];
+                if(logged_track.is_podcast) tracks = await SpotifyAPI.getPodcasts(track_ids);
+                else tracks = await SpotifyAPI.getTracks(track_ids);
+
+                fetch.forEach(user => {
+                    var age;
+                    if(user.permissions.show_age) age = user.age;
     
-                const tracks = await SpotifyAPI.getTracks(track_ids);
-
-                // KART MODELİ
-                var birthday;
-                if(target_user.permissions.show_age) birthday = target_user.birthday;
-
-                const track = tracks.find(x => x.id === listeners[target_user._id].track_id);
-
-                const user_card = {
-                    user: {
-                        _id: target_user._id,
-                        display_name: target_user.display_name,
-                        avatars: target_user.avatars,
-                        verified: target_user.verified,
-                    },
-                    birthday: birthday,
-                    track: track
-                };
+                    const track = tracks.find(x => x.id === listeners[user._id.toString()].track_id);
+    
+                    users.push({
+                        user: {
+                            _id: user._id,
+                            display_name: user.display_name,
+                            avatars: user.avatars,
+                            verified: user.verified,
+                        },
+                        age: age,
+                        track: track
+                    });
+                });
             }
+
+            console.log(users);
 
             return res.status(200).json({
                 success: true,
@@ -352,186 +390,6 @@ class MatchController {
 
 module.exports = new MatchController();
 
-// ESKİLER
-
-async function findListenersForTarget(logged_id, track) {
-    try {
-        // LOGGED IN USER KARTINI OLUŞTUR
-        const logged_user = await User.findById(logged_id).select('display_name avatars verified birthday permissions current_play').lean();
-        if(logged_user.current_play.track !== track._id) return;
-        
-        var birthday = null;
-        if(logged_user.permissions.show_age) birthday = logged_user.birthday;
-
-        const logged_card = {
-            user: {
-                _id: logged_user._id,
-                display_name: logged_user.display_name,
-                avatars: logged_user.avatars,
-                verified: logged_user.verified,
-            },
-            birthday: birthday,
-            track: track,
-            percentage: 0,
-        };
-
-        // BU MÜZİĞİ DİNLEYEN KULLANICILARI BİLGİLERİYLE ÇEK
-        const users = await User.find({ 
-            $and: [
-                { _id: { $ne: logged_id } },
-                { "permissions.show_live": true },
-                { "current_play.is_playing": true },
-                { "current_play.artist": logged_user.current_play.artist },
-            ],
-        }).select('filtering current_play').lean();
-
-        for (let i = 0; i < users.length; i++) {
-            try {
-                const target_user = users[i];
-
-                // AYNI KULLANICI MI
-                if(logged_user._id.toString() === target_user._id.toString()) continue;
-    
-                // MÜZİK TERCİHİNİ UYGUN MU
-                if(target_user.filtering.artist && target_user.current_play.track !== track._id) continue;
-    
-                // TARGETIN YAŞ ARALIĞINA UYGUN MU
-                var logged_age = calculateAge(logged_user.birthday);
-                if(!((target_user.filtering.min_age <= logged_age) && ( logged_age <= target_user.filtering.max_age))) continue;
-    
-                // TARGETIN CİNSİYET TERCİHİNE UYGUN MU
-                if(target_user.filtering.gender_preference !== 'all' && logged_user.gender !== target_user.filtering.gender_preference) continue;
-    
-                const results = await Promise.all([
-                    // LOGGED BLOCKLAMIŞ MI
-                    BlockedUser.countDocuments({ from: logged_user._id, to: target_user._id }),
-                    // TARGET BLOCKALMIŞ MI
-                    BlockedUser.countDocuments({ from: target_user._id, to: logged_user._id }),
-                    // TARGET LIKE ATMIŞ MI
-                    Like.countDocuments({ from: target_user._id, to: logged_user._id }),
-                    // TARGET DISLIKE ATMIŞ MI
-                    Dislike.countDocuments({ from: target_user._id, to: logged_user._id }),
-                    // EŞLEŞMİŞLER Mİ
-                    findMatch({ logged_id: logged_user._id, target_id: target_user._id}),
-                ]);
-
-                var is_contiune = true;
-                results.forEach(result => { 
-                    if(result > 0) {
-                        is_contiune = false;
-                        return;
-                    }
-                });
-                if(!is_contiune) continue;
-
-                // FİLTRELEME BAŞARILI İSE SOCKETINI BUL VE GÖNDER
-                const find_socket = SocketIO.findSocket(target_user._id.toString());
-                if(find_socket) find_socket.emit('get_card', { user: logged_card });  
-            } catch(err) {
-                Error({
-                    file: 'MatchController.js',
-                    method: 'findListenersForTarget',
-                    title: err.toString(),
-                    info: err,
-                    type: 'critical',
-                });
-
-                continue;
-            }
-        }
-    } catch (err) {
-        Error({
-            file: 'MatchController.js',
-            method: 'findListenersForTarget',
-            title: err.toString(),
-            info: err,
-            type: 'critical',
-        });
-    }
-}
-
-async function loggedFilter(logged_user, users, match_type) {
-    try {
-        var filter_users = [];
-        if(users.length === 0) return filter_users;
-
-        for (let i = 0; i < users.length; i++) {
-            try {
-                const target_user = users[i];
-
-                // AYNI KULLANICI MI
-                if(logged_user._id.toString() === target_user._id.toString()) continue;
-
-                // LOGGEDIN YAŞ ARALIĞINA UYGUN MU
-                var target_age = calculateAge(target_user.birthday);
-                if(!((logged_user.filtering.min_age <= target_age) && ( target_age <= logged_user.filtering.max_age))) continue;
-    
-                // LOGGEDIN CİNSİYET TERCİHİNE UYGUN MU
-                if(logged_user.filtering.gender_preference !== 'all' && target_user.gender !== logged_user.filtering.gender_preference) continue;
-
-                const results = await Promise.all([
-                    // TARGET BLOCKLAMIŞ MI
-                    BlockedUser.countDocuments({ from: target_user._id, to: logged_user._id }),
-                    // LOGGED BLOCKALMIŞ MI
-                    BlockedUser.countDocuments({ from: logged_user._id, to: target_user._id }),
-                    // LOGGED LIKE ATMIŞ MI
-                    Like.countDocuments({ from: logged_user._id, to: target_user._id }),
-                    // LOGGED DISLIKE ATMIŞ MI
-                    Dislike.countDocuments({ from: logged_user._id, to: target_user._id }),
-                    // EŞLEŞMİŞLER Mİ
-                    findMatch({ logged_id: logged_user._id, target_id: target_user._id}),
-                ]);
-    
-                var is_contiune = true;
-                results.forEach(result => { 
-                    if(result > 0) {
-                        is_contiune = false;
-                        return;
-                    }
-                });
-                if(!is_contiune) continue;
-
-                // LİSTEYE EKLE
-    
-                var birthday;
-                if(target_user.permissions.show_age) birthday = target_user.birthday;
-
-                var track;
-                if(match_type === 'live')
-                    if(logged_user.filtering.artist) track = target_user.current_play.track;
-                    else track = logged_user.current_play.track;
-                
-                filter_users.push({
-                    user: {
-                        _id: target_user._id,
-                        display_name: target_user.display_name,
-                        avatars: target_user.avatars,
-                        verified: target_user.verified,
-                    },
-                    birthday: birthday,
-                    track: track,
-                    percentage: 0,
-                });
-
-            } catch(err) {
-                Error({
-                    file: 'MatchController.js',
-                    method: 'loggedFilter',
-                    title: err.toString(),
-                    info: err,
-                    type: 'critical',
-                });
-
-                continue;
-            }
-        }
-    
-        return filter_users;
-    } catch(err) {
-        throw err;
-    }
-}
-
 // METHODS
 
 async function updateCurrentPlay(logged_id, track) {
@@ -684,6 +542,13 @@ async function _like({ logged_id, target_id, match_type, like_type, track_id, is
                 // TARGETIN LIKE SİL
                 await Like.deleteOne({ from: target_id, to: logged_id }).session(session);
 
+                // İKİ KULLANICININ DA MATCHES KISMINA İDLERİNİ EKLE VE LOGGED'DA LIKES LİSTESİNDEN TARGET I KALDIR
+                await User.updateOne({ _id: logged_id }, { 
+                    $push: { matches: target_id },
+                    $pull: { likes: target_id },
+                }).session(session);
+                await User.updateOne({ _id: target_id }, { $push: { matches: logged_id } }).session(session);
+
             } else {
                 // LIKE OLUŞTUR
                 await Like.create([{
@@ -693,6 +558,9 @@ async function _like({ logged_id, target_id, match_type, like_type, track_id, is
                     match_type: match_type,
                     track_id: track_id
                 }], { session: session });
+
+                // TARGET'IN LIKES LİSTESİNE LOGGED I EKLE
+                await User.updateOne({ _id: target_id }, { $push: { likes: logged_id } }).session(session);
             }
 
             // LOGGEDIN LIKE HAKKINI GÜNCELLE
@@ -774,9 +642,12 @@ async function _dislike({ logged_id, target_id }) {
         const result = await doChecks({ logged_id, target_id });
         if(!result) return;
 
-        // DISLIKE AT
         await session.withTransaction(async () => {
-            return Dislike.create([{ from: logged_id, to: target_id }], { session: session }); 
+            // DISLIKE OLUŞTUR
+            await Dislike.create([{ from: logged_id, to: target_id }], { session: session }); 
+
+            // TARGET'IN DISLIKES LİSTESİNE LOGGED I EKLE
+            await User.updateOne({ _id: target_id }, { $push: { dislikes: logged_id } }).session(session);
         });
 
     } catch(err) {
@@ -984,15 +855,4 @@ function generateMatchs(match, chat_id) {
     };
     
     return { lower_match, higher_match };
-}
-
-function calculateAge(timestamp) {
-    var birthday = new Date(timestamp);
-    var ageDifMs = Date.now() - birthday.getTime();
-    var ageDate = new Date(ageDifMs);
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-}
-
-function sortByPremiumPlus(array) {
-    return array.sort((a, b) => (a.product === "premium_plus" && b.product === "premium_plus") ? 0 : a.product === "premium_plus" ? -1 : 1);
 }

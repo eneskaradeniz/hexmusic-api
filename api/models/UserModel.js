@@ -3,6 +3,35 @@ const { isEmail } = require('validator');
 
 const UserSchema = mongoose.Schema({
 
+    //===========
+
+    matches: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', 
+    }],
+
+    likes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', 
+    }],
+
+    dislikes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', 
+    }],
+
+    blocked: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', 
+    }],
+
+    my_blocked: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', 
+    }],
+
+    //===========
+
     current_play: {
         track: { type: String, default: null },
         artist: { type: String, default: null },
@@ -46,6 +75,10 @@ const UserSchema = mongoose.Schema({
     },
     avatars: [{type: String}],
     birthday: {
+        type: Number,
+        required: true,
+    },
+    age: {
         type: Number,
         required: true,
     },
