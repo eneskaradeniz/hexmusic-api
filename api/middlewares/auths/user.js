@@ -43,6 +43,8 @@ module.exports = async (req, res, next) => {
                     error
                 });
             }
+
+            console.log('decoded:', decoded);
             
             if(!decoded._id) {
                 console.log('decoded _id yok');
@@ -58,6 +60,7 @@ module.exports = async (req, res, next) => {
             next();
         });
     } catch(err) {
+        console.log('catch:', err);
         Error({
             file: 'user.js',
             method: 'middleware.user',
