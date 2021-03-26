@@ -710,7 +710,7 @@ class UserController {
     // AVATARS
 
     async add_avatar(req, res) {
-        const image_id = req.file != null ? req.file.id : null;
+        const image_id = req.file != null ? req.file.filename : null;
 
         try {
             const logged_id = req._id;
