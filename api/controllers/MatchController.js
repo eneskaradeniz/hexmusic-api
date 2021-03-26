@@ -104,7 +104,9 @@ class MatchController {
             }
 
             // KULLANICININ FİLTRELEME BİLGİLERİNİ GETİR
+            console.time('logged_user');
             const logged_user = await User.findById(logged_id).select('filtering').lean();
+            console.timeEnd('logged_user');
             console.log('logged_user:', logged_user);
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR
@@ -115,7 +117,7 @@ class MatchController {
 
             var users = [];
  
-            const user_ids = Object.keys(listeners).map(x => x.toString());
+            const user_ids = Object.keys(listeners);
             console.log('user_ids:', user_ids);
 
             if(user_ids.length > 0) {
@@ -159,15 +161,18 @@ class MatchController {
                 }
 
                 // UYGUN OLAN 10 KİŞİYİ GETİR
+                console.time('fetch');
                 const fetch = await User
                 .find(query)
                 .limit(10)
                 .select('display_name avatars verified birthday permissions')
                 .lean();
+                console.timeEnd('fetch');
 
                 console.log('fetch:', fetch);
 
                 // SPOTIFY ACCESS TOKEN AYARLANDI
+                console.time('spotify_tracks');
                 await SpotifyAPI.getAccessToken();
                 
                 // MÜZİKLERİN BİLGİLERİNİ ÇEK
@@ -179,6 +184,7 @@ class MatchController {
                 var tracks = [];
                 if(logged_track.is_podcast) tracks = await SpotifyAPI.getPodcasts(track_ids);
                 else tracks = await SpotifyAPI.getTracks(track_ids);
+                console.timeEnd('spotify_tracks');
 
                 fetch.forEach(user => {
                     var age;
