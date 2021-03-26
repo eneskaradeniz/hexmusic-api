@@ -108,14 +108,14 @@ class MatchController {
             console.log('logged_user:', logged_user);
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR
-            var listeners = [];
+            var listeners = {};
             if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, logged_track.artist_id); 
             else listeners = InstantListeners.getTrackListeners(logged_id, logged_track.track_id); 
             console.log('listeners:', listeners);
 
             var users = [];
 
-            if(listeners.length > 0) {
+            if(Object.keys(listeners).length > 0) {
 
                 // FİLTRELEMEYİ VE QUERYİ AYARLA
                 const gender_preference = logged_user.filtering.gender_preference;
