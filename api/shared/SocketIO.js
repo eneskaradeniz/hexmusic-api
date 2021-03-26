@@ -45,6 +45,9 @@ class PrivateSocketIO {
     disconnect_socket(socket) {
         try {
             var user_id = socket.decoded_token._id;
+
+            InstantListeners.delete(logged_id);
+            
             this.stop_music(user_id);
 
             console.log(`(${this.count})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
@@ -91,8 +94,6 @@ class PrivateSocketIO {
     }
 
     async stop_music(logged_id) {
-        InstantListeners.delete(logged_id);
-
         const session = await db.startSession();
 
         try {
