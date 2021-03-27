@@ -45,20 +45,15 @@ class PrivateSocketIO {
     disconnect_socket(socket) {
         try {
             var user_id = socket.decoded_token._id;
-            console.log('disconnet yapılacak user_id:', user_id);
 
             setTimeout(() => {
-                console.log('timeout bitti şimdi işlem zamanı');
                 const find_socket = this.findSocket(user_id);
                 if(!find_socket) {
-                    console.log('socketi bulamadı sill');
                     InstantListeners.delete(user_id);
                 
                     this.stop_music(user_id);
-                } else {
-                    console.log('socket var devamke');
                 }
-            }, 3000);
+            }, 2000);
             
             console.log(`(${this.count})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
         } catch(err) {
