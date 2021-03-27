@@ -1270,7 +1270,7 @@ async function getMyProfile(logged_id) {
             notifications: user.notifications,
 
             filtering: user.filtering,
-            product_id: user.product.id,
+            product: user.product,
         };
        
     } catch(err) {
