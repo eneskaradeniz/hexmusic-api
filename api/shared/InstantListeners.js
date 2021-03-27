@@ -17,6 +17,7 @@ class PrivateInstantListeners {
     }
 
     delete(user_id) {
+        console.log('deleteye gelddii:', user_id);
         this.instant_listeners.delete(user_id);
     }
 
