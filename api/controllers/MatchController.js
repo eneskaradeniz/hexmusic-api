@@ -31,17 +31,14 @@ class MatchController {
                 });
             }
 
-            // MÜZİĞİ BİLGİLERİNİ AL
             await SpotifyAPI.getAccessToken();
 
             var track;
             if(is_podcast) track = await SpotifyAPI.getPodcast(id);
             else track = await SpotifyAPI.getTrack(id);
         
-            // DİNLEYİCİLER LİSTESİNE KULLANICIYI KAYDET
             InstantListeners.set({ user_id: logged_id, track_id: track.id, artist_id: track.artist, is_podcast: track.is_podcast });
 
-            // DB DE SON DİNLEDİKLERİMİ VE CURRENT_PLAY GÜNCELLE
             updateCurrentPlay(logged_id, track);
 
             return res.status(200).json({
@@ -95,7 +92,6 @@ class MatchController {
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ GETİR
             const logged_track = InstantListeners.get(logged_id);
-            console.log('logged_track:', logged_track);
             if(!logged_track) {
                 return res.status(200).json({
                     success: false,
@@ -107,18 +103,15 @@ class MatchController {
             console.time('logged_user');
             const logged_user = await User.findById(logged_id).select('filtering').lean();
             console.timeEnd('logged_user');
-            console.log('logged_user:', logged_user);
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR
             var listeners = {};
             if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, logged_track.artist_id); 
             else listeners = InstantListeners.getTrackListeners(logged_id, logged_track.track_id); 
-            console.log('listeners:', listeners);
 
             var users = [];
- 
+
             const user_ids = Object.keys(listeners);
-            console.log('user_ids:', user_ids);
 
             if(user_ids.length > 0) {
 
@@ -160,20 +153,18 @@ class MatchController {
                     };
                 }
 
-                // UYGUN OLAN 10 KİŞİYİ GETİR
+                // UYGUN OLAN MAX 10 KİŞİYİ GETİR
                 console.time('fetch');
                 const fetch = await User
                 .find(query)
                 .limit(10)
+                .sort({ 'product.id': -1 })
                 .select('display_name avatars verified age permissions')
                 .lean();
                 console.timeEnd('fetch');
 
-                console.log('fetch:', fetch);
-
                 if(fetch.length > 0) {
 
-                    // SPOTIFY ACCESS TOKEN AYARLANDI
                     console.time('spotify_tracks');
 
                     await SpotifyAPI.getAccessToken();
@@ -190,9 +181,6 @@ class MatchController {
                     console.timeEnd('spotify_tracks');
 
                     fetch.forEach(user => {
-                        var age;
-                        if(user.permissions.show_age) age = user.age;
-        
                         const track = tracks.find(x => x.id === listeners[user._id.toString()].track_id);
         
                         users.push({
@@ -202,7 +190,7 @@ class MatchController {
                                 avatars: user.avatars,
                                 verified: user.verified,
                             },
-                            age: age,
+                            age: user.permissions.show_age ? age : null,
                             track: track
                         });
                     });
@@ -227,6 +215,18 @@ class MatchController {
 
             return res.status(400).json({
                 success: false
+            });
+        }
+    }
+
+    async likes_me(req, res) {
+        try {
+
+        } catch(err) {
+            console.log(err);
+            
+            return res.status(400).json({
+                success: false,
             });
         }
     }

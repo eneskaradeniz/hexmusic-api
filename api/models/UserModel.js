@@ -148,10 +148,9 @@ const UserSchema = mongoose.Schema({
     },
 
     product: {
-        type : String,
-        enum : ['free','premium_lite','premium_plus'],
-        default: 'free',
-        required: true,
+        id: { type: Number, default: 0 },
+        start_date: { type: Number, default: undefined },
+        end_date: { type: Number, default: undefined }
     },
 
     language: {
