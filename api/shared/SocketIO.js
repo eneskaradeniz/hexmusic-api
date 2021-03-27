@@ -52,7 +52,7 @@ class PrivateSocketIO {
                 const find_socket = this.findSocket(user_id);
                 if(!find_socket) {
                     console.log('socketi bulamadı sill');
-                    InstantListeners.delete(logged_id);
+                    InstantListeners.delete(user_id);
                 
                     this.stop_music(user_id);
                 } else {
@@ -103,12 +103,12 @@ class PrivateSocketIO {
         }
     }
 
-    async stop_music(logged_id) {
+    async stop_music(user_id) {
         const session = await db.startSession();
 
         try {
             await session.withTransaction(async () => {
-                await User.updateOne({ _id: logged_id }, { 
+                await User.updateOne({ _id: user_id }, { 
                     'current_play.is_playing': false,
                     'current_play.timestamp': Date.now(),
                 }).session(session);
