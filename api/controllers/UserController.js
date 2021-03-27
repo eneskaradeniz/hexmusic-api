@@ -745,7 +745,7 @@ class UserController {
                     error: 'MAX_AVATARS_LIMIT',
                 });
             }
-            if(logged_user.product === 'free' && logged_user.avatars.length >= 3) {
+            if(logged_user.product.id === 0 && logged_user.avatars.length >= 3) {
                 return res.status(200).json({
                     success: false,
                     error: 'NO_PERMISSION',
@@ -1082,7 +1082,7 @@ class UserController {
             }
 
             const user = await User.findById(logged_id).select('product').lean();
-            if(user.product !== 'free') {
+            if(user.product.id !== 0) {
                 await User.updateOne({ _id: logged_id }, { filtering });
             } else {
                 return res.status(200).json({
@@ -1270,7 +1270,7 @@ async function getMyProfile(logged_id) {
             notifications: user.notifications,
 
             filtering: user.filtering,
-            product: user.product,
+            product_id: user.product.id,
         };
        
     } catch(err) {

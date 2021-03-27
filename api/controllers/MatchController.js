@@ -339,7 +339,7 @@ class MatchController {
 
             // PREMİUM OLUP OLMADIĞINI KONTROL ET
             const user = await User.findById(logged_id).select('product');
-            if(user.product === 'free') {
+            if(user.product === 0) {
                 return res.status(200).json({
                     success: false,
                     error: 'NO_PERMISSION',
@@ -485,7 +485,7 @@ async function canSendLike(logged_id, like_type) {
     try {
         const logged_user = await User.findById(logged_id).select('counts product').lean();
 
-        const is_free = logged_user.product === 'free' ? true : false;
+        const is_free = logged_user.product === 0 ? true : false;
         var can_like;
         
         switch(like_type) {
@@ -753,7 +753,7 @@ async function pushLikeNotification({ from, to }) {
         if (from_user && to_user) {
             if(to_user.notifications.likes) {
                 var body;
-                if(to_user.product === 'premium_plus') {
+                if(to_user.product === 2) {
                     const translate = Language.translate({ key: 'premium_like_body', lang: to_user.language }); 
                     body = translate.replace('%name', from_user.display_name);
                 } else {
@@ -793,7 +793,7 @@ async function pushMegaLikeNotification({ from, to }) {
 
             if(to_user.notifications.mega_likes) {
                 var body;
-                if(to_user.product === 'premium_plus') {
+                if(to_user.product === 2) {
                     const translate = Language.translate({ key: 'premium_mega_like_body', lang: to_user.language }); 
                     body = translate.replace('%name', from_user.display_name);
                 } else {
