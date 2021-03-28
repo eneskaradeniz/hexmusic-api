@@ -8,6 +8,7 @@ module.exports = async (req, res, next) => {
         const authHeader = req.headers.authorization;
 
         if (!authHeader) {
+            console.log('NOT_FOUND_TOKEN');
             return res.status(401).json({
                 success: false,
                 error: 'NOT_FOUND_TOKEN'
@@ -16,6 +17,7 @@ module.exports = async (req, res, next) => {
 
         const arrayAuth = authHeader.split(' ');
         if (arrayAuth.length != 2 || arrayAuth[0] != 'Bearer') {
+            console.log('NOT_FOUND_TOKEN');
             return res.status(401).json({
                 success: false,
                 error: 'NOT_FOUND_TOKEN'
