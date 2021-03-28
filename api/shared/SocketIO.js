@@ -45,6 +45,7 @@ class PrivateSocketIO {
     disconnect_socket(socket) {
         try {
             var user_id = socket.decoded_token._id;
+            console.log(`(${this.count})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
 
             setTimeout(() => {
                 const find_socket = this.findSocket(user_id);
@@ -54,8 +55,6 @@ class PrivateSocketIO {
                     this.stop_music(user_id);
                 }
             }, 2000);
-            
-            console.log(`(${this.count})`, "DISCONNECT SOCKETID:USERID: " + socket.id + ":" + user_id);
         } catch(err) {
             Error({
                 file: 'server.js',
