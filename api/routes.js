@@ -21,7 +21,7 @@ module.exports = (upload) => {
     router.get('/profile/:user_id', [middlewares.user], UserController.profile);
     router.post('/delete_account', [middlewares.user], UserController.delete_account);
     
-    // USER PHOTOS
+    // USER AVATARS
     router.post('/add_avatar', [middlewares.user], upload.single('avatar'), UserController.add_avatar);
     router.post('/update_avatars', [middlewares.user], UserController.update_avatars);
     router.post('/delete_avatar/:image_id', [middlewares.user], UserController.delete_avatar);

@@ -5,6 +5,7 @@ const MessageSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Chat',
         required: true,
+        index: true
     },
     author_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -18,14 +19,14 @@ const MessageSchema = mongoose.Schema({
     },
     type: {
         type: String,
-        enum : ['text','track','artist','podcast','voice','gif'],
+        enum : ['text','track','artist','podcast','album','gif','voice'],
         required: true,
     },
     
     reply: {
         author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         message: { type: String },
-        type: { type: String, enum: ['text','track','artist','podcast','voice','gif'] },
+        type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice'] },
     },
 
     like: {
@@ -39,7 +40,8 @@ const MessageSchema = mongoose.Schema({
 
     created_at: {
         type: Number,
-        default: Date.now
+        default: Date.now,
+        index: true
     }
 });
 

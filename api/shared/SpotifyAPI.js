@@ -422,6 +422,7 @@ class SpotifyAPI {
     constructor() {
         throw new Error('Use SpotifyAPI.getInstance()');
     }
+    
     static getInstance() {
         if (!SpotifyAPI.instance) {
             SpotifyAPI.instance = new PrivateSpotifyAPI();

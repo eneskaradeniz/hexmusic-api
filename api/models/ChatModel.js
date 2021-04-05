@@ -15,7 +15,7 @@ const ChatSchema = mongoose.Schema({
     last_message: {
         author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         message: { type: String },
-        type: { type: String, enum: ['text','track','artist','podcast','voice','gif','like'] },
+        type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice','like'] },
         created_at: { type: Number }
     },
 

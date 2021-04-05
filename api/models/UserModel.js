@@ -32,19 +32,12 @@ const UserSchema = mongoose.Schema({
 
     //===========
 
-    current_play: {
-        track: { type: String, default: null },
-        artist: { type: String, default: null },
+    last_tracks: [String],
+    fav_tracks: [String],
+    fav_artists: [String],
 
-        is_playing: { type: Boolean, default: false },
-        timestamp: { type: Number, default: null },
-    },
-
-    fcm_token: {
-        token: { type: String },
-        platform: { type: String },
-        created_at: { type: Number },
-    },
+    spotify_fav_tracks: [String],
+    spotify_fav_artists: [String],
 
     spotify_id: {
         type: String,
@@ -96,19 +89,26 @@ const UserSchema = mongoose.Schema({
         default: null
     },
 
+    current_play: {
+        track: { type: String, default: null },
+        artist: { type: String, default: null },
+
+        is_playing: { type: Boolean, default: false },
+        timestamp: { type: Number, default: null },
+    },
+
+    fcm_token: {
+        token: { type: String },
+        platform: { type: String },
+        created_at: { type: Number },
+    },
+
     social_accounts: {
         instagram: { type: String, default: null },
         facebook: { type: String, default: null },
         twitter: { type: String, default: null },
         spotify: { type: String, default: null },
     },
-
-    last_tracks: [String],
-    fav_tracks: [String],
-    fav_artists: [String],
-
-    spotify_fav_tracks: [String],
-    spotify_fav_artists: [String],
 
     filtering: {
         artist: { type: Boolean, default: false },
