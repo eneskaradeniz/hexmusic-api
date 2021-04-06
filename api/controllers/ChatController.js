@@ -1,4 +1,5 @@
 const db = require('mongoose');
+const ObjectId = db.Types.ObjectId;
 
 const Chat = require('../models/ChatModel');
 const Message = require('../models/MessageModel');
@@ -11,11 +12,7 @@ const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Error = require('./ErrorController');
 
-const PAGE_SIZE = 15;
-
 class ChatController {
-
-    // CHAT
 
     async chat_list(req, res) {
         try {
@@ -46,14 +43,8 @@ class ChatController {
                 success: true,
                 chats
             });
-        } catch (err) {
-            Error({
-                file: 'ChatController.js',
-                method: 'chat_list',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
+        } catch(err) {
+            console.log(err);
 
             return res.status(400).json({
                 success: false
@@ -65,8 +56,8 @@ class ChatController {
         try {
             const logged_id = req._id;
             const chat_id = req.params.chat_id;
-            const page = parseInt(req.query.page);
-            if(!chat_id || !page) {
+            const page = parseInt(req.query.page); //int e çevirirken hata çıkarsa catch e düşücek logları kirleticek.
+            if(!chat_id || !page || page <= 0) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -83,27 +74,18 @@ class ChatController {
             }
 
             // CHATIN MESAJLARINI ÇEK
-            console.time('fetch_messages');
-
-            const messages = await Message.find({ chat_id: chat_id })
-            .skip((page - 1) * PAGE_SIZE)
-            .limit(PAGE_SIZE)
-            .lean();
-        
-            console.timeEnd('fetch_messages');
+            const messageBucket = await Message.find({ chat_id })
+                .sort({ created_at: -1 })
+                .limit(page)
+                .lean();
 
             return res.status(200).json({
                 success: true,
-                messages
+                messages: messageBucket.messages
             });
-        } catch (err) {
-            Error({
-                file: 'ChatController.js',
-                method: 'message_list',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
+
+        } catch(err) {
+            console.log(err);
 
             return res.status(400).json({
                 success: false
@@ -117,15 +99,15 @@ class ChatController {
         try {
             const author_id = req._id;
             const chat_id = req.params.chat_id;
-            const { message, type, reply, to } = req.body;
-            if(chat_id === null || message === null || type === null || to === null || to === author_id) {
+            const { content, type, reply, to } = req.body;
+            if(chat_id === null || content === null || type === null || to === null || to === author_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS'
                 });
             }
 
-            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
+            // BÖYLE BİR CHAT VAR MI VARSA CHATTE BU KULLANICI VAR MI?
             const lower_id = author_id < to ? author_id : to;
             const higher_id = author_id > to ? author_id : to;
 
@@ -140,19 +122,22 @@ class ChatController {
             }
 
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
-            var _message;
+            var _content;
             switch(type) {
                 case 'text':
-                    _message = message;
+                    _content = content;
                     break;
                 case 'track':
-                    _message = JSON.stringify(message);
+                    _content = JSON.stringify(content);
                     break;
                 case 'artist':
-                    _message = JSON.stringify(message);
+                    _content = JSON.stringify(content);
                     break;
                 case 'podcast':
-                    _message = JSON.stringify(message);
+                    _content = JSON.stringify(content);
+                    break;
+                case 'album':
+                    _content = JSON.stringify(content);
                     break;
                 default:
                     return res.status(200).json({
@@ -161,55 +146,51 @@ class ChatController {
                     });
             }
 
-            console.time('send_message');
-
-            var new_message;
+            // MESAJI GÖNDER
             await session.withTransaction(async () => {
-                const created_at = Date.now();
-                const promises = await Promise.all([
-                    // MESAJI OLUŞTUR
-                    Message.create([{
-                        chat_id,
-                        author_id,
-                        message: _message,
-                        type,
-                        reply,
-                        created_at
-                    }], { session: session }),
 
-                    // CHATİ GÜNCELLE
-                    Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
-                        last_message: {
-                            author_id,
-                            message: _message,
-                            type,
-                            created_at
-                        },
-                        lower_read: is_lower ? true : false,
-                        higher_read: is_lower ? false : true
-                    }).session(session),
-                ]);
+                const new_message = {
+                    _id: ObjectId(),
+                    author_id: author_id,
+                    content: _content,
+                    type: type,
+                    reply: reply,
+                    like: false,
+                    read: false,
+                    created_at: Date.now()
+                };
 
-                new_message = promises[0][0];
+                // MESAJI BUCKET'A EKLE YADA BUCKET OLUŞTUR
+                await Message.updateOne({ chat_id, count: { $lt: 100 } }, {
+                    $push: { messages: new_message },
+                    $inc: { count: 1 },
+                    $setOnInsert: { chat_id }
+                }, { upsert: true }).session(session);
+
+                // CHATI GÜNCELLE
+                await Chat.findByIdAndUpdate(chat_id, {
+                    last_message: {
+                        _id: new_message._id,
+                        author_id: new_message.author_id,
+                        content: new_message.content,
+                        type: new_message.type,
+                        created_at: new_message.created_at
+                    },
+                    lower_read: is_lower ? true : false,
+                    higher_read: is_lower ? false : true
+                }).session(session);
             });
 
-            console.timeEnd('send_message');
-
             emitReceiveMessage({ to, chat_id, message: new_message });
-            pushMessageNotification({ author_id, to, chat_id, message, message_type: type });
+            pushMessageNotification({ author_id, to, chat_id, content: _content, content_type: type });
 
             return res.status(200).json({
                 success: true,
                 message: new_message
             });
+
         } catch(err) {
-            Error({
-                file: 'ChatController.js',
-                method: 'send_message',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
+            console.log(err);
 
             return res.status(400).json({
                 success: false
@@ -219,9 +200,9 @@ class ChatController {
         }
     }
 
-    async like_message (req, res) {
+    async like_message(req, res) {
         const session = await db.startSession();
-        
+
         try {
             const author_id = req._id;
             const message_id = req.params.message_id;
@@ -247,63 +228,39 @@ class ChatController {
                 });
             }
 
-            console.time('update_message');
-
-            var update_message;
+            // MESAJI BEĞEN
             await session.withTransaction(async () => {
-                var promises = [];
 
                 // MESAJI GÜNCELLE
-                promises.push(Message.findByIdAndUpdate(message_id, { like: like }, { new: true }).session(session).lean());
-        
+                await Message.updateOne({
+                    "chat_id": chat_id,
+                    "messages._id": message_id
+                }, { $set: { "messages.$.like": like } }).session(session);
+
                 if(like) {
-                    // CHATİ GÜNCELLE
-                    promises.push(Chat.updateOne({ _id: chat_id, lower_id, higher_id }, {
+                    // CHATI GÜNCELLE
+                    Chat.findByIdAndUpdate(chat_id, {
                         last_message: {
-                            author_id,
-                            message,
-                            type,
-                            created_at
-                        },
+                            _id: message_id,
+                            author_id: author_id,
+                            content: null,
+                            type: 'like',
+                            created_at: Date.now()
+                        }, 
                         lower_read: is_lower ? true : false,
                         higher_read: is_lower ? false : true
-                    }).session(session));
+                    }).session(session);
                 }
-
-                const results = await Promise.all(promises);
-                update_message = results[0];
             });
 
-            console.timeEnd('update_message');
-
-            // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
-            emitLikeMessage({
-                to,
-                message: update_message,
-                chat: is_lower ? _higher_chat : _lower_chat
-            });
-
-            // EĞER LİKE İSE TARGET A BİLDİRİM GÖNDER
-            if(like) {
-                pushLikeNotification({
-                    author_id,
-                    to,
-                    chat_id
-                });
-            }
+            emitLikeMessage({ to, chat_id, message_id, author_id, like });
+            if(like) pushLikeNotification({ author_id, to, chat_id });
 
             return res.status(200).json({
-                success: true,
-                message: update_message
+                success: true
             });
         } catch(err) {
-            Error({
-                file: 'ChatController.js',
-                method: 'like_message',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
+            console.log(err);
 
             return res.status(400).json({
                 success: false
@@ -341,43 +298,30 @@ class ChatController {
                 });
             }
 
-            console.time('read_messages');
-
+            // OKUNMAMIŞ TÜM MESAJLARI OKU
             await session.withTransaction(async () => {
+
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
-                await Message.updateMany({ 
-                    chat_id: chat_id,
-                    author_id: { $ne: author_id },
-                    read: false,
+                await Message.updateMany({
+                    "chat_id": chat_id,
+                    "messages.author_id": { $ne: author_id },
+                    "messages.read": false,
                 }, { $set: { read: true } }).session(session);
 
                 // CHATI GÜNCELLE
-                if(is_lower) {
-                    await Chat.updateOne({ _id: chat_id }, { lower_read: true }).session(session);
-                } else {
-                    await Chat.updateOne({ _id: chat_id }, { higher_read: true }).session(session);
-                }
+                if(is_lower) 
+                    await Chat.findByIdAndUpdate(chat_id, { lower_read: true }).session(session);
+                else 
+                    await Chat.findByIdAndUpdate(chat_id, { higher_read: true }).session(session);
             });
-            
-            console.timeEnd('read_messages');
 
-            // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE
-            emitReadMessages({
-                to,
-                chat_id
-            });
+            emitReadMessages({ to, chat_id });
 
             return res.status(200).json({
                 success: true
             });
-        } catch(err) {
-            Error({
-                file: 'ChatController.js',
-                method: 'read_messages',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
+        } catch (err) {
+            console.log(err);
 
             return res.status(400).json({
                 success: false
@@ -424,8 +368,8 @@ function emitReceiveMessage({ to, chat_id, message }) {
         const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('receive_message', {
-                chat_id: chat_id,
-                message: message
+                chat_id,
+                message
             });
         }
     } catch (err) {
@@ -433,13 +377,15 @@ function emitReceiveMessage({ to, chat_id, message }) {
     }
 }
 
-function emitLikeMessage({ to, chat_id, message }) {
+function emitLikeMessage({ to, chat_id, message_id, author_id, like }) {
     try {
         const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('like_message', {
-                chat_id: chat_id,
-                message: message
+                chat_id,
+                message_id,
+                author_id,
+                like
             });
         }
     } catch (err) {
@@ -460,7 +406,7 @@ function emitReadMessages({ to, chat_id }) {
 
 // PUSH NOTIFICATIONS
 
-async function pushMessageNotification({ author_id, to, chat_id, message, message_type }) {
+async function pushMessageNotification({ author_id, to, chat_id, content, content_type }) {
     try {
         const results = await Promise.all([
             User.findById(to).select('fcm_token notifications language').lean(),
@@ -475,12 +421,12 @@ async function pushMessageNotification({ author_id, to, chat_id, message, messag
             
                 var body;
                 var translate;
-                switch(message_type) {
+                switch(content_type) {
                     case 'text':
-                        body = message;
+                        body = content;
                         break;
                     case 'track':
-                        const track = JSON.parse(message);
+                        const track = JSON.parse(content);
                         translate = Language.translate({ key: "track_message", lang: to_user.language });
 
                         var mapObj = {
@@ -492,7 +438,7 @@ async function pushMessageNotification({ author_id, to, chat_id, message, messag
                         body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
                         break;
                     case 'artist':
-                        const artist = JSON.parse(message);
+                        const artist = JSON.parse(content);
                         translate = Language.translate({ key: "artist_message", lang: to_user.language });
 
                         var mapObj = {
@@ -503,13 +449,25 @@ async function pushMessageNotification({ author_id, to, chat_id, message, messag
                         body = translate.replace(/%name|%artistName/gi, function(matched) { return mapObj[matched]; });
                         break;
                     case 'podcast':
-                        const podcast = JSON.parse(message);
+                        const podcast = JSON.parse(content);
                         translate = Language.translate({ key: "track_message", lang: to_user.language });
 
                         var mapObj = {
                             "%name": from_user.display_name,
                             "%artistName": podcast.artists[0],
                             "%trackName": podcast.name,
+                        };
+                        
+                        body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });
+                        break;
+                      case 'album':
+                        const album = JSON.parse(content);
+                        translate = Language.translate({ key: "track_message", lang: to_user.language });
+
+                        var mapObj = {
+                            "%name": from_user.display_name,
+                            "%artistName": album.artists[0],
+                            "%trackName": album.name,
                         };
                         
                         body = translate.replace(/%name|%artistName|%trackName/gi, function(matched) { return mapObj[matched]; });

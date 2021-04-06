@@ -1,32 +1,27 @@
 const mongoose = require('mongoose');
 
 const MessageSchema = mongoose.Schema({
-    chat_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Chat',
-        required: true,
-        index: true
-    },
     author_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
 
-    message: {
+    content: {
         type: String,
-        required: true,
+        required: true
     },
     type: {
         type: String,
         enum : ['text','track','artist','podcast','album','gif','voice'],
-        required: true,
+        required: true
     },
     
     reply: {
-        author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        message: { type: String },
-        type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice'] },
+        _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+        author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        content: { type: String },
+        type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice'], required: true },
     },
 
     like: {
@@ -40,10 +35,30 @@ const MessageSchema = mongoose.Schema({
 
     created_at: {
         type: Number,
+        default: Date.now
+    }
+});
+
+const MessageBucketSchema = mongoose.Schema({
+    chat_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Chat',
+        required: true,
+        index: true
+    },
+
+    count: {
+        type: mongoose.Schema.Types.Number
+    },
+
+    messages: [MessageSchema],
+
+    created_at: {
+        type: Number,
         default: Date.now,
         index: true
     }
 });
 
-MessageSchema.index({ chat_id: 1, created_at: -1 });
-module.exports = mongoose.model('Message', MessageSchema);
+MessageBucketSchema.index({ chat_id: 1, created_at: -1 });
+module.exports = mongoose.model('Message', MessageBucketSchema);
