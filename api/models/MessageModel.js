@@ -58,5 +58,6 @@ const MessageBucketSchema = mongoose.Schema({
     }
 });
 
+MessageBucketSchema.index({ "messages._id": 1 });
 MessageBucketSchema.index({ chat_id: 1, created_at: -1 });
 module.exports = mongoose.model('Message', MessageBucketSchema);
