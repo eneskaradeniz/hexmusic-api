@@ -83,7 +83,7 @@ class ChatController {
 
             return res.status(200).json({
                 success: true,
-                messages: messageBucket != null ? messageBucket.messages : []
+                messages: messageBucket.length > 0 ? messageBucket[0].messages : []
             });
 
         } catch(err) {
