@@ -79,9 +79,11 @@ class ChatController {
                 .limit(page)
                 .lean();
 
+            console.log(messageBucket);
+
             return res.status(200).json({
                 success: true,
-                messages: messageBucket.messages
+                messages: messageBucket != null ? messageBucket.messages : []
             });
 
         } catch(err) {
