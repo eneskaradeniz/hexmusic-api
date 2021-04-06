@@ -12,7 +12,7 @@ const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Error = require('./ErrorController');
 
-const MESSAGE_BUCKET_SIZE = 100;
+const MESSAGE_BUCKET_SIZE = 15;
 
 class ChatController {
 
