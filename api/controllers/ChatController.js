@@ -74,11 +74,8 @@ class ChatController {
             }
 
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
-            console.time('find_chat');
-            const find_chat = await Chat.findOne({ _id: chat_id }).select('lower_id higher_id').lean();
-            console.timeEnd('find_chat');
-
-            if(!find_chat || (find_chat.lower_id.toString() !== logged_id.toString() && find_chat.higher_id.toString() !== logged_id.toString())) {
+            const chatExists = await findChatById({ chat_id, logged_id });
+            if(!chatExists) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
@@ -88,17 +85,11 @@ class ChatController {
             // CHATIN MESAJLARINI ÇEK
             console.time('fetch_messages');
 
-            /*
             const messages = await Message.find({ chat_id: chat_id })
             .skip((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
-            .sort({ created_at: -1 })
             .lean();
-            */
-           
-            const messages = await Message.find({ chat_id: chat_id })
-            .sort({ created_at: -1 })
-            .lean();
+        
             console.timeEnd('fetch_messages');
 
             return res.status(200).json({
@@ -140,9 +131,7 @@ class ChatController {
 
             const is_lower = lower_id === author_id;
 
-            console.time('findChat');
             const result = await findChat({ chat_id, lower_id, higher_id });
-            console.timeEnd('findChat');
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -172,8 +161,9 @@ class ChatController {
                     });
             }
 
-            var new_message;
             console.time('send_message');
+
+            var new_message;
             await session.withTransaction(async () => {
                 const created_at = Date.now();
                 const promises = await Promise.all([
@@ -202,6 +192,7 @@ class ChatController {
 
                 new_message = promises[0][0];
             });
+
             console.timeEnd('send_message');
 
             emitReceiveMessage({ to, chat_id, message: new_message });
@@ -256,6 +247,8 @@ class ChatController {
                 });
             }
 
+            console.time('update_message');
+
             var update_message;
             await session.withTransaction(async () => {
                 var promises = [];
@@ -281,6 +274,8 @@ class ChatController {
                 update_message = results[0];
             });
 
+            console.timeEnd('update_message');
+
             // TARGETIN SOKETİNİ BUL VE MESAJI VE CHATI GÖNDER.
             emitLikeMessage({
                 to,
@@ -288,7 +283,7 @@ class ChatController {
                 chat: is_lower ? _higher_chat : _lower_chat
             });
 
-            // TARGET A BİLDİRİM GÖNDER
+            // EĞER LİKE İSE TARGET A BİLDİRİM GÖNDER
             if(like) {
                 pushLikeNotification({
                     author_id,
@@ -338,9 +333,7 @@ class ChatController {
 
             const is_lower = author_id === lower_id;
 
-            console.time('findChat');
             const result = await findChat({ chat_id, lower_id, higher_id });
-            console.timeEnd('findChat');
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -348,7 +341,8 @@ class ChatController {
                 });
             }
 
-            console.time('read');
+            console.time('read_messages');
+
             await session.withTransaction(async () => {
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
                 await Message.updateMany({ 
@@ -364,7 +358,8 @@ class ChatController {
                     await Chat.updateOne({ _id: chat_id }, { higher_read: true }).session(session);
                 }
             });
-            console.timeEnd('read');
+            
+            console.timeEnd('read_messages');
 
             // TARGETIN SOKETİNİ BUL VE MESAJLARININ OKUNDUĞUNU SÖYLE
             emitReadMessages({
@@ -399,9 +394,25 @@ module.exports = new ChatController();
 
 async function findChat({ chat_id, lower_id, higher_id }) {
     try {
+        console.time('findChat');
         const find_chat = await Chat.countDocuments({ _id: chat_id, lower_id, higher_id });
+        console.timeEnd('findChat');
         return find_chat > 0 ? true : false;
     } catch (err) {
+        throw err;
+    }
+}
+
+async function findChatById({ chat_id, logged_id }) {
+    try {
+        console.time('find_chat');
+        const find_chat = await Chat.findById(chat_id).select('lower_id higher_id').lean();
+        console.timeEnd('find_chat');
+
+        if(!find_chat || (find_chat.lower_id.toString() !== logged_id.toString() && find_chat.higher_id.toString() !== logged_id.toString())) return false;
+        
+        return true;
+    } catch(err) {
         throw err;
     }
 }
