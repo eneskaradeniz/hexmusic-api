@@ -305,11 +305,17 @@ class ChatController {
             await session.withTransaction(async () => {
 
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
-                await Message.updateMany({
-                    "chat_id": chat_id,
-                    "messages.author_id": { $ne: author_id },
-                    "messages.read": false,
-                }, { $set: { "messages.$.read": true } }).session(session);
+                await Message.updateMany({ chat_id }, 
+                { 
+                    $set: { "messages.$[i].read": true } 
+                },
+                {
+                    arrayFilters: [{
+                        "i.author_id": { $ne: author_id },
+                        "i.read": false,
+                    }]
+                }
+                ).session(session);
 
                 // CHATI GÜNCELLE
                 if(is_lower) 
