@@ -12,7 +12,7 @@ const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Error = require('./ErrorController');
 
-const MESSAGE_BUCKET_SIZE = 15;
+const MESSAGE_BUCKET_SIZE = 100;
 
 class ChatController {
 
@@ -168,7 +168,7 @@ class ChatController {
                     $push: { messages: new_message },
                     $inc: { count: 1 },
                     $setOnInsert: { chat_id }
-                }, { upsert: true }).session(session);
+                }, { upsert: true, setDefaultsOnInsert: true }).session(session);
 
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chat_id, {
