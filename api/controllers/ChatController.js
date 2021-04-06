@@ -12,6 +12,8 @@ const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Error = require('./ErrorController');
 
+const MESSAGE_BUCKET_SIZE = 15;
+
 class ChatController {
 
     async chat_list(req, res) {
@@ -148,9 +150,6 @@ class ChatController {
                     });
             }
 
-            console.log('content:', content);
-            console.log('_content:', _content);
-
             // MESAJI GÖNDER
             var new_message;
             await session.withTransaction(async () => {
@@ -166,10 +165,8 @@ class ChatController {
                     created_at: Date.now()
                 };
 
-                console.log('new_message:', new_message);
-
                 // MESAJI BUCKET'A EKLE YADA BUCKET OLUŞTUR
-                await Message.updateOne({ chat_id, count: { $lt: 100 } }, {
+                await Message.updateOne({ chat_id, count: { $lt: MESSAGE_BUCKET_SIZE } }, {
                     $push: { messages: new_message },
                     $inc: { count: 1 },
                     $setOnInsert: { chat_id }
