@@ -309,7 +309,7 @@ class ChatController {
                     "chat_id": chat_id,
                     "messages.author_id": { $ne: author_id },
                     "messages.read": false,
-                }, { $set: { read: true } }).session(session);
+                }, { $set: { "messages.$.read": true } }).session(session);
 
                 // CHATI GÜNCELLE
                 if(is_lower) 
