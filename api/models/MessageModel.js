@@ -43,8 +43,7 @@ const MessageBucketSchema = mongoose.Schema({
     chat_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Chat',
-        required: true,
-        index: true
+        required: true
     },
 
     count: {
@@ -55,8 +54,7 @@ const MessageBucketSchema = mongoose.Schema({
 
     created_at: {
         type: Number,
-        default: Date.now,
-        index: true
+        default: Date.now
     }
 });
 

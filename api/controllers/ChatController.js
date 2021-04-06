@@ -81,8 +81,6 @@ class ChatController {
                 .limit(page)
                 .lean();
 
-            console.log(messageBucket);
-
             return res.status(200).json({
                 success: true,
                 messages: messageBucket.length > 0 ? messageBucket[0].messages : []
