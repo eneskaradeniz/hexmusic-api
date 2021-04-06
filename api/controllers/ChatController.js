@@ -149,9 +149,10 @@ class ChatController {
             }
 
             // MESAJI GÖNDER
+            var new_message;
             await session.withTransaction(async () => {
 
-                const new_message = {
+                new_message = {
                     _id: ObjectId(),
                     author_id: author_id,
                     content: _content,
