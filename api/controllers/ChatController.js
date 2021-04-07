@@ -161,7 +161,7 @@ class ChatController {
                 }], { session: session }))[0];
 
                 // CHATI GÜNCELLE
-                await Chat.findByIdAndUpdate(chat_id, {
+                await Chat.updateOne({ _id: chat_id }, {
                     last_message: {
                         _id: new_message._id,
                         author_id: new_message.author_id,
@@ -225,11 +225,11 @@ class ChatController {
             await session.withTransaction(async () => {
 
                 // MESAJI GÜNCELLE
-                await Message.updateOne(message_id, { like }).session(session).lean();
+                await Message.updateOne({ _id: message_id }, { like }).session(session).lean();
 
                 if(like) {
                     // CHATI GÜNCELLE
-                    Chat.findByIdAndUpdate(chat_id, {
+                    Chat.updateOne({ _id: chat_id }, {
                         last_message: {
                             _id: message_id,
                             author_id: author_id,
@@ -295,7 +295,7 @@ class ChatController {
                 await Message.updateMany({ chat_id, author_id: { $ne: author_id }, read: false }, { read: true }).session(session);
 
                 // CHATI GÜNCELLE
-                await Chat.findByIdAndUpdate(chat_id, is_lower ? { lower_read: true } : { higher_read: true }).session(session);   
+                await Chat.updateOne({ _id: chat_id }, is_lower ? { lower_read: true } : { higher_read: true }).session(session);   
             });
 
             emitReadMessages({ to, chat_id });
