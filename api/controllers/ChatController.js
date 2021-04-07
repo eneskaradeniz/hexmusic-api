@@ -321,9 +321,9 @@ module.exports = new ChatController();
 
 async function findChat({ chat_id, lower_id, higher_id }) {
     try {
-        console.time('findChat');
+        console.time('find_chat');
         const find_chat = await Chat.countDocuments({ _id: chat_id, lower_id, higher_id });
-        console.timeEnd('findChat');
+        console.timeEnd('find_chat');
         return find_chat > 0 ? true : false;
     } catch (err) {
         throw err;
