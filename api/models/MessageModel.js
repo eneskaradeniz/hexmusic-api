@@ -23,7 +23,7 @@ const MessageSchema = mongoose.Schema({
     },
     
     reply: {
-        type: new Schema({
+        type: new mongoose.Schema({
             _id: { type: mongoose.Schema.Types.ObjectId, required: true },
             author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
             content: { type: String },
