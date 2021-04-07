@@ -156,7 +156,8 @@ class ChatController {
                     chat_id,
                     author_id,
                     content: _content,
-                    type
+                    type,
+                    reply
                 }], { session: session });
 
                 // CHATI GÜNCELLE
