@@ -23,10 +23,13 @@ const MessageSchema = mongoose.Schema({
     },
     
     reply: {
-        _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-        author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        content: { type: String },
-        type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice'], required: true },
+        type: {
+            _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+            author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+            content: { type: String },
+            type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice'], required: true },
+        },
+        required: false
     },
 
     like: {
