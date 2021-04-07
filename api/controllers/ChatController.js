@@ -1,5 +1,4 @@
 const db = require('mongoose');
-const ObjectId = db.Types.ObjectId;
 
 const Chat = require('../models/ChatModel');
 const Message = require('../models/MessageModel');
@@ -12,7 +11,7 @@ const SocketIO = require('../shared/SocketIO').getInstance();
 
 const Error = require('./ErrorController');
 
-const MESSAGE_BUCKET_SIZE = 15;
+const MESSAGE_PAGE_SIZE = 25;
 
 class ChatController {
 
@@ -58,8 +57,8 @@ class ChatController {
         try {
             const logged_id = req._id;
             const chat_id = req.params.chat_id;
-            const page = parseInt(req.query.page); //int e çevirirken hata çıkarsa catch e düşücek logları kirleticek.
-            if(!chat_id || !page || page <= 0) {
+            const skip = req.query.skip;
+            if(!chat_id || !skip) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -76,14 +75,14 @@ class ChatController {
             }
 
             // CHATIN MESAJLARINI ÇEK
-            const messageBucket = await Message.find({ chat_id })
+            const messages = await Message.find({ chat_id, created_at: { $gt: skip } })
                 .sort({ created_at: -1 })
-                .limit(page)
+                .limit(MESSAGE_PAGE_SIZE)
                 .lean();
 
             return res.status(200).json({
                 success: true,
-                messages: messageBucket.length > 0 ? messageBucket[0].messages.reverse() : []
+                messages
             });
 
         } catch(err) {
@@ -152,23 +151,14 @@ class ChatController {
             var new_message;
             await session.withTransaction(async () => {
 
-                new_message = {
-                    _id: ObjectId(),
-                    author_id: author_id,
+                // MESAJI OLUŞTUR
+                new_message = await Message.create([{
+                    chat_id,
+                    author_id,
                     content: _content,
-                    type: type,
-                    reply: reply,
-                    like: false,
-                    read: false,
-                    created_at: Date.now()
-                };
-
-                // MESAJI BUCKET'A EKLE YADA BUCKET OLUŞTUR
-                await Message.updateOne({ chat_id, count: { $lt: MESSAGE_BUCKET_SIZE } }, {
-                    $push: { messages: new_message },
-                    $inc: { count: 1 },
-                    $setOnInsert: { chat_id }
-                }, { upsert: true, setDefaultsOnInsert: true }).session(session);
+                    type,
+                    reply
+                }], { session: session });
 
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chat_id, {
@@ -235,10 +225,7 @@ class ChatController {
             await session.withTransaction(async () => {
 
                 // MESAJI GÜNCELLE
-                await Message.updateOne({
-                    "chat_id": chat_id,
-                    "messages._id": message_id
-                }, { $set: { "messages.$.like": like } }).session(session);
+                await Message.updateOne(message_id, { like }).session(session).lean();
 
                 if(like) {
                     // CHATI GÜNCELLE
@@ -305,23 +292,10 @@ class ChatController {
             await session.withTransaction(async () => {
 
                 // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
-                await Message.updateMany({ chat_id }, 
-                { 
-                    $set: { "messages.$[i].read": true } 
-                },
-                {
-                    arrayFilters: [{
-                        "i.author_id": { $ne: author_id },
-                        "i.read": false,
-                    }]
-                }
-                ).session(session);
+                await Message.updateMany({ chat_id, author_id: { $ne: author_id }, read: false }, { read: true }).session(session);
 
                 // CHATI GÜNCELLE
-                if(is_lower) 
-                    await Chat.findByIdAndUpdate(chat_id, { lower_read: true }).session(session);
-                else 
-                    await Chat.findByIdAndUpdate(chat_id, { higher_read: true }).session(session);
+                await Chat.findByIdAndUpdate(chat_id, is_lower ? { lower_read: true } : { higher_read: true }).session(session);   
             });
 
             emitReadMessages({ to, chat_id });

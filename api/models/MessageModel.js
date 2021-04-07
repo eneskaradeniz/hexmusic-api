@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const MessageSchema = mongoose.Schema({
+    chat_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Chat',
+        required: true
+    },
     author_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -39,25 +44,5 @@ const MessageSchema = mongoose.Schema({
     }
 });
 
-const MessageBucketSchema = mongoose.Schema({
-    chat_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Chat',
-        required: true
-    },
-
-    count: {
-        type: mongoose.Schema.Types.Number
-    },
-
-    messages: [MessageSchema],
-
-    created_at: {
-        type: Number,
-        default: Date.now
-    }
-});
-
-MessageBucketSchema.index({ "messages._id": 1 });
-MessageBucketSchema.index({ "chat_id": 1, "created_at": -1 });
-module.exports = mongoose.model('Message', MessageBucketSchema);
+MessageSchema.index({ chat_id: 1, created_at: -1 });
+module.exports = mongoose.model('Message', MessageSchema);
