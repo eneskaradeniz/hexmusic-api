@@ -160,8 +160,6 @@ class ChatController {
                     reply
                 }], { session: session }))[0];
 
-                console.log('new_message:', new_message);
-
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chat_id, {
                     last_message: {
