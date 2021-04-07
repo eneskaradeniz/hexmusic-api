@@ -229,7 +229,7 @@ class ChatController {
 
                 if(like) {
                     // CHATI GÜNCELLE
-                    Chat.updateOne({ _id: chat_id }, {
+                    await Chat.updateOne({ _id: chat_id }, {
                         last_message: {
                             _id: message_id,
                             author_id: author_id,
