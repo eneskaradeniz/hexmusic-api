@@ -13,11 +13,14 @@ const ChatSchema = mongoose.Schema({
     },
 
     last_message: {
-        _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-        author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        content: { type: String },
-        type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice','like'], required: true },
-        created_at: { type: Number, required: true }
+        type: new mongoose.Schema({
+            _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+            author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+            content: { type: String },
+            type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice','like'], required: true },
+            created_at: { type: Number, required: true }
+        }),
+        required: false
     },
 
     lower_read: {

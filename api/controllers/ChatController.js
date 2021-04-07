@@ -152,13 +152,15 @@ class ChatController {
             await session.withTransaction(async () => {
 
                 // MESAJI OLUŞTUR
-                new_message = await Message.create([{
+                new_message = (await Message.create([{
                     chat_id,
                     author_id,
                     content: _content,
                     type,
                     reply
-                }], { session: session });
+                }], { session: session }))[0];
+
+                console.log('new_message:', new_message);
 
                 // CHATI GÜNCELLE
                 await Chat.findByIdAndUpdate(chat_id, {
