@@ -1,4 +1,5 @@
 const db = require('mongoose');
+const ObjectId = db.Types.ObjectId;
 
 const Chat = require('../models/ChatModel');
 const Message = require('../models/MessageModel');
@@ -19,7 +20,7 @@ class ChatController {
         try {
             const logged_id = req._id;
 
-            const chats = await Chat.find({ 'members.user_id': logged_id })
+            const chats = await Chat.find({ 'members.user_id': ObjectId(logged_id) })
                 .populate('members', 'display_name avatars verified')
                 .sort({ created_at: -1 })
                 .lean();
