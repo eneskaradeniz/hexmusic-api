@@ -21,9 +21,11 @@ class ChatController {
             const logged_id = req._id;
 
             const chats = await Chat.find({ 'members.user_id': ObjectId(logged_id) })
-                .populate('members', 'display_name avatars verified')
+                .populate('members.user_id', 'display_name avatars verified')
                 .sort({ created_at: -1 })
                 .lean();
+
+            console.log(chats);
 
             return res.status(200).json({
                 success: true,
