@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const ConversationSchema = mongoose.Schema({
+const ChatSchema = mongoose.Schema({
     members: [{ 
         user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         read: { type: Boolean, default: false }
@@ -28,4 +28,4 @@ const ConversationSchema = mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Conversation', ConversationSchema);
+module.exports = mongoose.model('Chat', ChatSchema);

@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/UserModel');
 const BlockedUser = require('../models/BlockedUserModel');
 const Match = require('../models/MatchModel');
-const Conversation = require('../models/ConversationModel');
+const Chat = require('../models/ChatModel');
 const Message = require('../models/MessageModel');
 const Like = require('../models/LikeModel');
 const Dislike = require('../models/DislikeModel');
@@ -455,7 +455,7 @@ class UserController {
                 }).session(session);
 
                 // CHATLERİNİ SİL
-                await Conversation.deleteMany({
+                await Chat.deleteMany({
                     $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
                 }).session(session);
             });
@@ -566,7 +566,7 @@ class UserController {
    
             await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
-                await Conversation.deleteOne({ _id: find_match.chat_id }).session(session);
+                await Chat.deleteOne({ _id: find_match.chat_id }).session(session);
                 await Message.deleteMany({ chat_id: find_match.chat_id }).session(session);
                 await Match.deleteOne({ _id: find_match._id }).session(session);
             });
@@ -632,7 +632,7 @@ class UserController {
    
             await session.withTransaction(async () => {
                 // EŞLEŞME İLE ALAKALI HERŞEYİ SİL.
-                await Conversation.deleteOne({ _id: find_match.chat_id }).session(session);
+                await Chat.deleteOne({ _id: find_match.chat_id }).session(session);
                 await Message.deleteMany({ chatId: find_match.chat_id }).session(session);
                 await Match.deleteOne({ _id: find_match._id }).session(session);
 
