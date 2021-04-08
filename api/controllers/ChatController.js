@@ -272,7 +272,7 @@ class ChatController {
                 }, { read: true }).session(session);
 
                 // CHATI GÜNCELLE
-                await Chat.updateOne({ _id: chat_id, 'members.user_id': logged_id }, { $set: { 'members.$.read': true } }).session(session);
+                await Chat.updateOne({ _id: chat_id, 'members.user_id': author_id }, { $set: { 'members.$.read': true } }).session(session);
             });
 
             emitReadMessages({ to, chat_id });
