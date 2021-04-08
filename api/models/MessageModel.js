@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const MessageSchema = mongoose.Schema({
-    chat_id: {
+    conversation_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Chat',
+        ref: 'Conversation',
         required: true
     },
     author_id: {
@@ -47,5 +47,5 @@ const MessageSchema = mongoose.Schema({
     }
 });
 
-MessageSchema.index({ chat_id: 1, created_at: -1 });
+MessageSchema.index({ conversation_id: 1, created_at: -1 });
 module.exports = mongoose.model('Message', MessageSchema);

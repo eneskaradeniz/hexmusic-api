@@ -2,7 +2,7 @@ const db = require('mongoose');
 
 const lodash = require('lodash');
 
-const Chat = require('../models/ChatModel');
+const Conversation = require('../models/ConversationModel');
 const Match = require('../models/MatchModel');
 const User = require('../models/UserModel');
 const Like = require('../models/LikeModel');
@@ -539,7 +539,7 @@ async function _like({ logged_id, target_id, match_type, like_type, track_id, is
 
             if(target_like) {
                 // CHAT OLUŞTUR
-                _chat = (await Chat.create([{ 
+                _chat = (await Conversation.create([{ 
                     lower_id: lower_id, 
                     higher_id: higher_id, 
                     is_mega_like: like_type === 'mega_like' || target_like.like_type === 'mega_like', 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const ChatController = require('./controllers/ChatController');
+const ConversationController = require('./controllers/ConversationController');
 const UserController = require('./controllers/UserController');
 const MatchController = require('./controllers/MatchController');
 const HomeController = require('./controllers/HomeController');
@@ -60,11 +60,11 @@ module.exports = (upload) => {
     router.get('/live_count', HomeController.live_count);
 
     // CHAT
-    router.get('/chat_list', [middlewares.user], ChatController.chat_list);
-    router.get('/message_list/:chat_id', [middlewares.user], ChatController.message_list);
-    router.post('/read_messages/:chat_id', [middlewares.user], ChatController.read_messages);
-    router.post('/send_message/:chat_id', [middlewares.user], ChatController.send_message);
-    router.post('/like_message/:message_id', [middlewares.user], ChatController.like_message);
+    router.get('/chat_list', [middlewares.user], ConversationController.conversation_list);
+    router.get('/message_list/:chat_id', [middlewares.user], ConversationController.message_list);
+    router.post('/read_messages/:chat_id', [middlewares.user], ConversationController.read_messages);
+    router.post('/send_message/:chat_id', [middlewares.user], ConversationController.send_message);
+    router.post('/like_message/:message_id', [middlewares.user], ConversationController.like_message);
 
     return router;
 }

@@ -1,6 +1,6 @@
 const db = require('mongoose');
 
-const Chat = require('../models/ChatModel');
+const Conversation = require('../models/ConversationModel');
 const Message = require('../models/MessageModel');
 const User = require('../models/UserModel');
 
@@ -13,36 +13,20 @@ const Error = require('./ErrorController');
 
 const MESSAGE_PAGE_SIZE = 25;
 
-class ChatController {
+class ConversationController {
 
-    async chat_list(req, res) {
+    async conversation_list(req, res) {
         try {
             const logged_id = req._id;
 
-            const result = await Chat.find({ $or: [{ lower_id: logged_id }, { higher_id: logged_id }] })
-            .populate('lower_id', 'display_name avatars verified')
-            .populate('higher_id', 'display_name avatars verified')
-            .sort({ created_at: -1 })
-            .lean();
-
-            var chats = [];
-
-            result.forEach(chat => {
-                const is_lower = logged_id.toString() === chat.lower_id._id.toString();
-
-                chats.push({
-                    _id: chat._id,
-                    user: is_lower ? chat.higher_id : chat.lower_id,
-                    last_message: chat.last_message,
-                    read: is_lower ? chat.lower_read : chat.higher_read,
-                    is_mega_like: chat.is_mega_like,
-                    created_at: chat.created_at
-                });
-            });
+            const conversations = await Conversation.find({ members: { $elemMatch: { user_id: logged_id } } })
+                .populate('members', 'display_name avatars verified')
+                .sort({ created_at: -1 })
+                .lean();
 
             return res.status(200).json({
                 success: true,
-                chats
+                conversations
             });
         } catch(err) {
             console.log(err);
@@ -56,26 +40,17 @@ class ChatController {
     async message_list(req, res) {
         try {
             const logged_id = req._id;
-            const chat_id = req.params.chat_id;
+            const conversation_id = req.params.conversation_id;
             const skip = req.query.skip;
-            if(!chat_id || !skip) {
+            if(!conversation_id || !skip) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
             }
 
-            // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET
-            const chatExists = await findChatById({ chat_id, logged_id });
-            if(!chatExists) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_FOUND_CHAT'
-                });
-            }
-
             // CHATIN MESAJLARINI ÇEK
-            const messages = await Message.find({ chat_id, created_at: { $gt: skip } })
+            const messages = await Message.find({ conversation_id, members: { $elemMatch: { user_id: logged_id } }, created_at: { $gt: skip } })
                 .sort({ created_at: -1 })
                 .limit(MESSAGE_PAGE_SIZE)
                 .lean();
@@ -99,9 +74,9 @@ class ChatController {
 
         try {
             const author_id = req._id;
-            const chat_id = req.params.chat_id;
+            const conversation_id = req.params.conversation_id;
             const { content, type, reply, to } = req.body;
-            if(chat_id === null || content === null || type === null || to === null || to === author_id) {
+            if(conversation_id === null || content === null || type === null || to === null || to === author_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS'
@@ -109,12 +84,7 @@ class ChatController {
             }
 
             // BÖYLE BİR CHAT VAR MI VARSA CHATTE BU KULLANICI VAR MI?
-            const lower_id = author_id < to ? author_id : to;
-            const higher_id = author_id > to ? author_id : to;
-
-            const is_lower = lower_id === author_id;
-
-            const result = await findChat({ chat_id, lower_id, higher_id });
+            const result = await findConversation({ conversation_id, author_id, to });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -153,7 +123,7 @@ class ChatController {
 
                 // MESAJI OLUŞTUR
                 new_message = (await Message.create([{
-                    chat_id,
+                    conversation_id,
                     author_id,
                     content: _content,
                     type,
@@ -161,7 +131,7 @@ class ChatController {
                 }], { session: session }))[0];
 
                 // CHATI GÜNCELLE
-                await Chat.updateOne({ _id: chat_id }, {
+                await Conversation.updateOne({ _id: conversation_id, 'members.user_id': to }, {
                     last_message: {
                         _id: new_message._id,
                         author_id: new_message.author_id,
@@ -169,13 +139,12 @@ class ChatController {
                         type: new_message.type,
                         created_at: new_message.created_at
                     },
-                    lower_read: is_lower ? true : false,
-                    higher_read: is_lower ? false : true
+                    $set: { 'members.$.read': false }
                 }).session(session);
             });
 
-            emitReceiveMessage({ to, chat_id, message: new_message });
-            pushMessageNotification({ author_id, to, chat_id, content: _content, content_type: type });
+            emitReceiveMessage({ to, conversation_id, message: new_message });
+            pushMessageNotification({ author_id, to, conversation_id, content: _content, content_type: type });
 
             return res.status(200).json({
                 success: true,
@@ -199,8 +168,8 @@ class ChatController {
         try {
             const author_id = req._id;
             const message_id = req.params.message_id;
-            const { chat_id, like, to } = req.body;
-            if(author_id === null || message_id === null || chat_id === null || like === null || to === null || to === author_id) {
+            const { conversation_id, like, to } = req.body;
+            if(author_id === null || message_id === null || conversation_id === null || like === null || to === null || to === author_id) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -211,9 +180,7 @@ class ChatController {
             const lower_id = author_id < to ? author_id : to;
             const higher_id = author_id > to ? author_id : to;
 
-            const is_lower = author_id === lower_id;
-
-            const result = await findChat({ chat_id, lower_id, higher_id });
+            const result = await findConversation({ conversation_id, lower_id, higher_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -229,7 +196,7 @@ class ChatController {
 
                 if(like) {
                     // CHATI GÜNCELLE
-                    await Chat.updateOne({ _id: chat_id }, {
+                    await Conversation.updateOne({ _id: conversation_id, 'members.user_id': to }, {
                         last_message: {
                             _id: message_id,
                             author_id: author_id,
@@ -237,14 +204,13 @@ class ChatController {
                             type: 'like',
                             created_at: Date.now()
                         }, 
-                        lower_read: is_lower ? true : false,
-                        higher_read: is_lower ? false : true
+                        $set: { 'members.$.read': false }
                     }).session(session);
                 }
             });
 
-            emitLikeMessage({ to, chat_id, message_id, author_id, like });
-            if(like) pushLikeNotification({ author_id, to, chat_id });
+            emitLikeMessage({ to, conversation_id, message_id, author_id, like });
+            if(like) pushLikeNotification({ author_id, to, conversation_id });
 
             return res.status(200).json({
                 success: true
@@ -265,22 +231,20 @@ class ChatController {
 
         try {
             const author_id = req._id;
-            const chat_id = req.params.chat_id;
+            const conversation_id = req.params.conversation_id;
             const { to } = req.body;
-            if(author_id === null || chat_id  === null || to  === null) {
+            if(author_id === null || conversation_id  === null || to  === null) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
                 });
-            } 
-          
+            }
+
             // BÖYLE BİR CHATIN OLUP OLMADIĞINI KONTROL ET.
             const lower_id = author_id < to ? author_id : to;
             const higher_id = author_id > to ? author_id : to;
 
-            const is_lower = author_id === lower_id;
-
-            const result = await findChat({ chat_id, lower_id, higher_id });
+            const result = await findConversation({ conversation_id, lower_id, higher_id });
             if(!result) {
                 return res.status(200).json({
                     success: false,
@@ -291,14 +255,18 @@ class ChatController {
             // OKUNMAMIŞ TÜM MESAJLARI OKU
             await session.withTransaction(async () => {
 
-                // OKUNMAMIŞ TÜM MESAJLARIN READINI TRUE YAP
-                await Message.updateMany({ chat_id, author_id: { $ne: author_id }, read: false }, { read: true }).session(session);
+                // OKUNMAMIŞ TÜM MESAJLARIN READ KISMINI TRUE YAP
+                await Message.updateMany({
+                    conversation_id,
+                    author_id: { $ne: author_id },
+                    read: false
+                }, { read: true }).session(session);
 
                 // CHATI GÜNCELLE
-                await Chat.updateOne({ _id: chat_id }, is_lower ? { lower_read: true } : { higher_read: true }).session(session);   
+                await Conversation.updateOne({ _id: conversation_id, 'members.user_id': logged_id }, { $set: { 'members.$.read': true } }).session(session);
             });
 
-            emitReadMessages({ to, chat_id });
+            emitReadMessages({ to, conversation_id });
 
             return res.status(200).json({
                 success: true
@@ -315,43 +283,29 @@ class ChatController {
     }
 }
 
-module.exports = new ChatController();
+module.exports = new ConversationController();
 
 // UTILS
 
-async function findChat({ chat_id, lower_id, higher_id }) {
+async function findConversation({ conversation_id, author_id, to }) {
     try {
-        console.time('find_chat');
-        const find_chat = await Chat.countDocuments({ _id: chat_id, lower_id, higher_id });
-        console.timeEnd('find_chat');
-        return find_chat > 0 ? true : false;
+        console.time('find_conversation');
+        const find_conversation = await Conversation.countDocuments({ _id: conversation_id, 'members.user_id': { $in: [author_id, to] } });
+        console.timeEnd('find_conversation');
+        return find_conversation > 0 ? true : false;
     } catch (err) {
-        throw err;
-    }
-}
-
-async function findChatById({ chat_id, logged_id }) {
-    try {
-        console.time('find_chat');
-        const find_chat = await Chat.findById(chat_id).select('lower_id higher_id').lean();
-        console.timeEnd('find_chat');
-
-        if(!find_chat || (find_chat.lower_id.toString() !== logged_id.toString() && find_chat.higher_id.toString() !== logged_id.toString())) return false;
-        
-        return true;
-    } catch(err) {
         throw err;
     }
 }
 
 // SOCKET EMITS
 
-function emitReceiveMessage({ to, chat_id, message }) {
+function emitReceiveMessage({ to, conversation_id, message }) {
     try {
         const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('receive_message', {
-                chat_id,
+                conversation_id,
                 message
             });
         }
@@ -360,12 +314,12 @@ function emitReceiveMessage({ to, chat_id, message }) {
     }
 }
 
-function emitLikeMessage({ to, chat_id, message_id, author_id, like }) {
+function emitLikeMessage({ to, conversation_id, message_id, author_id, like }) {
     try {
         const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
             find_socket.emit('like_message', {
-                chat_id,
+                conversation_id,
                 message_id,
                 author_id,
                 like
@@ -376,11 +330,11 @@ function emitLikeMessage({ to, chat_id, message_id, author_id, like }) {
     }
 }
 
-function emitReadMessages({ to, chat_id }) {
+function emitReadMessages({ to, conversation_id }) {
     try {
         const find_socket = SocketIO.findSocket(to);
         if(find_socket) {
-            find_socket.emit('read_messages', { chat_id });
+            find_socket.emit('read_messages', { conversation_id });
         }
     } catch (err) {
         console.log(err);
@@ -389,7 +343,7 @@ function emitReadMessages({ to, chat_id }) {
 
 // PUSH NOTIFICATIONS
 
-async function pushMessageNotification({ author_id, to, chat_id, content, content_type }) {
+async function pushMessageNotification({ author_id, to, conversation_id, content, content_type }) {
     try {
         const results = await Promise.all([
             User.findById(to).select('fcm_token notifications language').lean(),
@@ -459,7 +413,7 @@ async function pushMessageNotification({ author_id, to, chat_id, content, conten
 
                 // VERİYİ GÖNDER
                 const chat_screen = {
-                    chat_id: chat_id,
+                    conversation_id,
                     user: from_user,
                 };
 
@@ -484,7 +438,7 @@ async function pushMessageNotification({ author_id, to, chat_id, content, conten
     }
 } 
 
-async function pushLikeNotification({ author_id, to, chat_id }) {
+async function pushLikeNotification({ author_id, to, conversation_id }) {
     try {
         const results = await Promise.all([
             User.findById(to).select('fcm_token notifications language').lean(),
@@ -499,7 +453,7 @@ async function pushLikeNotification({ author_id, to, chat_id }) {
 
                 // VERİYİ GÖNDER
                 const chat_screen = {
-                    chat_id: chat_id,
+                    conversation_id,
                     user: from_user,
                 };
 

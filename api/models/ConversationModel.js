@@ -1,16 +1,10 @@
 const mongoose = require('mongoose');
 
-const ChatSchema = mongoose.Schema({
-    lower_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    higher_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
+const ConversationSchema = mongoose.Schema({
+    members: [{ 
+        user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        read: { type: Boolean, default: false }
+    }],
 
     last_message: {
         type: new mongoose.Schema({
@@ -21,15 +15,6 @@ const ChatSchema = mongoose.Schema({
             created_at: { type: Number, required: true }
         }),
         required: false
-    },
-
-    lower_read: {
-        type: Boolean,
-        default: false
-    },
-    higher_read: {
-        type: Boolean,
-        default: false
     },
 
     is_mega_like: {
@@ -43,4 +28,4 @@ const ChatSchema = mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Chat', ChatSchema);
+module.exports = mongoose.model('Conversation', ConversationSchema);
