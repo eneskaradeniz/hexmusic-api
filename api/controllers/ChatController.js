@@ -27,12 +27,9 @@ class ChatController {
             var chats = [];
 
             find_chats.forEach((chat) => {
-                var logged_user = chat.members.find(x => x.user_id == logged_id);
-                var target_user = chat.members.find(x => x.user_id != logged_id);
-
-                console.log('logged_user:', logged_user);
-                console.log('target_user:', target_user);
-
+                var logged_user = chat.members.find(x => x.user_id._id == logged_id);
+                var target_user = chat.members.find(x => x.user_id._id != logged_id);
+                
                 chats.push({
                     _id: chat._id,
                     user: target_user.user_id,
