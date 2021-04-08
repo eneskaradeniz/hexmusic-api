@@ -19,7 +19,7 @@ class ChatController {
         try {
             const logged_id = req._id;
 
-            const chats = await Chat.find({ members: { $elemMatch: { user_id: logged_id } } })
+            const chats = await Chat.find({ 'members.user_id': logged_id })
                 .populate('members', 'display_name avatars verified')
                 .sort({ created_at: -1 })
                 .lean();
@@ -50,7 +50,7 @@ class ChatController {
             }
 
             // CHATIN MESAJLARINI ÇEK
-            const messages = await Message.find({ chat_id, members: { $elemMatch: { user_id: logged_id } }, created_at: { $gt: skip } })
+            const messages = await Message.find({ chat_id, 'members.user_id': logged_id , created_at: { $gt: skip } })
                 .sort({ created_at: -1 })
                 .limit(MESSAGE_PAGE_SIZE)
                 .lean();
