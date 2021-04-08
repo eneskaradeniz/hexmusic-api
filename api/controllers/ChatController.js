@@ -65,7 +65,7 @@ class ChatController {
             }
 
             // CHATIN MESAJLARINI ÇEK
-            const messages = await Message.find({ chat_id, 'members.user_id': logged_id , created_at: { $gt: skip } })
+            const messages = await Message.find({ chat_id, created_at: { $gt: skip } })
                 .sort({ created_at: -1 })
                 .limit(MESSAGE_PAGE_SIZE)
                 .lean();
