@@ -27,14 +27,18 @@ class ChatController {
             var chats = [];
 
             find_chats.forEach((chat) => {
-                var filter = chat.members.filter(x => x.user_id != logged_id);
+                var logged_user = chat.members.find(x => x.user_id == logged_id);
+                var target_user = chat.members.find(x => x.user_id != logged_id);
+
+                console.log('logged_user:', logged_user);
+                console.log('target_user:', target_user);
 
                 chats.push({
                     _id: chat._id,
-                    user: filter[0].user_id,
+                    user: target_user.user_id,
                     last_message: chat.last_message,
                     is_mega_like: chat.is_mega_like,
-                    read: filter[0].read,
+                    read: logged_user.read,
                     created_at: chat.created_at
                 });
             });
