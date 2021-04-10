@@ -2,10 +2,8 @@ const mongoose = require('mongoose');
 
 const GroupChatSchema = mongoose.Schema({
     created_user_id: { 
-        type: {
-            type: mongoose.Schema.Types.ObjectId, 
-            ref: 'User'
-        },
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User',
         required: true
     },
 
