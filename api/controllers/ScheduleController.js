@@ -54,9 +54,7 @@ class ScheduleController {
                         title: tr_title,
                         body: tr_body,
                         channel_id: 'match',
-                        data: {
-                            notification_type: 'RENEW_LIKES',
-                        }
+                        notification_type: 'RENEW_LIKES',
                     };
         
                     return FirebaseAdmin.sendMulticastNotification(payload); 
@@ -69,9 +67,7 @@ class ScheduleController {
                         title: en_title,
                         body: en_body,
                         channel_id: 'match',
-                        data: {
-                            notification_type: 'RENEW_LIKES',
-                        }
+                        notification_type: 'RENEW_LIKES',
                     };
             
                     return FirebaseAdmin.sendMulticastNotification(payload); 

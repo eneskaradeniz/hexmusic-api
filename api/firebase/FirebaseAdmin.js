@@ -12,8 +12,7 @@ const firebaseAdmin = {};
 
 firebaseAdmin.sendToDevice = async function({ title, body, token, data, channel_id, notification_type }) {
     if (!body || !token || !notification_type) return;
-    try {
-        await axios.post('https://fcm.googleapis.com/fcm/send',
+    return axios.post('https://fcm.googleapis.com/fcm/send',
             {
                 to: token,
                 notification: {
@@ -35,10 +34,7 @@ firebaseAdmin.sendToDevice = async function({ title, body, token, data, channel_
                     'Authorization': `key=${process.env.FCM_SERVER_TOKEN}`,
                 }
             }
-        );
-    } catch (err) {
-        throw err;
-    }
+    );
 }
 
 /*firebaseAdmin.sendToDevice = function({ title, body, token, data, channel_id, notification_type }) {
@@ -69,13 +65,18 @@ firebaseAdmin.sendToDevice = async function({ title, body, token, data, channel_
 
 firebaseAdmin.sendMulticastNotification = function(payload) {
     const message = {
+        tokens: payload.tokens,
         notification: {
             title: payload.title,
             body: payload.body,
             android_channel_id: payload.channel_id,
         },
-        tokens: payload.tokens,
-        data: payload.data || {}
+        data: {
+            ...payload.data,
+            notification_type: payload.notification_type,
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+            sound: "default",
+        }
     };
     return admin.messaging().sendMulticast(message);
 };

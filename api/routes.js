@@ -64,7 +64,7 @@ module.exports = (upload) => {
     router.get('/message_list/:chat_id', [middlewares.user], ChatController.message_list);
     router.post('/read_messages/:chat_id', [middlewares.user], ChatController.read_messages);
     router.post('/send_message/:chat_id', [middlewares.user], ChatController.send_message);
-    router.post('/like_message/:message_id', [middlewares.user], ChatController.like_message);
+    router.post('/like_message/:chat_id', [middlewares.user], ChatController.like_message);
 
     return router;
 }

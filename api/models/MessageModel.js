@@ -1,5 +1,27 @@
 const mongoose = require('mongoose');
 
+const ReplyMessageSchema = mongoose.Schema({
+    _id: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Message', 
+        required: true 
+    },
+    author_id: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true 
+    },
+
+    content: { 
+        type: String 
+    },
+    content_type: { 
+        type: String, 
+        enum: ['text','track','artist','podcast','album','gif','voice'], 
+        required: true 
+    },
+});
+
 const MessageSchema = mongoose.Schema({
     chat_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -16,29 +38,22 @@ const MessageSchema = mongoose.Schema({
         type: String,
         required: true
     },
-    type: {
+    content_type: {
         type: String,
         enum : ['text','track','artist','podcast','album','gif','voice'],
         required: true
     },
-    
+
     reply: {
-        type: new mongoose.Schema({
-            _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-            author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-            content: { type: String },
-            type: { type: String, enum: ['text','track','artist','podcast','album','gif','voice'], required: true },
-        }),
+        type: ReplyMessageSchema,
         required: false
     },
 
-    like: {
-        type: Boolean,
-        default: false
+    like_by: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     },
-    read: {
-        type: Boolean,
-        default: false
+    read_by: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     },
 
     created_at: {

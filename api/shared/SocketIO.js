@@ -150,6 +150,17 @@ class PrivateSocketIO {
 
         return find_sockets;
     }
+
+    findSocketsByIds(user_ids) {
+        var find_sockets = [];
+
+        for(let x in this.socket_io.sockets.sockets) {
+            const find_socket = this.socket_io.sockets.sockets[x];
+            if(user_ids.includes(find_socket.decoded_token._id)) find_sockets.push(find_socket);  
+        }
+
+        return find_sockets;
+    }
 }
 
 class SocketIO {
