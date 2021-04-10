@@ -1,27 +1,5 @@
 const mongoose = require('mongoose');
 
-const ReplyMessageSchema = mongoose.Schema({
-    _id: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Message', 
-        required: true 
-    },
-    author_id: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', 
-        required: true 
-    },
-
-    content: { 
-        type: String 
-    },
-    content_type: { 
-        type: String, 
-        enum: ['text','track','artist','podcast','album','gif','voice'], 
-        required: true 
-    },
-});
-
 const MessageSchema = mongoose.Schema({
     chat_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -45,7 +23,27 @@ const MessageSchema = mongoose.Schema({
     },
 
     reply: {
-        type: ReplyMessageSchema,
+        type: {
+            _id: { 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'Message', 
+                required: true 
+            },
+            author_id: { 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'User', 
+                required: true 
+            },
+        
+            content: { 
+                type: String 
+            },
+            content_type: { 
+                type: String, 
+                enum: ['text','track','artist','podcast','album','gif','voice'], 
+                required: true 
+            },
+        },
         required: false
     },
 
