@@ -36,14 +36,6 @@ class ChatController {
                 })
                 .lean();
 
-            // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !chat.chat_id.participants.includes(author_id)) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_FOUND_CHAT'
-                });
-            }
-            
             return res.status(200).json({
                 success: true,
                 chat
@@ -417,9 +409,6 @@ function emitReadMessages({ chat_id, participants, author_id }) {
 
 async function pushMessageNotification({ chat_id, participants, group, author_user, content, content_type }) {
     try {
-
-        const chat_screen = { chat_id, user: from_user }; // BİLDİRİME TIKLADIĞINDA CHAT AÇILMASI İÇİN
-
         var tr_tokens = [];
         var en_tokens = [];
 
@@ -492,7 +481,7 @@ async function pushMessageNotification({ chat_id, participants, group, author_us
                 tr_tokens,
                 title,
                 body: tr_body,
-                data: { chat_screen },
+                data: { chat_id },
                 channel_id: 'chat',
                 notification_type: 'CHAT'
             }));
@@ -503,7 +492,7 @@ async function pushMessageNotification({ chat_id, participants, group, author_us
                 en_tokens,
                 title,
                 body: en_body,
-                data: { chat_screen },
+                data: { chat_id },
                 channel_id: 'chat',
                 notification_type: 'CHAT'
             }));
@@ -518,8 +507,6 @@ async function pushMessageNotification({ chat_id, participants, group, author_us
 
 async function pushLikeNotification({ chat_id, participants, group, author_user }) {
     try {
-
-        const chat_screen = { chat_id, user: from_user }; // BİLDİRİME TIKLADIĞINDA CHAT AÇILMASI İÇİN
 
         var tr_tokens = [];
         var en_tokens = [];
@@ -549,7 +536,7 @@ async function pushLikeNotification({ chat_id, participants, group, author_user 
                 tr_tokens,
                 title,
                 body: tr_body,
-                data: { chat_screen },
+                data: { chat_id },
                 channel_id: 'chat',
                 notification_type: 'CHAT'
             }));
@@ -563,7 +550,7 @@ async function pushLikeNotification({ chat_id, participants, group, author_user 
                 en_tokens,
                 title,
                 body: en_body,
-                data: { chat_screen },
+                data: { chat_id },
                 channel_id: 'chat',
                 notification_type: 'CHAT'
             }));
