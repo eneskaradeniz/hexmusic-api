@@ -13,6 +13,51 @@ const MESSAGE_PAGE_SIZE = 25;
 
 class ChatController {
 
+    async get_chat(req, res) {
+        try {
+            const logged_id = req._id;
+            const chat_id = req.params.chat_id;
+            if(!chat_id) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'INVALID_FIELDS',
+                });
+            }
+
+            const chat = await Participant.findOne({ chat_id, user_id: logged_id })
+                .populate({
+                    path: 'chat_id',
+                    model: 'Chat',
+                    populate: {
+                        path: 'participants',
+                        model: 'User',
+                        select: 'display_name avatars verified'
+                    }
+                })
+                .lean();
+
+            // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
+            if(!chat || !chat.chat_id.participants.includes(author_id)) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'NOT_FOUND_CHAT'
+                });
+            }
+            
+            return res.status(200).json({
+                success: true,
+                chat
+            });
+
+        } catch(err) {
+            console.log(err);
+
+            return res.status(400).json({
+                success: false
+            });
+        }
+    }
+
     async chat_list(req, res) {
         try {
             const logged_id = req._id;
@@ -44,26 +89,12 @@ class ChatController {
 
     async message_list(req, res) {
         try {
-            const logged_id = req._id;
             const chat_id = req.params.chat_id;
             const skip = req.query.skip;
             if(!chat_id || !skip) {
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
-                });
-            }
-
-            // CHATI VE GEREKİ BİLGİLERİ ÇEK
-            const chat = await Chat.findById(chat_id)
-                .select('participants')
-                .lean();
-
-            // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !chat.participants.includes(author_id)) {
-                return res.status(200).json({
-                    success: false,
-                    error: 'NOT_FOUND_CHAT'
                 });
             }
 
@@ -320,7 +351,7 @@ class ChatController {
                 await Participant.updateOne({ chat_id, user_id: author_id }, { read: true }).session(session);
             });
 
-            emitReadMessages({ chat_id, participants });
+            emitReadMessages({ chat_id, participants, author_id });
 
             return res.status(200).json({
                 success: true
@@ -371,11 +402,11 @@ function emitLikeMessage({ chat_id, participants, message_id, author_id, like })
     }
 }
 
-function emitReadMessages({ chat_id, participants }) {
+function emitReadMessages({ chat_id, participants, author_id }) {
     try {
         const find_sockets = SocketIO.findSocketsByIds(participants);
         find_sockets.forEach(socket => {
-            socket.emit('read_messages', { chat_id });
+            socket.emit('read_messages', { chat_id, author_id });
         });
     } catch (err) {
         console.log(err);

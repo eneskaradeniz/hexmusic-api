@@ -60,6 +60,7 @@ module.exports = (upload) => {
     router.get('/live_count', HomeController.live_count);
 
     // CHAT
+    router.get('/get_chat/:chat_id', [middlewares.user], ChatController.get_chat);
     router.get('/chat_list', [middlewares.user], ChatController.chat_list);
     router.get('/message_list/:chat_id', [middlewares.user], ChatController.message_list);
     router.post('/read_messages/:chat_id', [middlewares.user], ChatController.read_messages);

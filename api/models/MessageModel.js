@@ -49,12 +49,8 @@ const MessageSchema = mongoose.Schema({
         required: false
     },
 
-    like_by: {
-        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    },
-    read_by: {
-        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    },
+    like_by: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    read_by: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
     created_at: {
         type: Number,

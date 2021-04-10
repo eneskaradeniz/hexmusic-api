@@ -18,7 +18,9 @@ const GroupChatSchema = mongoose.Schema({
     image: { 
         type: String,
         required: true
-    }
+    },
+
+    managers: [{type: mongoose.Schema.Types.ObjectId, ref: 'User'}],
 });
 
 const LastMessageSchema = mongoose.Schema({
