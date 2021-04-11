@@ -473,7 +473,7 @@ async function pushMessageNotification({ chat_id, participants, group, author_us
 
         if(tr_tokens.length > 0) {
             promises.push(FirebaseAdmin.sendMulticastNotification({
-                tr_tokens,
+                tokens: tr_tokens,
                 title,
                 body: tr_body,
                 data: { chat_id },
@@ -484,7 +484,7 @@ async function pushMessageNotification({ chat_id, participants, group, author_us
 
         if(en_tokens.length > 0) {
             promises.push(FirebaseAdmin.sendMulticastNotification({
-                en_tokens,
+                tokens: en_tokens,
                 title,
                 body: en_body,
                 data: { chat_id },
@@ -528,7 +528,7 @@ async function pushLikeNotification({ chat_id, participants, group, author_user 
             const tr_body = group != null ? `**${author_user.display_name}** ${_body}` : _body;
 
             promises.push(FirebaseAdmin.sendMulticastNotification({
-                tr_tokens,
+                tokens: tr_tokens,
                 title,
                 body: tr_body,
                 data: { chat_id },
@@ -542,7 +542,7 @@ async function pushLikeNotification({ chat_id, participants, group, author_user 
             const en_body = group != null ? `**${author_user.display_name}** ${_body}` : _body;
         
             promises.push(FirebaseAdmin.sendMulticastNotification({
-                en_tokens,
+                tokens: en_tokens,
                 title,
                 body: en_body,
                 data: { chat_id },
