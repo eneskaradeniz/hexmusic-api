@@ -125,10 +125,12 @@ class ChatController {
             }
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
+            console.time('find_chat');
             const chat = await Chat.findById(chat_id)
                 .populate('participants', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
+            console.timeEnd('find_chat');
 
             var author_user;
             var participants = [];
@@ -172,6 +174,8 @@ class ChatController {
             await session.withTransaction(async () => {
 
                 // MESAJI OLUŞTUR
+                console.time('message_create');
+
                 new_message = (await Message.create([{
                     chat_id,
                     author_id,
@@ -180,7 +184,11 @@ class ChatController {
                     reply
                 }], { session: session }))[0];
 
+                console.timeEnd('message_create');
+
                 // CHATIN SON MESAJINI GÜNCELLE
+                console.time('chat_update');
+
                 await Chat.updateOne({ _id: chat_id }, {
                     last_message: {
                         _id: new_message._id,
@@ -191,8 +199,14 @@ class ChatController {
                     }
                 }).session(session);
 
+                console.timeEnd('chat_update');
+
                 // BU CHATTEKİ TÜM KATILIMCILARIN (GÖNDEREN HARİÇ) PARTICIPANT MODELİNDEKİ READ KISMINI FALSE YAP
+                console.time('participants_update');
+
                 await Participant.updateMany({ chat_id, user_id: { $ne: author_id } }, { read: false }).session(session);
+
+                console.timeEnd('participants_update');
             });
 
             emitReceiveMessage({ chat_id, participants, message: new_message });

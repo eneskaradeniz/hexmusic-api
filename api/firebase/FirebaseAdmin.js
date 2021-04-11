@@ -64,6 +64,7 @@ firebaseAdmin.sendToDevice = async function({ title, body, token, data, channel_
 };*/
 
 firebaseAdmin.sendMulticastNotification = function(payload) {
+    console.log('payload:', payload);
     const message = {
         tokens: payload.tokens,
         notification: {
