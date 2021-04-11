@@ -190,7 +190,7 @@ class MatchController {
                                 avatars: user.avatars,
                                 verified: user.verified,
                             },
-                            age: user.permissions.show_age ? age : null,
+                            age: user.permissions.show_age ? user.age : null,
                             track: track
                         });
                     });
