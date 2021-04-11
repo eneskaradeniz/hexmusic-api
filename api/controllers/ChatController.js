@@ -499,6 +499,9 @@ async function pushMessageNotification({ chat_id, participants, group, author_us
             }));
         }
 
+        console.log('tr_tokens:', tr_tokens);
+        console.log('en_tokens:', en_tokens);
+
         await Promise.all(promises);
 
     } catch (err) {
