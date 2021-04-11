@@ -108,18 +108,14 @@ class ChatController {
             }
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
-            console.time('find_chat');
-
             const chat = await Chat.findById(chat_id)
                 .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
-
-            console.timeEnd('find_chat');
-
+                
             var author_user;
             var participants = [];
-            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
+            chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
 
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
             if(!chat || !author_user) {
@@ -128,7 +124,7 @@ class ChatController {
                     error: 'NOT_FOUND_CHAT'
                 });
             }
-
+            
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _content;
             switch(content_type) {
@@ -234,7 +230,7 @@ class ChatController {
                 
             var author_user;
             var participants = [];
-            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
+            chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
 
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
             if(!chat || !author_user) {
@@ -316,7 +312,7 @@ class ChatController {
                 
             var author_user;
             var participants = [];
-            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
+            chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
 
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
             if(!chat || !author_user) {
