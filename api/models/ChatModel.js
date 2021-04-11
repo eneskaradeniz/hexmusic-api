@@ -22,6 +22,7 @@ const ChatSchema = mongoose.Schema({
     group: {
         type: {
             managers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+            
             created_user_id: { 
                 type: mongoose.Schema.Types.ObjectId, 
                 ref: 'User',

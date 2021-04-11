@@ -108,6 +108,8 @@ class ChatController {
             }
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
+            console.time('find_chat');
+
             const chat = await Chat.findById(chat_id)
                 .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
@@ -124,7 +126,9 @@ class ChatController {
                     error: 'NOT_FOUND_CHAT'
                 });
             }
-            
+
+            console.timeEnd('find_chat');
+
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _content;
             switch(content_type) {
@@ -223,6 +227,8 @@ class ChatController {
             }
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
+            console.time('find_chat');
+
             const chat = await Chat.findById(chat_id)
                 .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
@@ -239,6 +245,8 @@ class ChatController {
                     error: 'NOT_FOUND_CHAT'
                 });
             }
+
+            console.timeEnd('find_chat');
 
             // MESAJI BEĞEN
             await session.withTransaction(async () => {
@@ -305,6 +313,8 @@ class ChatController {
             }
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
+            console.time('find_chat');
+
             const chat = await Chat.findById(chat_id)
                 .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
@@ -321,6 +331,8 @@ class ChatController {
                     error: 'NOT_FOUND_CHAT'
                 });
             }
+
+            console.timeEnd('find_chat');
 
             // OKUNMAMIŞ TÜM MESAJLARI OKU
             await session.withTransaction(async () => {
