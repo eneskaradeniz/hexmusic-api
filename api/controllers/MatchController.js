@@ -187,6 +187,8 @@ class MatchController {
 
                     console.timeEnd('spotify_tracks');
 
+                    console.time('foreach');
+
                     fetch.forEach(user => {
                         const track = tracks.find(x => x.id === listeners[user._id.toString()].track_id);
         
@@ -201,10 +203,10 @@ class MatchController {
                             track: track
                         });
                     });
+
+                    console.timeEnd('foreach');
                 }
             }
-
-            console.log('users:', users);
 
             return res.status(200).json({
                 success: true,
