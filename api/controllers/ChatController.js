@@ -130,23 +130,17 @@ class ChatController {
                 .select('participants group')
                 .lean();
 
-            console.log('participants:', chat.participants);
-            console.log(chat.participants.includes(author_id));
+            var author_user;
+            var participants = [];
+            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
 
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !chat.participants.includes(author_id)) {
+            if(!chat || !author_user) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
-
-            // GEREKLİ BİLGİLERİ AYARLA
-            const group = chat.group;
-
-            var author_user;
-            var participants = [];
-            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
 
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _content;
@@ -202,7 +196,7 @@ class ChatController {
             });
 
             emitReceiveMessage({ chat_id, participants, message: new_message });
-            pushMessageNotification({ chat_id, participants, group, author_user, content: _content, content_type });
+            pushMessageNotification({ chat_id, participants, group: chat.group, author_user, content: _content, content_type });
 
             return res.status(200).json({
                 success: true,
@@ -239,21 +233,18 @@ class ChatController {
                 .populate('participants', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
+                
+            var author_user;
+            var participants = [];
+            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
 
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !chat.participants.includes(author_id)) {
+            if(!chat || !author_user) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
-
-            // GEREKLİ BİLGİLERİ AYARLA
-            const group = chat.group;
-
-            var author_user;
-            var participants = [];
-            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
 
             // MESAJI BEĞEN
             await session.withTransaction(async () => {
@@ -313,20 +304,21 @@ class ChatController {
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
             const chat = await Chat.findById(chat_id)
-                .select('participants')
+                .populate('participants', 'display_name fcm_token notifications language')
+                .select('participants group')
                 .lean();
+                
+            var author_user;
+            var participants = [];
+            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
 
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !chat.participants.includes(author_id)) {
+            if(!chat || !author_user) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
-
-            // GEREKLİ BİLGİLERİ AYARLA
-            var participants = [];
-            chat.participants.forEach(user => user._id.toString() === author_id ? author_user = user : participants.push(user));
 
             // OKUNMAMIŞ TÜM MESAJLARI OKU
             await session.withTransaction(async () => {
