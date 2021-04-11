@@ -37,32 +37,6 @@ firebaseAdmin.sendToDevice = async function({ title, body, token, data, channel_
     );
 }
 
-/*firebaseAdmin.sendToDevice = function({ title, body, token, data, channel_id, notification_type }) {
-    const payload = {
-        notification: {
-            title,
-            body,
-            android_channel_id: channel_id,
-        },
-        data: {
-            ...data,
-            notification_type: notification_type,
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
-            sound: 'default',
-        },
-    };
-
-    console.log(payload);
-
-    const options = {
-        priority: 'high',
-    };
-
-    console.log(options);
-
-    return admin.messaging().sendToDevice(token, payload, options);
-};*/
-
 firebaseAdmin.sendMulticastNotification = function(payload) {
     console.log('payload:', payload);
     const message = {
