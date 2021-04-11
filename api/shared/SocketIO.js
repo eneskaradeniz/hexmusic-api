@@ -72,15 +72,15 @@ class PrivateSocketIO {
             const { chat_id, participants } = data;
         
             const find_sockets = this.findSocketsByIds(participants);
-            find_sockets.forEach(socket => {
-                socket.emit('typing', {
+            find_sockets.forEach(x => {
+                x.emit('typing', {
                     is_typing: true,
                     chat_id,
                     user_id
                 });
 
                 setTimeout(() => {
-                    target_socket.emit('typing', {
+                    x.emit('typing', {
                         is_typing: false,
                         chat_id,
                         user_id
