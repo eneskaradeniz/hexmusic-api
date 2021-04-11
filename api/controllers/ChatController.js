@@ -1,7 +1,6 @@
 const db = require('mongoose');
 
 const Chat = require('../models/ChatModel');
-const Participant = require('../models/ParticipantModel');
 const Message = require('../models/MessageModel');
 
 const FirebaseAdmin = require('../firebase/FirebaseAdmin');
@@ -24,16 +23,8 @@ class ChatController {
                 });
             }
 
-            const chat = await Participant.findOne({ chat_id, user_id: logged_id })
-                .populate({
-                    path: 'chat_id',
-                    model: 'Chat',
-                    populate: {
-                        path: 'participants',
-                        model: 'User',
-                        select: 'display_name avatars verified'
-                    }
-                })
+            const chat = await Chat.findOne({ _id: chat_id, 'participants.user_id': logged_id })
+                .populate('participants', 'display_name avatars verified')
                 .lean();
 
             return res.status(200).json({
@@ -54,16 +45,8 @@ class ChatController {
         try {
             const logged_id = req._id;
 
-            const chats = await Participant.find({ user_id: logged_id })
-                .populate({
-                    path: 'chat_id',
-                    model: 'Chat',
-                    populate: {
-                        path: 'participants',
-                        model: 'User',
-                        select: 'display_name avatars verified'
-                    }
-                })
+            const chats = await Chat.find({ 'participants.user_id': logged_id })
+                .populate('participants', 'display_name avatars verified')
                 .lean();
 
             return res.status(200).json({
@@ -126,10 +109,12 @@ class ChatController {
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
             console.time('find_chat');
+
             const chat = await Chat.findById(chat_id)
                 .populate('participants', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
+
             console.timeEnd('find_chat');
 
             var author_user;
@@ -187,26 +172,25 @@ class ChatController {
                 console.timeEnd('message_create');
 
                 // CHATIN SON MESAJINI GÜNCELLE
+                // TÜM KATILIMCILARIN (GÖNDEREN HARİÇ) READ KISMINI FALSE YAP
                 console.time('chat_update');
 
-                await Chat.updateOne({ _id: chat_id }, {
+                await Chat.updateOne({ 
+                    _id: chat_id,
+                    'participants.user_id': { $ne: author_id },
+                }, 
+                {
                     last_message: {
                         _id: new_message._id,
                         author_id: new_message.author_id,
                         content: new_message.content,
                         content_type: new_message.content_type,
                         created_at: new_message.created_at
-                    }
+                    },
+                    $set: { 'participants.$.read': false }
                 }).session(session);
 
                 console.timeEnd('chat_update');
-
-                // BU CHATTEKİ TÜM KATILIMCILARIN (GÖNDEREN HARİÇ) PARTICIPANT MODELİNDEKİ READ KISMINI FALSE YAP
-                console.time('participants_update');
-
-                await Participant.updateMany({ chat_id, user_id: { $ne: author_id } }, { read: false }).session(session);
-
-                console.timeEnd('participants_update');
             });
 
             emitReceiveMessage({ chat_id, participants, message: new_message });
@@ -268,18 +252,26 @@ class ChatController {
                     await Message.updateOne({ _id: message_id, like_by: { $ne: author_id } }, { $push: { like_by: author_id } }).session(session);
 
                     // CHATIN SON MESAJINI GÜNCELLE
-                    await Chat.updateOne({ _id: chat_id }, {
+                    // TÜM KATILIMCILARIN (GÖNDEREN HARİÇ) READ KISMINI FALSE YAP
+                    console.time('chat_update');
+
+                    await Chat.updateOne({ 
+                        _id: chat_id,
+                        'participants.user_id': { $ne: author_id },
+                    }, 
+                    {
                         last_message: {
                             _id: message_id,
                             author_id: author_id,
                             content: null,
                             content_type: 'like',
                             created_at: Date.now()
-                        }
+                        },
+                        $set: { 'participants.$.read': false }
                     }).session(session);
 
-                    // BU CHATTEKİ TÜM KATILIMCILARIN (GÖNDEREN HARİÇ) PARTICIPANT MODELİNDEKİ READ KISMINI FALSE YAP
-                    await Participant.updateMany({ chat_id, user_id: { $ne: author_id } }, { read: false }).session(session);
+                    console.timeEnd('chat_update');
+
                 } else {
                     // MESAJDA "like_by" KISMINDAKİ KULLANICININ IDSİNİ SİL (EĞER LIKE_BY DA VARSA SİL)
                     await Message.updateOne({ _id: message_id, like_by: { $eq: author_id }  }, { $pull: { like_by: author_id } }).session(session);
@@ -337,10 +329,6 @@ class ChatController {
             // OKUNMAMIŞ TÜM MESAJLARI OKU
             await session.withTransaction(async () => {
 
-                await Message.updateMany({
-
-                }).session(session);
-
                 // OKUNMAMIŞ TÜM MESAJLARIN READ KISMINA KULLANICIYI EKLE
                 await Message.updateMany({
                     chat_id,
@@ -348,8 +336,8 @@ class ChatController {
                     read_by: { $ne: author_id },
                 }, { $push: { read_by: author_id } }).session(session);
 
-                // KULLANICININ PARTICIPANT'TA READ KISMINI TRUE YAP
-                await Participant.updateOne({ chat_id, user_id: author_id }, { read: true }).session(session);
+                // KULLANICININ CHATTEKİ READ KISMINI TRUE YAP
+                await Chat.updateOne({ _id: chat_id, 'participants.user_id': author_id }, { $set: { 'participants.$.read': true }}).session(session);
             });
 
             emitReadMessages({ chat_id, participants, author_id });

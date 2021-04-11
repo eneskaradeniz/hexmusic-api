@@ -1,13 +1,27 @@
 const mongoose = require('mongoose');
 
 const ChatSchema = mongoose.Schema({
-    participants: { 
-        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], 
-        required: true
-    },
+
+    participants: [{ 
+        user_id: {
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'User',
+            required: true,
+            index: true
+        },
+        read: {
+            type: Boolean,
+            default: false
+        },
+        created_at: {
+            type: Number,
+            default: Date.now
+        }
+    }],
 
     group: {
         type: {
+            managers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
             created_user_id: { 
                 type: mongoose.Schema.Types.ObjectId, 
                 ref: 'User',
@@ -26,8 +40,6 @@ const ChatSchema = mongoose.Schema({
                 type: String,
                 required: true
             },
-        
-            managers: [{type: mongoose.Schema.Types.ObjectId, ref: 'User'}],
         },
         required: false
     },
