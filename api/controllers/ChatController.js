@@ -24,7 +24,7 @@ class ChatController {
             }
 
             const chat = await Chat.findOne({ _id: chat_id, 'participants.user_id': logged_id })
-                .populate('participants', 'display_name avatars verified')
+                .populate('participants.user_id', 'display_name avatars verified')
                 .lean();
 
             return res.status(200).json({
@@ -46,7 +46,7 @@ class ChatController {
             const logged_id = req._id;
 
             const chats = await Chat.find({ 'participants.user_id': logged_id })
-                .populate('participants', 'display_name avatars verified')
+                .populate('participants.user_id', 'display_name avatars verified')
                 .lean();
 
             return res.status(200).json({
@@ -111,7 +111,7 @@ class ChatController {
             console.time('find_chat');
 
             const chat = await Chat.findById(chat_id)
-                .populate('participants', 'display_name fcm_token notifications language')
+                .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
 
@@ -228,7 +228,7 @@ class ChatController {
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
             const chat = await Chat.findById(chat_id)
-                .populate('participants', 'display_name fcm_token notifications language')
+                .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
                 
@@ -310,7 +310,7 @@ class ChatController {
 
             // CHATI VE GEREKİ BİLGİLERİ ÇEK
             const chat = await Chat.findById(chat_id)
-                .populate('participants', 'display_name fcm_token notifications language')
+                .populate('participants.user_id', 'display_name fcm_token notifications language')
                 .select('participants group')
                 .lean();
                 
@@ -564,6 +564,4 @@ async function pushLikeNotification({ chat_id, participants, group, author_user 
     } catch (err) {
         console.log(err);
     }
-} 
-
-// 607246cd3d895092dcf99eb7
+}
