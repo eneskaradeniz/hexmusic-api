@@ -176,8 +176,7 @@ class ChatController {
                 console.time('chat_update');
 
                 await Chat.updateOne({ 
-                    _id: chat_id,
-                    'participants.user_id': { $ne: author_id },
+                    _id: chat_id
                 }, 
                 {
                     last_message: {
@@ -186,8 +185,7 @@ class ChatController {
                         content: new_message.content,
                         content_type: new_message.content_type,
                         created_at: new_message.created_at
-                    },
-                    $set: { 'participants.$.read': false }
+                    }
                 }).session(session);
 
                 console.timeEnd('chat_update');
@@ -260,8 +258,7 @@ class ChatController {
                     console.time('chat_update');
 
                     await Chat.updateOne({ 
-                        _id: chat_id,
-                        'participants.user_id': { $ne: author_id },
+                        _id: chat_id
                     }, 
                     {
                         last_message: {
@@ -270,8 +267,7 @@ class ChatController {
                             content: null,
                             content_type: 'like',
                             created_at: Date.now()
-                        },
-                        $set: { 'participants.$.read': false }
+                        }
                     }).session(session);
 
                     console.timeEnd('chat_update');
