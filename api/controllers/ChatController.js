@@ -273,7 +273,7 @@ class ChatController {
             });
 
             emitLikeMessage({ chat_id, participants, message_id, author_id, like });
-            if(like) pushLikeNotification({ chat_id, participants, group, author_user });
+            if(like) pushLikeNotification({ chat_id, participants, group: chat.group, author_user });
 
             return res.status(200).json({
                 success: true
@@ -557,3 +557,5 @@ async function pushLikeNotification({ chat_id, participants, group, author_user 
         console.log(err);
     }
 } 
+
+// 607246cd3d895092dcf99eb7
