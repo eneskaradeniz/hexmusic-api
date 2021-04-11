@@ -361,7 +361,9 @@ module.exports = new ChatController();
 
 function emitReceiveMessage({ chat_id, participants, message }) {
     try {
-        const find_sockets = SocketIO.findSocketsByIds(participants);
+        const user_ids = participants.map(user => user._id.toString());
+
+        const find_sockets = SocketIO.findSocketsByIds(user_ids);
         find_sockets.forEach(socket => {
             socket.emit('receive_message', {
                 chat_id,
@@ -375,7 +377,9 @@ function emitReceiveMessage({ chat_id, participants, message }) {
 
 function emitLikeMessage({ chat_id, participants, message_id, author_id, like }) {
     try {
-        const find_sockets = SocketIO.findSocketsByIds(participants);
+        const user_ids = participants.map(user => user._id.toString());
+
+        const find_sockets = SocketIO.findSocketsByIds(user_ids);
         find_sockets.forEach(socket => {
             socket.emit('like_message', {
                 chat_id,
@@ -391,7 +395,9 @@ function emitLikeMessage({ chat_id, participants, message_id, author_id, like })
 
 function emitReadMessages({ chat_id, participants, author_id }) {
     try {
-        const find_sockets = SocketIO.findSocketsByIds(participants);
+        const user_ids = participants.map(user => user._id.toString());
+
+        const find_sockets = SocketIO.findSocketsByIds(user_ids);
         find_sockets.forEach(socket => {
             socket.emit('read_messages', { chat_id, author_id });
         });
