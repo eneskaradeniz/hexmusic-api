@@ -69,23 +69,24 @@ class PrivateSocketIO {
     start_typing(socket, data) {
         try {
             const user_id = socket.decoded_token._id;
-            const { to } = data;
+            const { chat_id, participants } = data;
         
-            const target_socket = this.findSocket(to);
-
-            if(target_socket) {
-                target_socket.emit('typing', {
+            const find_sockets = this.findSocketsByIds(participants);
+            find_sockets.forEach(socket => {
+                socket.emit('typing', {
                     is_typing: true,
-                    user_id: user_id,
+                    chat_id,
+                    user_id
                 });
 
                 setTimeout(() => {
                     target_socket.emit('typing', {
                         is_typing: false,
-                        user_id: user_id,
+                        chat_id,
+                        user_id
                     });
                 }, 2000);
-            }
+            });
         } catch(err) {
             Error({
                 file: 'server.js',
