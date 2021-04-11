@@ -130,6 +130,9 @@ class ChatController {
                 .select('participants group')
                 .lean();
 
+            console.log('participants:', chat.participants);
+            console.log(chat.participants.includes(author_id));
+
             // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
             if(!chat || !chat.participants.includes(author_id)) {
                 return res.status(200).json({
