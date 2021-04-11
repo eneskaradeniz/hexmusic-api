@@ -101,13 +101,19 @@ class MatchController {
 
             // KULLANICININ FİLTRELEME BİLGİLERİNİ GETİR
             console.time('logged_user');
+
             const logged_user = await User.findById(logged_id).select('filtering').lean();
+
             console.timeEnd('logged_user');
 
             // KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR
+            console.time('listeners');
+
             var listeners = {};
             if(logged_user.filtering.artist) listeners = InstantListeners.getArtistListeners(logged_id, logged_track.artist_id); 
             else listeners = InstantListeners.getTrackListeners(logged_id, logged_track.track_id); 
+
+            console.timeEnd('listeners');
 
             var users = [];
 
@@ -155,12 +161,13 @@ class MatchController {
 
                 // UYGUN OLAN MAX 10 KİŞİYİ GETİR
                 console.time('fetch');
-                const fetch = await User
-                .find(query)
-                .limit(10)
-                .sort({ 'product.id': -1 })
-                .select('display_name avatars verified age permissions')
-                .lean();
+
+                const fetch = await User.find(query)
+                    .limit(10)
+                    .sort({ 'product.id': -1 })
+                    .select('display_name avatars verified age permissions')
+                    .lean();
+
                 console.timeEnd('fetch');
 
                 if(fetch.length > 0) {
