@@ -103,7 +103,7 @@ class PrivateSocketIO {
 
         try {
             await session.withTransaction(async () => {
-                await User.updateOne({ _id: user_id }, { 
+                await User.updateOne({ _id: user_id, 'current_play.is_playing': true }, { 
                     'current_play.is_playing': false,
                     'current_play.timestamp': Date.now(),
                 }).session(session);

@@ -212,8 +212,97 @@ class UserController {
             session.endSession();
         }
     }
+
+    async delete_account(req, res) {
+        const session = await db.startSession();
+
+        try {
+            const logged_id = req._id;
+
+            // USERMODEL SİLİNECEK
+            // TÜM ENGELLEDİKLERİ SİLİNECEK
+            // TÜM DİSLİKELARI SİLİNECEK
+            // TÜM LİKELARI SİLİNECEK
+            
+            // TÜM EŞLEŞMELERİ SİLİNECEK
+            // TÜM EŞLEŞTİĞİ KİŞİLERLE OLAN CHATLERİ SİLİNECEK
+            // SİLİNEN CHATLERİN MESAJLARIDA SİLİNECEK
+            
+            // KULLANICININ EŞLEŞTİĞİ TÜM KİŞİLERİN SOKETLERİNE EŞLEŞMENİN BİTİTĞİNİ SÖYLECEK
+
+            // EĞER BU İŞLEMLER BAŞARILI OLURSA KULLANICININ FOTOĞRAFLARI VARSA TÜM FOTOĞRAFLARI SİLİNECEK
+
+            var avatars = [];
+            var users = [];
+            
+            await session.withTransaction(async () => {
+                // KULLANICININ FOTOĞRAFLARINI ÇEK
+                const user = await User.findById(logged_id).select('avatars').lean();
+                avatars = user.avatars;
+
+                await Promise.all([
+                    User.deleteOne({ _id: logged_id }).session(session),
+                    BlockedUser.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }]}).session(session),
+                    Like.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }] }).session(session),
+                    Dislike.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }] }).session(session),
+                ]);
+
+                // KULLANICININ TÜM EŞLEŞTİĞİ KULLANICILARIN IDLERINI GETİR (SOKETLERİNE İLİŞKİ BİTTİĞİNİ SÖYLEYECEK)
+                const matches = await Match.find({
+                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
+                }).select('chat_id higher_id lower_id').session(session).lean();
+
+                matches.forEach(match => {
+                    const is_lower = match.lower_id.toString() === logged_id;
+                    users.push({ user_id: is_lower ? match.higher_id : match.lower_id, chat_id: match.chat_id });
+                });
+
+                // EŞLEŞMELERİNİ SİL
+                await Match.deleteMany({
+                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
+                }).session(session);
+
+                // CHATLERİNİ SİL
+                await Chat.deleteMany({
+                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
+                }).session(session);
+            });
+
+            // TÜM FOTOĞRAFLARINI SİL
+            FileController.deleteAvatars(avatars);
+
+            // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
+            users.forEach(model => {
+                const find_socket = SocketIO.findSocket(model.user_id.toString());
+                if(find_socket) {
+                    find_socket.emit('end_user', {
+                        user_id: model.user_id,
+                        chat_id: model.chat_id,
+                    });
+                }   
+            });
+
+            return res.status(200).json({
+                success: true
+            });
+        } catch(err) {
+            Error({
+                file: 'UserController.js',
+                method: 'delete_account',
+                title: err.toString(),
+                info: err,
+                type: 'critical',
+            });
+
+            return res.status(400).json({
+                success: false
+            });
+        } finally {
+            session.endSession();
+        }
+    }
     
-    // USER
+    // PROFILE
     
     async me(req, res) {
         try{
@@ -402,95 +491,6 @@ class UserController {
             return res.status(400).json({
                 success: false,
             });
-        }
-    }
-
-    async delete_account(req, res) {
-        const session = await db.startSession();
-
-        try {
-            const logged_id = req._id;
-
-            // USERMODEL SİLİNECEK
-            // TÜM ENGELLEDİKLERİ SİLİNECEK
-            // TÜM DİSLİKELARI SİLİNECEK
-            // TÜM LİKELARI SİLİNECEK
-            
-            // TÜM EŞLEŞMELERİ SİLİNECEK
-            // TÜM EŞLEŞTİĞİ KİŞİLERLE OLAN CHATLERİ SİLİNECEK
-            // SİLİNEN CHATLERİN MESAJLARIDA SİLİNECEK
-            
-            // KULLANICININ EŞLEŞTİĞİ TÜM KİŞİLERİN SOKETLERİNE EŞLEŞMENİN BİTİTĞİNİ SÖYLECEK
-
-            // EĞER BU İŞLEMLER BAŞARILI OLURSA KULLANICININ FOTOĞRAFLARI VARSA TÜM FOTOĞRAFLARI SİLİNECEK
-
-            var avatars = [];
-            var users = [];
-            
-            await session.withTransaction(async () => {
-                // KULLANICININ FOTOĞRAFLARINI ÇEK
-                const user = await User.findById(logged_id).select('avatars').lean();
-                avatars = user.avatars;
-
-                await Promise.all([
-                    User.deleteOne({ _id: logged_id }).session(session),
-                    BlockedUser.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }]}).session(session),
-                    Like.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }] }).session(session),
-                    Dislike.deleteMany({ $or: [{ from: logged_id }, { to: logged_id }] }).session(session),
-                ]);
-
-                // KULLANICININ TÜM EŞLEŞTİĞİ KULLANICILARIN IDLERINI GETİR (SOKETLERİNE İLİŞKİ BİTTİĞİNİ SÖYLEYECEK)
-                const matches = await Match.find({
-                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
-                }).select('chat_id higher_id lower_id').session(session).lean();
-
-                matches.forEach(match => {
-                    const is_lower = match.lower_id.toString() === logged_id;
-                    users.push({ user_id: is_lower ? match.higher_id : match.lower_id, chat_id: match.chat_id });
-                });
-
-                // EŞLEŞMELERİNİ SİL
-                await Match.deleteMany({
-                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
-                }).session(session);
-
-                // CHATLERİNİ SİL
-                await Chat.deleteMany({
-                    $or: [{ lower_id: logged_id }, { higher_id: logged_id }]
-                }).session(session);
-            });
-
-            // TÜM FOTOĞRAFLARINI SİL
-            FileController.deleteAvatars(avatars);
-
-            // EŞLEŞTİĞİ KULLANICILARIN SOKETLERİNE EŞLEŞME BİTTİĞİNİ SÖYLE
-            users.forEach(model => {
-                const find_socket = SocketIO.findSocket(model.user_id.toString());
-                if(find_socket) {
-                    find_socket.emit('end_user', {
-                        user_id: model.user_id,
-                        chat_id: model.chat_id,
-                    });
-                }   
-            });
-
-            return res.status(200).json({
-                success: true
-            });
-        } catch(err) {
-            Error({
-                file: 'UserController.js',
-                method: 'delete_account',
-                title: err.toString(),
-                info: err,
-                type: 'critical',
-            });
-
-            return res.status(400).json({
-                success: false
-            });
-        } finally {
-            session.endSession();
         }
     }
 

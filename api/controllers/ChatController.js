@@ -107,27 +107,15 @@ class ChatController {
                 });
             }
 
-            // CHATI VE GEREKİ BİLGİLERİ ÇEK
-            console.time('find_chat');
-
-            const chat = await Chat.findById(chat_id)
-                .populate('participants.user_id', 'display_name fcm_token notifications language')
-                .select('participants group')
-                .lean();
-                
-            var author_user;
-            var participants = [];
-            chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
-
-            // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !author_user) {
+            const test = await findChat({ chat_id, author_id });
+            if(!test) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
 
-            console.timeEnd('find_chat');
+            const { author_user, participants } = test;
 
             // MESAJIN TİPİNE GÖRE İŞLEM YAP.
             var _content;
@@ -224,27 +212,15 @@ class ChatController {
                 });
             }
 
-            // CHATI VE GEREKİ BİLGİLERİ ÇEK
-            console.time('find_chat');
-
-            const chat = await Chat.findById(chat_id)
-                .populate('participants.user_id', 'display_name fcm_token notifications language')
-                .select('participants group')
-                .lean();
-                
-            var author_user;
-            var participants = [];
-            chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
-
-            // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !author_user) {
+            const test = await findChat({ chat_id, author_id });
+            if(!test) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
 
-            console.timeEnd('find_chat');
+            const { author_user, participants } = test;
 
             // MESAJI BEĞEN
             await session.withTransaction(async () => {
@@ -308,25 +284,15 @@ class ChatController {
                 });
             }
 
-            // CHATI VE GEREKİ BİLGİLERİ ÇEK
-            console.time('find_chat');
-
-            const chat = await Chat.findById(chat_id)
-                .populate('participants.user_id', 'display_name fcm_token notifications language')
-                .select('participants group')
-                .lean();
-                
-            var author_user;
-            var participants = [];
-            chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
-
-            // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
-            if(!chat || !author_user) {
+            const test = await findChat({ chat_id, author_id });
+            if(!test) {
                 return res.status(200).json({
                     success: false,
                     error: 'NOT_FOUND_CHAT'
                 });
             }
+
+            const { author_user, participants } = test;
 
             console.timeEnd('find_chat');
 
@@ -362,6 +328,35 @@ class ChatController {
 }
 
 module.exports = new ChatController();
+
+async function findChat({ chat_id, author_id, }) {
+    try {
+        // CHATI VE GEREKİ BİLGİLERİ ÇEK
+        console.time('find_chat');
+
+        const chat = await Chat.findById(chat_id)
+            .populate({
+                path: 'participants.user_id',
+                select: 'display_name language fcm_token notifications',
+            })
+            .select('participants group')
+            .lean();
+            
+        var author_user;
+        var participants = [];
+        chat.participants.forEach(participant => participant.user_id._id.toString() === author_id ? author_user = participant.user_id : participants.push(participant.user_id));
+
+        // BÖYLE BİR CHAT VARMI? VARSA BU CHATİN KATILIMCISI MI BAK
+        if(!chat || !author_user) return null;
+
+        console.timeEnd('find_chat');
+
+        return { chat, author_user };
+        
+    } catch(err) {
+        throw err;
+    }
+}
 
 // SOCKET EMITS
 

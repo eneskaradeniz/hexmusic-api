@@ -40,6 +40,10 @@ class ReportController {
             });
         }
     }
+
+    async report_group(req, res) {
+        
+    }
 }
 
 module.exports = new ReportController();

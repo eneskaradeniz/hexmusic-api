@@ -125,6 +125,16 @@ class MatchController {
                 const gender_preference = logged_user.filtering.gender_preference;
                 const min_age = logged_user.filtering.min_age;
                 const max_age = logged_user.filtering.max_age;
+                const max_distance = logged_user.filtering.max_distance;
+
+                /*
+                    "users" collection daki user_ids dizisindeki documentleri bulucam
+                    
+                    bu dökümanların:
+                    
+                    * 'permission_id' yi populate edip .show_live "true" olanları,
+                    * 
+                */
 
                 var query;
 
@@ -133,9 +143,9 @@ class MatchController {
                         _id: { $in: user_ids },
     
                         'permissions.show_live': true,
+                        
                         my_blocked: { $ne: logged_id },
                         matches: { $ne: logged_id },
-    
                         blocked: { $ne: logged_id },
                         likes: { $ne: logged_id },
                         dislikes: { $ne: logged_id },
@@ -226,6 +236,10 @@ class MatchController {
                 success: false
             });
         }
+    }
+
+    async explore(req, res) {
+        
     }
 
     async likes_me(req, res) {
@@ -450,7 +464,7 @@ async function updateCurrentPlay(logged_id, track) {
             });
         } else {
             await session.withTransaction(async () => {
-                await User.updateOne({ _id: logged_id }, { 
+                await User.updateOne({ _id: logged_id, 'current_play.is_playing': true }, { 
                     'current_play.is_playing': false,
                     'current_play.timestamp': Date.now(),
                 }).session(session);

@@ -78,6 +78,8 @@ app.use(compression({
 const routes = require('./api/routes');
 app.use('/', routes(upload));
 
+app.use('*', (req, res) => res.status(404).send('<pre style="word-wrap: break-word; white-space: pre-wrap;">Page not found</pre>'));
+
 // START SERVER
 
 const PORT = process.env.PORT || 3000;
