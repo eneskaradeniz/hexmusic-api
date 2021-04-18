@@ -12,7 +12,7 @@ class PrivateSocketIO {
     // SOCKET.IO CONFIGURATION
 
     constructor() {
-        this.socket_io = null;
+        this.io = null;
     }
 
     connect_socket(socket) {
@@ -124,14 +124,14 @@ class PrivateSocketIO {
     // SOCKET.IO CLIENTS
 
     get count() {
-        return this.socket_io.engine.clientsCount;
+        return this.io.engine.clientsCount;
     }
 
     findSocket(user_id) {
         var find_socket;
 
-        for(let x in this.socket_io.sockets.sockets) {
-            const socket = this.socket_io.sockets.sockets[x];
+        for(let x in this.io.sockets.sockets) {
+            const socket = this.io.sockets.sockets[x];
             if(socket.decoded_token._id === user_id) {
                 find_socket = socket;
                 break;
@@ -144,8 +144,8 @@ class PrivateSocketIO {
     findSockets(user_id) {
         var find_sockets = [];
 
-        for(let x in this.socket_io.sockets.sockets) {
-            const find_socket = this.socket_io.sockets.sockets[x];
+        for(let x in this.io.sockets.sockets) {
+            const find_socket = this.io.sockets.sockets[x];
             if(find_socket.decoded_token._id === user_id) find_sockets.push(find_socket);  
         }
 
@@ -155,8 +155,8 @@ class PrivateSocketIO {
     findSocketsByIds(user_ids) {
         var find_sockets = [];
 
-        for(let x in this.socket_io.sockets.sockets) {
-            const find_socket = this.socket_io.sockets.sockets[x];
+        for(let x in this.io.sockets.sockets) {
+            const find_socket = this.io.sockets.sockets[x];
             if(user_ids.includes(find_socket.decoded_token._id)) find_sockets.push(find_socket);  
         }
 
