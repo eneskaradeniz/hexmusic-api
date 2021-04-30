@@ -732,6 +732,8 @@ class UserController {
         try {
             const logged_id = req._id;
             if(!image_id) {
+                FileController.deleteAvatar(image_id);
+                
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_FIELDS',
@@ -740,12 +742,16 @@ class UserController {
 
             const logged_user = await User.findById(logged_id).select('avatars product').lean();
             if(logged_user.avatars.length >= 6) {
+                FileController.deleteAvatar(image_id);
+                
                 return res.status(200).json({
                     success: false,
                     error: 'MAX_AVATARS_LIMIT',
                 });
             }
             if(logged_user.product.id === 0 && logged_user.avatars.length >= 3) {
+                FileController.deleteAvatar(image_id);
+                
                 return res.status(200).json({
                     success: false,
                     error: 'NO_PERMISSION',
