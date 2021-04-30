@@ -60,6 +60,7 @@ class PrivateSpotifyAPI {
     async getAccessToken() {
         try {
             spotifyApi.setRefreshToken(refresh_token);
+            console.log('spotifyApi refreshToken:', spotifyApi.getRefreshToken());
 
             if(!this.timestamp || ((Date.now()) - this.timestamp) >= ONE_HOUR) {
                 const data = await spotifyApi.refreshAccessToken();
