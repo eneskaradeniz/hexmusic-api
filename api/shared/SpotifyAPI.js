@@ -22,7 +22,10 @@ class PrivateSpotifyAPI {
 
     async getAuthorizationCodeGrant(code) {
         try {
+            console.log("code geldi: ", code);
             const data = await spotifyApi.authorizationCodeGrant(code);
+
+            console.log("data: ", data);
 
             const access_token = data.body['access_token'];
             const refresh_token = data.body['refresh_token'];
