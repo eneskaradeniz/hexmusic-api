@@ -32,6 +32,7 @@ class PrivateSpotifyAPI {
 
             return { access_token, refresh_token }; 
         } catch (err) {
+            console.log("hata geldi: ", err);
             if(err.body.error === 'invalid_grant') return null;
             throw err;
         }
