@@ -86,6 +86,60 @@ class MatchController {
         }
     }
 
+    async test(req, res) {
+        // REDIS'DEN KULLANICININ DİNLEDİĞİ MÜZİĞİ VE FİLTRELEME BİLGİLERİNİ GETİR.
+        // REDIS'DEN KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR AMA KULLANICININ FİLTRELEMESİNE UYGUN OLANLARI (MIN_AGE, MAX_AGE, GENDER_PREFERENCE, MAX_DISTANCE)
+        // DB'DEN KULLANICILARIN LOGGED İÇİN GÖSTERMEYE UYGUN OLANLARI BUL. (LIKE, DISLIKE, MATCH, BLOCK VS. ATMAMIŞ) (MAX 10 KİŞİ VE PREMIUM_PLUS'DAN FREE'YE DORĞU SIRALANMIŞ)
+        // DB'DEN BU KULLANICILARIN TINDER KART İÇİN GEREKLI PROFİL BİLGİLERİNİ GETİR.
+        // TOPLALAN TÜM VERİLERİ FRONT_END İÇİN AYARLA VE GÖNDER.
+
+        try {
+            const logged_id = req.user.id;
+
+            // REDIS'DEN KULLANICININ DİNLEDİĞİ MÜZİĞİ VE FİLTRELEME BİLGİLERİNİ GETİR.
+            const logged_user = InstantListeners.get(logged_id);
+            if(!logged_user) {
+                return res.status(200).json({
+                    success: false,
+                    error: 'NOT_FOUND_USER_FOR_CACHE'
+                });
+            }
+
+            // REDIS'DEN KULLANICININ DİNLEDİĞİ MÜZİĞİ/SANATÇIYI DİNLEYENLERİ GETİR AMA KULLANICININ FİLTRELEMESİNE UYGUN OLANLARI (MIN_AGE, MAX_AGE, GENDER_PREFERENCE, MAX_DISTANCE)
+            var listeners = InstantListeners.getListeners(logged_user); 
+            const user_ids = Object.keys(listeners);
+
+            var users = [];
+
+            if(user_ids.length > 0) {
+
+                // DB'DEN KULLANICILARIN LOGGED İÇİN GÖSTERMEYE UYGUN OLANLARI BUL. (LIKE, DISLIKE, MATCH, BLOCK VS. ATMAMIŞ) (MAX 10 KİŞİ VE PREMIUM_PLUS'DAN FREE'YE DORĞU SIRALANMIŞ)
+                const fetch = await User.find({
+                    to: { $in: user_ids },
+                    from: { $ne: logged_id }
+                })
+                .limit(10)
+                .sort({ 'product.id': -1 })
+                .populate('to', 'username display_name avatars verified age permissions.show_age')
+                .lean();
+
+                if(fetch.length > 0) {
+                    // TOPLALAN TÜM VERİLERİ FRONT_END İÇİN AYARLA VE GÖNDER.
+                    users = [];
+                }
+            }
+
+            return res.status(200).json({
+                success: true,
+                users: users
+            });
+
+        } catch(err) {
+            console.log(err);
+            return res.status(400).json({ success: false });
+        }
+    }
+
     async live(req, res) {
         try {
             const logged_id = req._id;
@@ -127,28 +181,18 @@ class MatchController {
                 const max_age = logged_user.filtering.max_age;
                 const max_distance = logged_user.filtering.max_distance;
 
-                /*
-                    "users" collection daki user_ids dizisindeki documentleri bulucam
-                    
-                    bu dökümanların:
-                    
-                    * 'permission_id' yi populate edip .show_live "true" olanları,
-                    * 
-                */
-
                 var query;
 
                 if(gender_preference !== 'all') {
                     query = {
                         _id: { $in: user_ids },
-    
-                        'permissions.show_live': true,
                         
-                        my_blocked: { $ne: logged_id },
-                        matches: { $ne: logged_id },
-                        blocked: { $ne: logged_id },
-                        likes: { $ne: logged_id },
-                        dislikes: { $ne: logged_id },
+                        my_blocked: { $nin: logged_id },
+                        blocked: { $nin: logged_id },
+                        matches: { $nin: logged_id },
+                       
+                        likes: { $nin: logged_id },
+                        dislikes: { $nin: logged_id },
                     
                         age: { $gte: min_age, $lte: max_age },
                         gender: { $eq: gender_preference },
@@ -156,14 +200,13 @@ class MatchController {
                 } else {
                     query = {
                         _id: { $in: user_ids },
-    
-                       'permissions.show_live': true,
-                        my_blocked: { $ne: logged_id },
-                        matches: { $ne: logged_id },
-    
-                        blocked: { $ne: logged_id },
-                        likes: { $ne: logged_id },
-                        dislikes: { $ne: logged_id },
+
+                        my_blocked: { $nin: logged_id },
+                        blocked: { $nin: logged_id },
+                        matches: { $nin: logged_id },
+                        
+                        likes: { $nin: logged_id },
+                        dislikes: { $nin: logged_id },
     
                         age: { $gte: min_age, $lte: max_age },
                     };
@@ -232,9 +275,7 @@ class MatchController {
                 type: 'critical',
             });
 
-            return res.status(400).json({
-                success: false
-            });
+            return res.status(400).json({ success: false });
         }
     }
 
