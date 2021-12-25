@@ -38,6 +38,12 @@ class UserController {
                 });
             }
 
+            if(SpotifyAPI != null) {
+                console.log("api var");
+            } else {
+                console.log("api yok");
+            }
+
             console.time('getAuthorizationCodeGrant');
             const code_grant = await SpotifyAPI.getAuthorizationCodeGrant(code);
             console.timeEnd('getAuthorizationCodeGrant');
