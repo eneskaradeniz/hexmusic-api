@@ -41,14 +41,22 @@ class UserController {
             console.time('getAuthorizationCodeGrant');
             const code_grant = await SpotifyAPI.getAuthorizationCodeGrant(code);
             console.timeEnd('getAuthorizationCodeGrant');
+            
+            console.log(code_grant);
             if(!code_grant) {
+
+                console.log("kod geçersiz");
                 return res.status(200).json({
                     success: false,
                     error: 'INVALID_CODE',
                 });
             }
+
+            console.log("devam keee");
             
             const { access_token, refresh_token } = code_grant;
+
+            console.log(code_grant);
 
             console.time('getSpotifyId');
             const spotify_id = await SpotifyAPI.getSpotifyId(access_token);
